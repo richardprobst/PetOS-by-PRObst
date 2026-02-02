@@ -803,13 +803,13 @@ O Core segue a **Clean Architecture** com 4 camadas: Domain, Application, Infras
 
 #### DPS_Portal_Token_Manager
 *Geração e validação de tokens de acesso único (Magic Links).*
-- `DPS_Portal_Token_Manager::get_instance()` — Gerenciador de tokens de acesso ao Portal do Cliente. Esta classe gerencia a criação, validação, revogação e limpeza de tokens de autenticação para o Portal do Cliente.
-- `DPS_Portal_Token_Manager::maybe_create_table()` — Cria a tabela de tokens se não existir.
-- `DPS_Portal_Token_Manager::generate_token()` — Gera novo token de acesso único.
-- `DPS_Portal_Token_Manager::validate_token()` — Valida um token e retorna os dados se válido. Implementa rate limiting para prevenir brute force: 5 tentativas por hora por IP, cache negativo de tokens inválidos (5 min).
-- `DPS_Portal_Token_Manager::mark_as_used()` — Marca token como usado após autenticação.
+- `DPS_Portal_Token_Manager::get_instance()` — Retorna instância singleton do gerenciador de tokens.
+- `DPS_Portal_Token_Manager::maybe_create_table()` — Cria a tabela de tokens (wp_petos_portal_tokens) se não existir.
+- `DPS_Portal_Token_Manager::generate_token()` — Gera novo token de acesso único com expiração configurável.
+- `DPS_Portal_Token_Manager::validate_token()` — Valida um token e retorna dados do cliente se válido. Implementa rate limiting para prevenir brute force (5 tentativas/hora por IP), cache negativo de tokens inválidos (5 min), e logging de tentativas para auditoria.
+- `DPS_Portal_Token_Manager::mark_as_used()` — Marca token como usado após autenticação bem-sucedida.
 - `DPS_Portal_Token_Manager::revoke_tokens()` — Revoga todos os tokens ativos de um cliente.
-- `DPS_Portal_Token_Manager::cleanup_expired()` — Remove tokens expirados do banco.
+- `DPS_Portal_Token_Manager::cleanup_expired()` — Remove tokens expirados do banco (executado via cron).
 
 > **Nota sobre Repositories:** Os repositories do Portal (`DPS_Client_Repository`, `DPS_Pet_Repository`, `DPS_Appointment_Repository`, `DPS_Finance_Repository`) utilizam internamente as implementações do Core (`WpdbClientRepository`, `WpdbPetRepository`, `WpdbAppointmentRepository`). Eles são mantidos como facades para compatibilidade, delegando para o Core.
 
