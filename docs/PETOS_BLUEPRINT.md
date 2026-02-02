@@ -1,6 +1,10 @@
-# DPS v2 — Blueprint Moderno (Arquitetura + Código + UX/UI)  
-**Autor:** Probst  
-**Objetivo:** recriar o DPS com base moderna, código limpo e **paridade funcional** com o sistema atual, **mantendo compatibilidade com o banco existente** (clientes, pets e atendimentos), e entregando uma experiência **moderna e organizada** para administração, colaboradores e clientes.
+# 🐾 PetOS By PRObst — Blueprint Moderno
+
+**Sistema:** PetOS By PRObst (Sistema de Banho e Tosa)  
+**Autor:** PRObst  
+**Objetivo:** criar um sistema moderno, código limpo e arquitetura sólida, **mantendo compatibilidade com o banco existente** (clientes, pets e atendimentos), e entregando uma experiência **moderna e organizada** para administração, colaboradores e clientes.
+
+> **Foco exclusivo:** Sistema de **Banho e Tosa** para pets.
 
 > **Regra de ouro do projeto:** **não “remendar”**. Toda decisão precisa sustentar: **DRY + SOLID + Segurança + Testabilidade + UX consistente**.
 
@@ -64,7 +68,7 @@
 > Regra: **nenhuma regra de negócio em controllers REST, templates ou JS**. Tudo passa pelos casos de uso.
 
 ### 2.3 Modularidade (sem Frankenstein)
-- **Um plugin núcleo v2** (`dps-core-v2`) com módulos internos (bounded contexts).
+- **Um plugin núcleo v2** (`petos-core`) com módulos internos (bounded contexts).
 - Add-ons futuros podem existir, mas a v2 começa organizada: **core forte, extensível por eventos**.
 
 ---
@@ -74,7 +78,7 @@
 ### 3.1 Monorepo
 ```
 /plugins
-  /dps-core-v2
+  /petos-core
 /docs
   /architecture
   /database
@@ -88,8 +92,8 @@
 
 ### 3.2 Estrutura do plugin (PHP moderno + UI moderna)
 ```
-plugins/dps-core-v2/
-  dps-core-v2.php                    # bootstrap WP
+plugins/petos-core/
+  petos-core.php                    # bootstrap WP
   composer.json
   phpstan.neon
   phpunit.xml
@@ -222,7 +226,7 @@ Rotas:
 - `/dps/v2/portal/session`
 
 Regras:
-- Admin: autenticação WP + capability (criar capability DPS própria é o ideal).
+- Admin: autenticação WP + capability (criar capability PetOS própria é o ideal).
 - Portal: token + rate limit + mensagens genéricas para evitar enumeração.
 
 ### 7.2 Contratos de resposta (consistência)
@@ -276,7 +280,7 @@ Criar papéis claros:
 A UI deve ocultar o que não é permitido e a API deve bloquear por backend.
 
 ### 8.4 Admin (moderno e eficiente)
-**Menu DPS v2:**
+**Menu PetOS:**
 - Dashboard (hoje, próximos atendimentos, alertas)
 - Clientes (lista + busca rápida por telefone)
 - Pets (vinculados ao cliente; filtro por porte/espécie)
@@ -327,7 +331,7 @@ A UI deve ocultar o que não é permitido e a API deve bloquear por backend.
 
 ### 9.2 Tokens do portal (recomendação técnica)
 Criar tabela nova (sem mexer no legado):
-- `wp_dps_portal_tokens`
+- `wp_petos_portal_tokens`
   - id, client_id, token_hash, expires_at, used_at, created_at, metadata (ip/user_agent)
 
 Guardar **hash** do token, nunca o token em texto puro.
@@ -368,7 +372,7 @@ Pipeline mínimo:
 ## 12) Roadmap por etapas (execução)
 
 ### Etapa 0 — Setup (base moderna)
-- Criar `dps-core-v2` com Composer + autoload PSR-4
+- Criar `petos-core` com Composer + autoload PSR-4
 - CI mínimo funcionando
 - Estrutura de pastas conforme blueprint
 - Doc `docs/architecture/decisions.md`

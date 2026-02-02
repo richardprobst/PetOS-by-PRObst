@@ -1,11 +1,12 @@
-# 🐾 Plano de Execução — DPS v2 (Sistema de Banho e Tosa)
+# 🐾 Plano de Execução — PetOS By PRObst
 
+**Sistema:** PetOS By PRObst  
 **Autor:** PRObst  
 **Versão:** 1.0  
 **Data:** Fevereiro 2026  
 **Foco:** Sistema exclusivo para **Banho e Tosa**
 
-> **Nota:** Este plano segue as diretrizes do `DPS_v2_BLUEPRINT_MODERNO.md` com adaptações específicas para o nicho de Banho e Tosa.
+> **Nota:** Este plano segue as diretrizes do `PETOS_BLUEPRINT.md` com adaptações específicas para o nicho de Banho e Tosa.
 
 ---
 
@@ -76,8 +77,8 @@ B-T-By-PRObst/
 │       ├── admin-flows.md            # Fluxos do admin
 │       └── portal-flows.md           # Fluxos do portal cliente
 ├── plugins/
-│   └── dps-core-v2/
-│       ├── dps-core-v2.php           # Bootstrap WordPress
+│   └── petos-core/
+│       ├── petos-core.php           # Bootstrap WordPress
 │       ├── composer.json             # Dependências PHP
 │       ├── composer.lock
 │       ├── phpstan.neon              # Configuração PHPStan
@@ -120,8 +121,8 @@ B-T-By-PRObst/
 │   └── dev/
 │       ├── setup.sh                  # Script de setup local
 │       └── seed-data.php             # Dados de teste
-├── DPS_v2_BLUEPRINT_MODERNO.md       # Blueprint original
-├── PLANO_EXECUCAO_DPS_V2.md          # Este documento
+├── PetOS_v2_BLUEPRINT_MODERNO.md       # Blueprint original
+├── PLANO_EXECUCAO_PetOS_V2.md          # Este documento
 └── README.md
 ```
 
@@ -134,21 +135,21 @@ B-T-By-PRObst/
 ### Tarefas
 
 #### 0.1 Criar Estrutura de Diretórios
-- [ ] Criar pasta `plugins/dps-core-v2/`
+- [ ] Criar pasta `plugins/petos-core/`
 - [ ] Criar pasta `docs/` com subpastas
 - [ ] Criar pasta `tools/dev/`
 - [ ] Criar pasta `.github/workflows/`
 
 #### 0.2 Configurar Plugin WordPress
-- [ ] Criar `dps-core-v2.php` (bootstrap)
+- [ ] Criar `petos-core.php` (bootstrap)
 - [ ] Configurar headers do plugin WP
 - [ ] Implementar autoload PSR-4
 
-**Arquivo:** `plugins/dps-core-v2/dps-core-v2.php`
+**Arquivo:** `plugins/petos-core/petos-core.php`
 ```php
 <?php
 /**
- * Plugin Name: DPS Core v2 - Banho e Tosa
+ * Plugin Name: PetOS Core v2 - Banho e Tosa
  * Description: Sistema moderno de gestão para Banho e Tosa
  * Version: 2.0.0
  * Author: PRObst
@@ -161,14 +162,14 @@ if (!defined('ABSPATH')) {
     exit('Este arquivo deve ser carregado pelo WordPress.');
 }
 
-define('DPS_V2_VERSION', '2.0.0');
-define('DPS_V2_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('DPS_V2_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('PetOS_V2_VERSION', '2.0.0');
+define('PetOS_V2_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('PetOS_V2_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-$autoloader = DPS_V2_PLUGIN_DIR . 'vendor/autoload.php';
+$autoloader = PetOS_V2_PLUGIN_DIR . 'vendor/autoload.php';
 if (!file_exists($autoloader)) {
     add_action('admin_notices', function() {
-        echo '<div class="error"><p><strong>DPS Core v2:</strong> Execute <code>composer install</code> no diretório do plugin.</p></div>';
+        echo '<div class="error"><p><strong>PetOS Core v2:</strong> Execute <code>composer install</code> no diretório do plugin.</p></div>';
     });
     return;
 }
@@ -176,19 +177,19 @@ require_once $autoloader;
 
 // Bootstrap do plugin
 add_action('plugins_loaded', function() {
-    \DPSv2\Infrastructure\WordPress\Bootstrap::init();
+    \PetOSv2\Infrastructure\WordPress\Bootstrap::init();
 });
 ```
 
 #### 0.3 Configurar Composer
 - [ ] Criar `composer.json` com autoload PSR-4
-- [ ] Definir namespace `DPSv2\`
+- [ ] Definir namespace `PetOSv2\`
 - [ ] Adicionar dependências iniciais
 
-**Arquivo:** `plugins/dps-core-v2/composer.json`
+**Arquivo:** `plugins/petos-core/composer.json`
 ```json
 {
-    "name": "probst/dps-core-v2",
+    "name": "probst/petos-core",
     "description": "Sistema de Banho e Tosa - Core v2",
     "type": "wordpress-plugin",
     "license": "proprietary",
@@ -202,12 +203,12 @@ add_action('plugins_loaded', function() {
     },
     "autoload": {
         "psr-4": {
-            "DPSv2\\": "src/"
+            "PetOSv2\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "DPSv2\\Tests\\": "tests/"
+            "PetOSv2\\Tests\\": "tests/"
         }
     },
     "scripts": {
@@ -221,7 +222,7 @@ add_action('plugins_loaded', function() {
 #### 0.4 Configurar PHPStan
 - [ ] Criar `phpstan.neon` nível 6
 
-**Arquivo:** `plugins/dps-core-v2/phpstan.neon`
+**Arquivo:** `plugins/petos-core/phpstan.neon`
 ```neon
 parameters:
     level: 6
@@ -262,15 +263,15 @@ jobs:
           tools: composer
           
       - name: Install dependencies
-        working-directory: plugins/dps-core-v2
+        working-directory: plugins/petos-core
         run: composer install --prefer-dist --no-progress
         
       - name: Run PHPStan
-        working-directory: plugins/dps-core-v2
+        working-directory: plugins/petos-core
         run: composer analyze
         
       - name: Run Tests
-        working-directory: plugins/dps-core-v2
+        working-directory: plugins/petos-core
         run: composer test
 ```
 
@@ -299,7 +300,7 @@ jobs:
 
 #### 1.1 Exportar Schema Atual
 - [ ] Gerar `docs/database/schema.sql`
-- [ ] Documentar tabelas do DPS atual
+- [ ] Documentar tabelas do PetOS atual
 
 **Comando:**
 ```bash
@@ -317,7 +318,7 @@ mysqldump --no-data --routines --triggers --events DBNAME > docs/database/schema
 
 **Template para cada tabela:**
 ```markdown
-## wp_dps_clientes (exemplo)
+## wp_petos_clientes (exemplo)
 
 **Propósito:** Armazena dados dos tutores (clientes)
 
@@ -330,8 +331,8 @@ mysqldump --no-data --routines --triggers --events DBNAME > docs/database/schema
 | ...
 
 **Relacionamentos:**
-- Um cliente tem N pets (wp_dps_pets.client_id)
-- Um cliente tem N atendimentos (wp_dps_atendimentos.client_id)
+- Um cliente tem N pets (wp_petos_pets.client_id)
+- Um cliente tem N atendimentos (wp_petos_atendimentos.client_id)
 
 **Índices:**
 - PRIMARY (id)
@@ -346,17 +347,17 @@ mysqldump --no-data --routines --triggers --events DBNAME > docs/database/schema
 # Mapeamento de Features
 
 ## Gestão de Clientes
-- **Tabela principal:** wp_dps_clientes
+- **Tabela principal:** wp_petos_clientes
 - **Colunas usadas:** id, nome, telefone, email, cpf, endereco, data_cadastro
-- **Relacionamentos:** wp_dps_pets, wp_dps_atendimentos
+- **Relacionamentos:** wp_petos_pets, wp_petos_atendimentos
 
 ## Gestão de Pets
-- **Tabela principal:** wp_dps_pets
+- **Tabela principal:** wp_petos_pets
 - **Colunas usadas:** id, client_id, nome, especie, porte, pelagem, raca, peso
 - **Campos específicos B&T:** agressividade, restricoes, notas_tosa
 
 ## Agendamentos de B&T
-- **Tabela principal:** wp_dps_atendimentos
+- **Tabela principal:** wp_petos_atendimentos
 - **Colunas usadas:** id, client_id, pet_id, data_hora, servico, status, valor
 - **Serviços:** banho, tosa_higienica, tosa_completa, hidratacao
 ```
@@ -561,14 +562,14 @@ src/Infrastructure/Persistence/
 <?php
 declare(strict_types=1);
 
-namespace DPSv2\Infrastructure\Persistence;
+namespace PetOSv2\Infrastructure\Persistence;
 
 final class LegacySchemaMap
 {
     // Tabelas
-    public const TABLE_CLIENTS = 'wp_dps_clientes';
-    public const TABLE_PETS = 'wp_dps_pets';
-    public const TABLE_APPOINTMENTS = 'wp_dps_atendimentos';
+    public const TABLE_CLIENTS = 'wp_petos_clientes';
+    public const TABLE_PETS = 'wp_petos_pets';
+    public const TABLE_APPOINTMENTS = 'wp_petos_atendimentos';
     
     // Colunas - Clientes
     public const COL_CLIENT_ID = 'id';
@@ -586,14 +587,14 @@ src/Infrastructure/WordPress/
 │   ├── AdminMenuHook.php
 │   └── RestApiHook.php
 ├── Capabilities/
-│   └── DPSCapabilities.php
+│   └── PetOSCapabilities.php
 └── Container/
     └── ServiceContainer.php
 ```
 
 - [ ] Implementar `Bootstrap` para inicialização
 - [ ] Configurar container de DI simples
-- [ ] Registrar capabilities do DPS
+- [ ] Registrar capabilities do PetOS
 
 #### 2.3.3 Segurança
 ```
@@ -772,7 +773,7 @@ src/Infrastructure/Http/
 
 ### 4.1 Setup do Frontend Admin
 ```
-plugins/dps-core-v2/resources/admin/
+plugins/petos-core/resources/admin/
 ├── src/
 │   ├── components/         # Componentes reutilizáveis
 │   ├── pages/              # Páginas da aplicação
@@ -878,7 +879,7 @@ src/components/
 
 ### 5.1 Setup do Frontend Portal
 ```
-plugins/dps-core-v2/resources/portal/
+plugins/petos-core/resources/portal/
 ├── src/
 │   ├── components/
 │   ├── pages/
