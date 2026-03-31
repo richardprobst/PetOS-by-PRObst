@@ -50,7 +50,12 @@ Exemplo:
 - Arquivos-base para operação do projeto, incluindo README, AGENTS, CONTRIBUTING, SECURITY e variáveis de ambiente de exemplo.
 
 ### Changed
-- Definição de fluxo inicial para organização de documentação e preparação do repositório.
+- Revisão de consistência entre documentação raiz, docs e ADRs, com alinhamento de hierarquia de referência entre README e CONTRIBUTING.
+- Remoção de marcações de citação inválidas no README e ajuste da seção de leitura inicial para refletir arquivos já existentes no repositório.
+- PRD refinado para substituir placeholders (X/Y/Z) por janelas configuráveis por unidade e explicitar que depósitos/pré-pagamento pertencem à Fase 2.
+- Documento de pagamentos ajustado para reduzir ambiguidade de entidades, mantendo aderência ao modelo final e ADR 008.
+- Documento de modelo de dados ajustado para explicitar o papel de `Faturado` na separação entre status operacional e financeiro.
+
 
 ### Security
 - Diretrizes iniciais de segurança, incluindo tratamento de segredos, pagamentos, uploads, auditoria e autenticação.

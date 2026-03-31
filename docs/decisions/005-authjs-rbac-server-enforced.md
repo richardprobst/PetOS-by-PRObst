@@ -1,4 +1,4 @@
-# ADR 005 — Auth.js com RBAC aplicado no servidor será a estratégia oficial de autenticação e autorização
+# ADR 005 — next-auth v4 com RBAC aplicado no servidor será a estratégia oficial de autenticação e autorização (estado atual)
 
 - **Status:** Aceito
 - **Data:** 2026-03-30
@@ -48,8 +48,8 @@ A decisão precisava evitar:
 
 ## 3. Alternativas consideradas
 
-## A. Auth.js / NextAuth.js com RBAC aplicado no servidor
-Uso do ecossistema Auth.js / NextAuth.js para autenticação, combinado com autorização baseada em papéis e permissões garantida no servidor.
+## A. next-auth v4 com RBAC aplicado no servidor
+Uso de **next-auth v4** para autenticação, combinado com autorização baseada em papéis e permissões garantida no servidor.
 
 ### Vantagens
 - alinhamento com a stack do projeto;
@@ -91,7 +91,7 @@ Uso de outra estratégia com acoplamento diferente ao framework.
 ## 4. Decisão
 
 ## Decisão aceita
-O PetOS usará **Auth.js / NextAuth.js** como estratégia oficial de autenticação.
+O PetOS usará **next-auth v4** como estratégia oficial de autenticação nesta etapa.
 
 A autorização será baseada em:
 
@@ -107,7 +107,7 @@ A autorização será baseada em:
 A decisão foi tomada pelos seguintes motivos:
 
 ### 5.1. Alinhamento com a stack
-Auth.js / NextAuth.js se integra bem ao ecossistema já definido para o projeto, especialmente Next.js.
+next-auth v4 se integra bem ao ecossistema já definido para o projeto, especialmente Next.js.
 
 ### 5.2. Redução de risco
 Autenticação é área sensível. Usar uma base consolidada reduz a chance de soluções frágeis ou improvisadas.
@@ -146,7 +146,7 @@ A partir desta decisão:
 ## 7. Regras decorrentes desta decisão
 
 ## 7.1. Autenticação
-- usar Auth.js / NextAuth.js;
+- usar **next-auth v4**;
 - segredos devem ficar em variáveis de ambiente;
 - credenciais nunca devem ser expostas ao cliente;
 - fluxos sensíveis devem ser tratados com cuidado (login, sessão, recuperação, expiração, callbacks).
@@ -193,7 +193,7 @@ Um usuário pode:
 
 ## 9. O que esta decisão não significa
 
-Esta decisão **não significa** que Auth.js / NextAuth.js resolverá sozinho toda a autorização do sistema.
+Esta decisão **não significa** que next-auth v4 resolverá sozinho toda a autorização do sistema.
 
 Ele resolve a base de autenticação e sessão.  
 A autorização do domínio do PetOS ainda precisa ser implementada com:
@@ -264,7 +264,7 @@ Sem isso, a decisão permanece válida.
 
 No PetOS:
 
-- **Auth.js / NextAuth.js** será a base oficial de autenticação;
+- **next-auth v4** será a base oficial de autenticação nesta etapa;
 - **RBAC** será a base oficial de autorização;
 - a autorização real será garantida no **servidor**;
 - sessão e login são apenas parte da solução;

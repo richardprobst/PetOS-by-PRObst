@@ -8,8 +8,14 @@ Antes de abrir uma branch, alterar código ou propor arquitetura, consulte nesta
 
 1. `PetOS_PRD.md`
 2. `AGENTS.md`
-3. `README.md`
-4. decisões técnicas já implementadas no repositório
+3. `docs/domain-rules.md`
+4. `docs/architecture.md`
+5. `docs/payments.md`
+6. `docs/security-notes.md`
+7. `docs/data-model.md`
+8. `docs/decisions/README.md` e ADRs relacionados
+9. `README.md`
+10. decisões técnicas já implementadas no repositório
 
 Se houver conflito entre arquivos operacionais, o **PRD** prevalece.
 

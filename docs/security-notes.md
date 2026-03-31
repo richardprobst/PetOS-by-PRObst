@@ -50,7 +50,7 @@ Se uma ação pode causar impacto relevante, ela deve poder ser rastreada.
 ## 3. Autenticação
 
 ## 3.1. Estratégia oficial
-O projeto usa **Auth.js / NextAuth.js** como base oficial de autenticação.
+O projeto usa **next-auth v4** como base oficial de autenticação nesta etapa.
 
 ## 3.2. Cuidados obrigatórios
 - não criar autenticação caseira paralela;
@@ -160,9 +160,11 @@ O acesso ao banco deve seguir o padrão oficial do projeto com Prisma.
 - usar `.env.example` sem valores reais;
 - separar valores por ambiente;
 - rotacionar segredos quando necessário.
+- manter segredos distintos para `dev`, `staging` e `production`;
+- não reutilizar o mesmo segredo entre ambientes.
 
 ## 7.2. Exemplos de segredo
-- `AUTH_SECRET`
+- `NEXTAUTH_SECRET`
 - chaves de gateway
 - segredos de webhook
 - credenciais de storage
@@ -346,7 +348,7 @@ Agentes **não devem**:
 No PetOS, segurança deve ser tratada como parte do produto e da arquitetura.
 
 Isso significa:
-- autenticação oficial;
+- autenticação oficial baseada em next-auth v4;
 - autorização no servidor;
 - validação consistente;
 - cuidado com dados;

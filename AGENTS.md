@@ -153,7 +153,7 @@ Pensar em evolução futura é desejável.
 - **MySQL**
 - **Prisma ORM**
 - **Route Handlers** no Next.js para APIs
-- **Auth.js / NextAuth.js** para autenticação
+- **next-auth v4** para autenticação (migração futura para Auth.js/NextAuth v5 é possível, mas fora desta etapa)
 - **Zod** para validação
 - **React Hook Form** para formulários interativos
 
@@ -348,7 +348,7 @@ Implementar atenção extra em:
 ## 11. Autenticação, autorização e segurança
 
 ## 11.1. Autenticação
-- usar Auth.js / NextAuth.js;
+- usar **next-auth v4**;
 - não criar autenticação caseira;
 - armazenar segredos via ambiente;
 - nunca expor credenciais no cliente.
@@ -493,7 +493,7 @@ A regra de ouro para o desenvolvimento é o **foco absoluto no MVP**.
 - **IA**: Inteligência Artificial
 - **API**: Application Programming Interface
 - **Route Handlers**: forma de criar APIs no Next.js App Router
-- **Auth.js / NextAuth.js**: biblioteca de autenticação para Next.js
+- **next-auth v4**: biblioteca de autenticação atualmente adotada para Next.js
 - **Zod**: biblioteca de validação TypeScript-first
 - **React Hook Form**: biblioteca para gerenciamento de formulários em React
 - **Tailwind CSS**: framework CSS utilitário
@@ -524,7 +524,7 @@ A regra de ouro para o desenvolvimento é o **foco absoluto no MVP**.
 - Tailwind CSS Documentation — https://tailwindcss.com/docs
 - MySQL Documentation — https://dev.mysql.com/doc/
 - Prisma ORM Documentation — https://www.prisma.io/docs
-- Auth.js Documentation — https://authjs.dev/
+- NextAuth.js v4 Documentation — https://next-auth.js.org/
 - Zod Documentation — https://zod.dev/
 - React Hook Form Documentation — https://react-hook-form.com/
 - Mercado Pago Developers — https://www.mercadopago.com.br/developers/en/reference

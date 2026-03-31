@@ -111,11 +111,11 @@ O ciclo de vida de um agendamento e atendimento no PetOS seguirá a seguinte seq
 
 ### 3.2. Regras de No-Show, Cancelamento e Reagendamento
 
-*   **No-Show**: Um agendamento é considerado `No-Show` se o cliente não comparecer ou não entrar em contato até X minutos após o horário agendado. Regras de cobrança de taxa de no-show podem ser configuradas (ver **No-show Protection** na Fase 2).
-*   **Cancelamento**: Clientes podem cancelar agendamentos até Y horas antes do horário agendado sem penalidade. Cancelamentos fora deste período podem incorrer em taxas ou perda de depósito (se aplicável).
-*   **Reagendamento**: Clientes podem reagendar serviços até Z horas antes do horário agendado. Reagendamentos fora deste período podem ser tratados como cancelamento e novo agendamento, sujeitos às regras de cancelamento.
+*   **No-Show**: Um agendamento é considerado `No-Show` se o cliente não comparecer ou não entrar em contato até o limite de tolerância definido na configuração da unidade. Regras de cobrança de taxa de no-show podem ser configuradas (ver **No-show Protection** na Fase 2).
+*   **Cancelamento**: Clientes podem cancelar agendamentos dentro da janela de cancelamento definida por unidade sem penalidade. Cancelamentos fora deste período podem incorrer em taxas ou perda de depósito (se aplicável).
+*   **Reagendamento**: Clientes podem reagendar serviços conforme a janela de reagendamento definida por unidade. Reagendamentos fora deste período podem ser tratados como cancelamento e novo agendamento, sujeitos às regras de cancelamento.
 
-### 3.3. Depósitos e Pré-pagamento
+### 3.3. Depósitos e Pré-pagamento *(Fase 2)*
 
 *   **Depósito Obrigatório**: Para determinados serviços ou clientes (definidos por regras de negócio), um depósito pode ser exigido no momento do agendamento para confirmar a reserva.
 *   **Pré-pagamento**: Clientes podem optar por pagar o valor total do serviço antecipadamente, garantindo a reserva e agilizando o processo no dia do atendimento.
@@ -198,8 +198,8 @@ A arquitetura do PetOS será construída com foco em performance, escalabilidade
     *   Banco de dados relacional amplamente utilizado, confiável e com bom suporte, ideal para a estrutura de dados do PetOS.
 *   **ORM (Object-Relational Mapper)**: **Prisma**.
     *   Simplifica a interação com o MySQL, gerando um cliente de banco de dados tipado, o que aumenta a segurança e a produtividade no desenvolvimento.
-*   **Autenticação**: **NextAuth.js**.
-    *   Solução robusta e flexível para gerenciamento de autenticação e autorização, suportando diferentes provedores e estratégias (e-mail/senha, OAuth).
+*   **Autenticação**: **next-auth v4** (estado atual do projeto).
+    *   Solução robusta e flexível para gerenciamento de autenticação e autorização, suportando diferentes provedores e estratégias (e-mail/senha, OAuth). Migração futura pode ser avaliada, mas não faz parte desta etapa.
 
 ### 5.2. Segurança
 
@@ -312,7 +312,7 @@ Para facilitar a execução do projeto, as funcionalidades serão organizadas em
 [1] SimplesVet - Sistema para Pet Shop e Clínica Veterinária. Disponível em: [https://simples.vet/](https://simples.vet/)
 [2] Pet Shop Control - Software para Pet Shop e Banho e Tosa. Disponível em: [https://petshopcontrol.com.br/](https://petshopcontrol.com.br/)
 [3] Google Cloud Vision AI. Disponível em: [https://cloud.google.com/vision](https://cloud.google.com/vision)
-[4] OpenAI API. Disponível em: [https://openai.com/docs/api-reference](https://openai.com/docs/api-reference)
+[4] OpenAI API. Disponível em: [https://platform.openai.com/docs/api-reference](https://platform.openai.com/docs/api-reference)
 [5] Google Gemini API. Disponível em: [https://ai.google.dev/](https://ai.google.dev/)
 [6] Next.js Documentation. Disponível em: [https://nextjs.org/docs](https://nextjs.org/docs)
 [7] TypeScript Documentation. Disponível em: [https://www.typescriptlang.org/docs/](https://www.typescriptlang.org/docs/)
