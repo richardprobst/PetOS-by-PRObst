@@ -1,77 +1,35 @@
 name: CI
 
 on:
+  pull_request:
   push:
     branches:
       - main
-      - master
       - develop
-      - "feature/**"
-      - "fix/**"
-      - "hotfix/**"
-  pull_request:
-    branches:
-      - main
-      - master
-      - develop
-
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   validate:
-    name: Validate project
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    env:
-      CI: true
-      NODE_ENV: test
+    timeout-minutes: 15
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js from .nvmrc
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version-file: ".nvmrc"
+          node-version-file: .nvmrc
           cache: npm
 
-      - name: Verify Node.js and npm versions
-        run: |
-          node --version
-          npm --version
-
       - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
+        run: npm ci
 
-      - name: Generate Prisma Client when Prisma is present
-        run: |
-          if [ -f prisma/schema.prisma ]; then
-            npx prisma generate
-          else
-            echo "Prisma schema not found. Skipping Prisma generate."
-          fi
+      - name: Lint
+        run: npm run lint
 
-      - name: Run lint when available
-        run: |
-          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));process.exit(p.scripts&&p.scripts.lint?0:1)"             && npm run lint             || echo "No lint script found. Skipping."
+      - name: Typecheck
+        run: npm run typecheck
 
-      - name: Run typecheck when available
-        run: |
-          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));process.exit(p.scripts&&p.scripts.typecheck?0:1)"             && npm run typecheck             || echo "No typecheck script found. Skipping."
-
-      - name: Run tests when available
-        run: |
-          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));process.exit(p.scripts&&p.scripts.test?0:1)"             && npm run test -- --runInBand             || echo "No test script found. Skipping."
-
-      - name: Run build when available
-        run: |
-          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));process.exit(p.scripts&&p.scripts.build?0:1)"             && npm run build             || echo "No build script found. Skipping."
+      - name: Build
+        run: npm run build

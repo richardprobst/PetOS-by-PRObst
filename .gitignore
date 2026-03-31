@@ -29,7 +29,7 @@ lerna-debug.log*
 /test-results/
 /playwright-report/
 
-# prisma
+# prisma local sqlite artifacts (when used in local experiments)
 /prisma/dev.db
 /prisma/dev.db-journal
 /prisma/*.db
@@ -64,7 +64,6 @@ pids
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # editor / ide
 .vscode/

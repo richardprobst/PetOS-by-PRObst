@@ -246,6 +246,8 @@ Lookup de estados operacionais.
 - Cancelado
 - No-Show
 
+> Observação: `Faturado` deve existir no fluxo global do PRD, preferencialmente como status financeiro separado (ADR 006).
+
 ## 7.4. `HistoricoStatusAgendamento`
 Registra transições de status.
 

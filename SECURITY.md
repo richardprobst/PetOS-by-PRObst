@@ -113,7 +113,7 @@ Exemplos:
 
 ### 1. Autenticação
 
-- utilizar **Auth.js / NextAuth.js** ou evolução compatível aprovada no projeto;
+- utilizar **next-auth v4** como base atual, com evolução futura aprovada quando houver decisão formal;
 - não criar autenticação caseira;
 - segredos devem ficar apenas em variáveis de ambiente;
 - nunca expor tokens ou credenciais no cliente;
@@ -176,6 +176,12 @@ Exemplos:
 - revisar permissões de storage e banco;
 - segregar ambientes local, staging e produção;
 - nunca versionar `.env` real ou credenciais.
+
+#### Política de segredos por ambiente
+- manter segredos separados para `dev`, `staging` e `production`;
+- não reutilizar o mesmo segredo entre ambientes;
+- `.env.example` deve conter somente o contrato das chaves, sem segredos reais;
+- a definição dos valores reais depende da infraestrutura e do provedor de secret management adotado.
 
 ---
 

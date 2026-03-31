@@ -33,7 +33,7 @@ O **PetOS** será construído como uma aplicação **fullstack web** baseada em:
 - **MySQL**
 - **Prisma ORM**
 - **Route Handlers**
-- **Auth.js / NextAuth.js**
+- **next-auth v4** (com possibilidade de migração futura para Auth.js/NextAuth v5, fora desta etapa)
 - **Zod**
 
 A arquitetura foi pensada para suportar:
@@ -376,7 +376,7 @@ O banco relacional em MySQL será a base transacional do sistema.
 ## 10. Autenticação, autorização e segurança
 
 ## 10.1. Autenticação
-- usar Auth.js / NextAuth.js;
+- usar **next-auth v4**;
 - segredos somente em ambiente;
 - sessões e callbacks configurados com cuidado;
 - nunca expor credenciais no cliente.
@@ -525,7 +525,7 @@ Futuramente, isso pode evoluir para:
 - o núcleo do sistema **não será construído em WordPress**;
 - a base será **Next.js + TypeScript + Prisma + MySQL**;
 - APIs internas serão construídas com **Route Handlers**;
-- autenticação será tratada com **Auth.js / NextAuth.js**;
+- autenticação será tratada com **next-auth v4**;
 - o sistema será pensado para evolução futura, mas com **foco absoluto no MVP** no início.
 
 ---

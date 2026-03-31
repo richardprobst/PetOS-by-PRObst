@@ -171,11 +171,9 @@ O módulo de pagamentos conversa com entidades como:
 - `Reembolsos`
 - `CreditosCliente`
 - `UsoCredito`
-- `StatusPagamento`
-- `MetodosPagamento`
-- `Gateways_Pagamento`
-- `Transacoes_Pagamento`
-- `Webhook_Logs`
+- `StatusPagamento` (ou campo equivalente no modelo financeiro adotado)
+- `MetodosPagamento` (quando modelado de forma explícita)
+- tabelas auxiliares de gateway e webhook (conforme ADR 008 e modelagem final)
 - `Agendamentos`
 - `AgendamentoServicos`
 - `LogsAuditoria`
