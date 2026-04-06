@@ -13,6 +13,13 @@ Ele existe para:
 Este documento **não substitui** o `PetOS_PRD.md`.  
 Se houver conflito, o **PRD vence**.
 
+## 10.3. CRM e comunicaÃ§Ã£o ampliada da Fase 2
+- consentimento e preferÃªncia de canal devem ficar claros por cliente antes de qualquer campanha ou gatilho;
+- review booster, recuperaÃ§Ã£o de inativos, ofertas por perfil e gatilhos pos-serviÃ§o devem ser preparados no servidor;
+- campanhas devem usar critÃ©rios auditÃ¡veis, template conhecido e histÃ³rico de execuÃ§Ã£o com preparados, descartados e disparados;
+- falta de consentimento ou de destino vÃ¡lido deve descartar o destinatÃ¡rio com motivo explÃ­cito, sem esconder a tentativa;
+- lista de espera, portal do tutor e comunicaÃ§Ã£o operacional nÃ£o devem virar atalho para marketing fora do recorte da fase.
+
 ---
 
 ## 2. Princípios gerais
@@ -384,6 +391,26 @@ Se uma regra puder causar:
 - corrupção de fluxo do atendimento,
 
 ela merece teste prioritário.
+
+---
+
+## 19.1. Gestao da equipe na Fase 2
+
+### Escalas
+- o servidor deve impedir sobreposicao de escalas ativas do mesmo funcionario no mesmo intervalo;
+- `DAY_OFF` nao conta como jornada prevista para folha;
+- `CANCELED` retira a escala do calculo operacional e da folha.
+
+### Ponto
+- um funcionario nao pode manter dois registros de ponto abertos ao mesmo tempo;
+- fechamento de ponto exige saida posterior a entrada e intervalo nao negativo;
+- ajustes e invalidacoes devem permanecer auditaveis.
+
+### Folha
+- a rodada de folha deve ser criada por periodo e unidade, sem sobrepor outra rodada ativa no mesmo intervalo;
+- a folha so pode ser finalizada sem ponto aberto dentro do periodo;
+- `PAID + COMPLETED` continua sendo a condicao correta para comissao materializada entrar na base da folha;
+- payroll da Fase 2 e base operacional de apuracao, nao modulo trabalhista amplo.
 
 ---
 

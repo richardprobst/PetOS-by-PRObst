@@ -234,12 +234,26 @@ Todo upload deve ser tratado como potencialmente perigoso.
 - armazenar binário fora do banco;
 - registrar metadados;
 - restringir acesso por permissão e vínculo.
+- entregar leitura por rota protegida no servidor ou mecanismo equivalente de curta duração, nunca por URL pública previsível;
+- auditar criação, arquivamento e assinatura de documentos relevantes;
+- impedir que tutor acesse ativo `PRIVATE` ou arquivo sem vínculo real com cliente, pet ou agendamento.
 
 ## 10.3. O que evitar
 - confiar só na extensão do arquivo;
 - salvar documentos sensíveis em caminho público sem proteção;
 - expor URL previsível sem controle;
 - permitir download sem checagem de autorização.
+- tratar operador interno como signatário final quando a assinatura foi apenas registrada manualmente;
+
+---
+
+## 10.4. CRM, consentimento e execucoes de campanha
+
+- opt-in e opt-out precisam ficar persistidos por cliente, canal e finalidade operacional/comercial;
+- campanhas e gatilhos devem ser preparados no servidor, nunca montados apenas no client;
+- review booster, pos-servico e campanhas segmentadas devem registrar criterios usados, snapshot de consentimento, motivo de descarte e vinculo com `LogsMensagens` quando o canal externo for aberto;
+- nao usar lista de espera, portal do tutor ou gatilho pos-servico como atalho para automacao comercial fora do escopo;
+- nao expor endpoint de campanha que aceite publico arbitrario sem validacao de unidade, permissao e template.
 
 ---
 
@@ -340,6 +354,30 @@ Agentes **não devem**:
 - ignorar risco financeiro;
 - propor atalho inseguro em uploads, pagamentos ou webhooks;
 - esconder falha sensível sem registro.
+
+---
+
+## 15.1. Portal do tutor ampliado
+
+Com a ampliacao do portal do tutor na Fase 2:
+
+- leitura e escrita do tutor devem continuar limitadas ao proprio `clientId` e aos proprios pets/agendamentos;
+- pre-check-in, waitlist, documentos, assinaturas, Taxi Dog e financeiro proprio nao podem confiar em filtro de UI;
+- rotas e actions do tutor devem validar permissao e ownership no servidor antes de qualquer leitura ou mutacao;
+- URLs de download de documento e midia continuam protegidas e nao devem virar link publico previsivel;
+- o tutor pode visualizar deposito, credito, reembolso e alertas proprios, mas nao altera conciliacao, liquidacao, comissao ou regra financeira central.
+
+---
+
+## 15.2. Equipe, escalas, ponto e folha
+
+Com a entrada do Bloco 8 da Fase 2:
+
+- escala, ponto e folha continuam restritos a usuarios internos com permissao especifica;
+- o servidor deve validar unidade, funcionario e periodo antes de aceitar qualquer operacao;
+- ponto aberto e fechamento de folha exigem trilha auditavel, porque afetam jornada e base de comissao;
+- a folha da Fase 2 nao deve ser tratada como modulo trabalhista amplo, evitando calculos legais nao formalizados no PRD;
+- ajustes manuais, invalidacoes e finalizacao da folha precisam manter autoria, data e contexto administrativo.
 
 ---
 

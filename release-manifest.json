@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "releaseDate": "2026-04-05",
+  "minSupportedFrom": "0.2.0",
+  "requiresMaintenance": true,
+  "requiresBackup": true,
+  "newRequiredEnvKeys": [],
+  "seedPolicy": "none",
+  "postUpdateTasks": [],
+  "breakingNotes": [
+    "Esta release consolida a fundacao do installer/updater do PetOS.",
+    "A execucao controlada do update ja existe no runtime do sistema, mas deploy de build novo, rollback universal e integracao com host continuam manuais."
+  ]
+}

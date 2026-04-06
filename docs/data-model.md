@@ -1,585 +1,545 @@
 # Modelo de Dados do PetOS
 
-## 1. Objetivo deste documento
-
-Este documento consolida a visão conceitual e estrutural do modelo de dados do **PetOS**.
-
-Ele existe para:
-- facilitar leitura e revisão da modelagem;
-- conectar o domínio do produto às entidades persistidas;
-- orientar implementação no Prisma;
-- reduzir ambiguidade entre produto, backend e banco;
-- servir como referência rápida para humanos e agentes de IA.
-
-Este documento complementa, mas **não substitui**:
-- `PetOS_PRD.md`
-- `docs/architecture.md`
-- `docs/domain-rules.md`
-- `AGENTS.md`
-- o `schema.prisma`, que será a representação técnica oficial da modelagem implementada
-
-Se houver conflito:
-1. o **PRD** vence em termos de produto;
-2. o **schema.prisma** vence em termos de implementação já consolidada;
-3. este documento deve então ser atualizado.
-
----
-
-## 2. Princípios gerais da modelagem
-
-## 2.1. Modelo relacional como base
-O PetOS usa **MySQL** com modelagem relacional como base transacional.
-
-## 2.2. Integridade referencial
-Entidades críticas devem manter relações claras com:
-- chaves estrangeiras;
-- constraints adequadas;
-- índices relevantes;
-- histórico e rastreabilidade quando necessário.
-
-## 2.3. Separação de conceitos
-A modelagem deve evitar misturar conceitos distintos por conveniência.  
-Exemplo:
-- status operacional ≠ status financeiro;
-- arquivo binário ≠ metadado do arquivo;
-- estimativa ≠ valor efetivamente praticado.
-
-## 2.4. Evolução por fases
-A modelagem pode nascer preparada para crescimento, mas a implementação deve respeitar a fase atual do produto.
-
-## 2.5. Auditoria e rastreabilidade
-Mudanças críticas devem considerar histórico e/ou logs de auditoria.
-
----
-
-## 3. Grandes blocos do modelo
-
-O modelo do PetOS pode ser entendido em blocos principais:
-
-- identidade e acesso;
-- cliente e pet;
-- agenda e operação;
-- serviços e execução;
-- financeiro e pagamentos;
-- documentos, mídia e report cards;
-- comunicação;
-- equipe e permissões;
-- configuração e multiunidade;
-- integrações externas e auditoria.
-
----
-
-## 4. Identidade e acesso
-
-## 4.1. `Usuarios`
-Representa a identidade principal de autenticação do sistema.
-
-### Responsabilidades
-- login;
-- dados básicos do usuário;
-- status de ativação;
-- vínculo com unidade quando aplicável;
-- base para papéis e permissões.
-
-### Observações
-Nem todo usuário é igual:
-- cliente/tutor;
-- funcionário;
-- administrador;
-- outros perfis internos.
-
-## 4.2. `PerfisAcesso`
-Define perfis de acesso de alto nível.
-
-Exemplos:
-- administrador;
-- recepção;
-- tosador;
-- cliente;
-- motorista.
-
-## 4.3. `Permissoes`
-Define permissões granulares.
-
-Exemplos:
-- `agendamento.criar`
-- `agendamento.editar`
-- `financeiro.reembolsar`
-- `cliente.visualizar`
-- `documento.baixar`
-
-## 4.4. `PerfilPermissao`
-Tabela de junção entre perfis e permissões.
-
-## 4.5. `UsuarioPerfil`
-Tabela de junção entre usuários e perfis.
-
-### Observação importante
-A autorização no PetOS deve considerar:
-- identidade;
-- perfil;
-- permissão;
-- vínculo com unidade;
-- vínculo com entidade.
-
----
-
-## 5. Cliente e pet
-
-## 5.1. `Clientes`
-Representa o cliente/tutor no domínio comercial e operacional.
-
-### Dados comuns
-- endereço;
-- cidade;
-- estado;
-- CEP;
-- preferências de contato;
-- observações gerais.
-
-### Relações
-- 1:1 ou derivada de `Usuarios` no modelo adotado;
-- 1:N com `Pets`;
-- 1:N com agendamentos;
-- 1:N com créditos, depósitos e histórico financeiro.
-
-## 5.2. `Pets`
-Entidade central do atendimento.
-
-### Dados comuns
-- nome;
-- espécie;
-- raça;
-- data de nascimento;
-- peso;
-- observações de saúde;
-- alergias;
-- foto principal.
-
-### Relações
-- N:1 com `Clientes`;
-- 1:N com `Agendamentos`;
-- 1:N com `Midia`;
-- 1:N com `Documentos` quando aplicável;
-- 1:N com histórico operacional futuro.
-
-### Observação
-O histórico do pet deve sobreviver ao tempo e manter contexto de atendimentos anteriores.
-
----
-
-## 6. Serviços e equipe
-
-## 6.1. `Servicos`
-Define os serviços oferecidos pelo estabelecimento.
-
-### Dados comuns
-- nome;
-- descrição;
-- preço base;
-- duração estimada;
-- ativo/inativo;
-- vínculo com unidade quando aplicável.
-
-## 6.2. `Funcionarios`
-Define o papel operacional dos usuários internos ligados à execução.
-
-### Dados comuns
-- cargo;
-- especialidade;
-- percentual de comissão;
-- vínculo com unidade.
-
-### Relações
-- N:1 com `Usuarios`;
-- 1:N com `AgendamentoServicos`;
-- 1:N com eventos operacionais e de auditoria quando aplicável.
-
----
-
-## 7. Agenda e operação
-
-## 7.1. `Agendamentos`
-Representa o compromisso principal do atendimento.
-
-### Dados comuns
-- cliente;
-- pet;
-- data/hora de início;
-- data/hora de fim;
-- status atual;
-- observações do cliente;
-- observações internas;
-- valor total estimado;
-- unidade.
-
-### Relações
-- N:1 com `Clientes`
-- N:1 com `Pets`
-- 1:N com `AgendamentoServicos`
-- 1:N com `HistoricoStatusAgendamento`
-- 1:N com `TransacoesFinanceiras`
-- 1:N com `Midia`
-- 1:N com `Documentos`
-- 1:1 ou 1:N com `ReportCards` dependendo da abordagem final
-
-## 7.2. `AgendamentoServicos`
-Tabela que vincula serviços específicos a um agendamento.
-
-### Função
-Permitir:
-- múltiplos serviços por agendamento;
-- vínculo do serviço ao profissional executante;
-- preço acordado por item;
-- comissão por item.
-
-## 7.3. `StatusAtendimento`
-Lookup de estados operacionais.
-
-### Exemplo
-- Agendado
-- Confirmado
-- Check-in
-- Em Atendimento
-- Pronto para Retirada
-- Concluído
-- Cancelado
-- No-Show
-
-> Observação: `Faturado` deve existir no fluxo global do PRD, preferencialmente como status financeiro separado (ADR 006).
-
-## 7.4. `HistoricoStatusAgendamento`
-Registra transições de status.
-
-### Função
-Garantir:
-- rastreabilidade;
-- histórico temporal;
-- identificação de quem alterou;
-- apoio para auditoria e suporte.
-
----
-
-## 8. Financeiro e pagamentos
-
-## 8.1. Separação conceitual
-O modelo deve distinguir:
-- andamento operacional;
-- situação financeira.
-
-## 8.2. `TransacoesFinanceiras`
-Entidade central de movimentação financeira do sistema.
-
-### Pode representar
-- receita;
-- despesa;
-- depósito;
-- reembolso;
-- ajuste.
-
-### Relações
-- opcionalmente com `Agendamentos`;
-- opcionalmente com `Transacoes_Pagamento`;
-- com métodos e status de pagamento;
-- com créditos e reembolsos quando aplicável.
-
-## 8.3. `StatusPagamento`
-Lookup de estado financeiro.
-
-### Exemplos
-- Pendente
-- Aprovado
-- Pago
-- Parcial
-- Recusado
-- Reembolsado
-- Estornado
-
-## 8.4. `MetodosPagamento`
-Lookup de meios de pagamento.
-
-### Exemplos
-- dinheiro;
-- PIX;
-- cartão;
-- boleto;
-- outro.
-
-## 8.5. `Gateways_Pagamento`
-Registra gateways configurados por unidade.
-
-### Exemplos
-- Mercado Pago
-- Stripe
-
-## 8.6. `Transacoes_Pagamento`
-Registra a transação externa ou tentativa de transação junto ao gateway.
-
-### Função
-Conectar domínio interno com:
-- identificador externo;
-- status do gateway;
-- método;
-- valor;
-- data.
-
-## 8.7. `Webhook_Logs`
-Registra recebimento e processamento de webhooks.
-
-### Função
-Suportar:
-- idempotência;
-- rastreabilidade;
-- reconciliação;
-- auditoria.
-
-## 8.8. `Depositos`
-Registra depósitos/pre-pagamentos vinculados a cliente e/ou agendamento.
-
-## 8.9. `Reembolsos`
-Registra operações de devolução de valor com vínculo à transação correspondente.
-
-## 8.10. `CreditosCliente`
-Representa saldo disponível do cliente.
-
-## 8.11. `UsoCredito`
-Registra o consumo de créditos em operações financeiras.
-
----
-
-## 9. Documentos, mídia e report cards
-
-## 9.1. Princípio importante
-O banco deve guardar **referências e metadados**, não o binário principal do arquivo.
-
-## 9.2. `Documentos`
-Registra documentos vinculados ao domínio.
-
-### Exemplos
-- anamnese;
-- vacina;
-- autorização;
-- termo;
-- outro documento operacional.
-
-### Relações
-- opcionalmente com `Agendamentos`;
-- opcionalmente com `Pets`;
-- opcionalmente com `Clientes`;
-- com `Assinaturas`.
-
-## 9.3. `Assinaturas`
-Registra dados de assinatura vinculados ao documento.
-
-### Exemplos
-- nome do assinante;
-- usuário vinculado;
-- método da assinatura;
-- data/hora.
-
-## 9.4. `Midia`
-Registra referências a mídias.
-
-### Exemplos
-- foto do pet;
-- foto antes/depois;
-- vídeo;
-- mídia operacional.
-
-### Relações
-- com `Pets`;
-- com `Agendamentos`;
-- potencialmente com `ReportCards`.
-
-## 9.5. `ReportCards`
-Registra o resumo operacional do atendimento.
-
-### Pode conter
-- observações gerais;
-- comportamento do pet;
-- produtos usados;
-- recomendação de retorno;
-- vínculo com mídias antes/depois.
-
-### Observação
-É recomendável que o vínculo com fotos seja modelado de forma flexível via `Midia`, e não apenas por campos fixos de URL.
-
----
-
-## 10. Comunicação
-
-## 10.1. `TemplatesMensagem`
-Define templates reutilizáveis.
-
-### Exemplos
-- confirmação de agendamento;
-- lembrete;
-- retorno pós-serviço;
-- comunicação administrativa.
-
-## 10.2. `LogsMensagens`
-Registra mensagens enviadas ou disparadas.
-
-### Função
-Suportar:
-- rastreabilidade;
-- histórico;
-- suporte;
-- auditoria quando aplicável.
-
-### Relações
-- opcionalmente com cliente;
-- opcionalmente com agendamento;
-- com template utilizado;
-- com usuário que acionou o envio.
-
----
-
-## 11. Configuração e multiunidade
-
-## 11.1. `Unidades`
-Representa unidade operacional do negócio.
-
-### Função
-Preparar o sistema para multiunidade futura sem necessariamente ativar tudo no MVP.
-
-## 11.2. `ConfiguracoesUnidade`
-Armazena parâmetros configuráveis por unidade.
-
-### Exemplos
-- janela de cancelamento;
-- tolerância de no-show;
-- regras operacionais;
-- credenciais específicas;
-- parâmetros de comportamento.
-
-### Observação
-Evitar hardcode de regras que o domínio já prevê como configuráveis por unidade.
-
----
-
-## 12. Auditoria
-
-## 12.1. `LogsAuditoria`
-Registra ações críticas realizadas no sistema.
-
-### Exemplos
-- alteração de status;
-- mudanças financeiras;
-- edição de dados sensíveis;
-- alterações administrativas;
-- mudanças de configuração;
-- ações em documentos ou permissões.
-
-### Função
-Dar suporte a:
-- rastreabilidade;
-- investigação;
-- conformidade;
-- suporte.
-
----
-
-## 13. Relações importantes do domínio
-
-## 13.1. Cliente → Pets
-Um cliente pode ter múltiplos pets.
-
-## 13.2. Pet → Agendamentos
-Um pet pode ter múltiplos agendamentos ao longo do tempo.
-
-## 13.3. Agendamento → AgendamentoServicos
-Um agendamento pode conter múltiplos serviços.
-
-## 13.4. AgendamentoServico → Funcionario
-Cada item de serviço pode ser vinculado ao profissional responsável.
-
-## 13.5. Agendamento → Histórico de status
-Um agendamento tem um status atual e um histórico de transições.
-
-## 13.6. Agendamento → Financeiro
-Um agendamento pode gerar uma ou mais movimentações financeiras.
-
-## 13.7. Cliente → Créditos / Depósitos
-Um cliente pode ter saldo, depósitos e histórico financeiro próprio.
-
-## 13.8. Agendamento / Pet / Cliente → Documentos / Mídia
-Documentos e mídias podem se vincular a diferentes entidades do domínio conforme o caso.
-
----
-
-## 14. Pontos sensíveis da modelagem
-
-Alguns pontos merecem atenção especial:
-
-## 14.1. Status operacional vs status financeiro
-Não colapsar tudo em um único campo sem análise cuidadosa.
-
-## 14.2. Report card e mídia
-Evitar modelagem rígida demais para fotos e arquivos.
-
-## 14.3. Comissão
-A comissão deve ter relação clara com:
-- serviço executado;
-- profissional;
-- valor efetivamente faturado.
-
-## 14.4. Pagamentos e webhooks
-Identificadores externos e trilhas de processamento precisam existir.
-
-## 14.5. Configuração por unidade
-Parâmetros configuráveis devem nascer em lugar apropriado do modelo.
-
----
-
-## 15. Relação com o Prisma
-
-Este documento é **conceitual/estrutural**.
-
-A implementação técnica oficial no projeto será refletida em:
-- `prisma/schema.prisma`
-- migrations
-- índices e constraints efetivas
-
-### Regra importante
-Quando o modelo implementado evoluir:
-- este documento deve ser atualizado;
-- divergências relevantes devem ser explicadas;
-- ADRs podem ser usados quando a mudança for estrutural.
-
----
-
-## 16. O que este documento não substitui
-
-Este documento não substitui:
-- o PRD;
-- regras de negócio;
-- ADRs;
-- contratos Zod;
-- decisões de autorização;
-- detalhes de performance e índice em nível de implementação.
-
-Ele serve como **ponte entre domínio e banco**.
-
----
-
-## 17. Resumo
-
-O modelo de dados do PetOS foi desenhado para sustentar:
-
-- operação;
-- agenda;
-- cliente/pet;
-- financeiro;
-- pagamentos;
-- documentos;
-- comunicação;
-- permissões;
-- auditoria;
-- evolução futura.
-
-A prioridade é manter:
-- clareza conceitual;
-- integridade relacional;
-- rastreabilidade;
-- separação correta entre conceitos críticos.
+## Objetivo
+
+Este documento resume o modelo de dados implementado no MVP e serve como ponte entre o PRD e o `prisma/schema.prisma`.
+
+Em caso de divergencia:
+
+1. o PRD vence em escopo de produto;
+2. o `prisma/schema.prisma` vence em estado tecnico consolidado;
+3. este documento deve ser atualizado para refletir a implementacao real.
+
+## Estado atual do repositorio
+
+O schema atual preserva o nucleo operacional do MVP, a fundacao compartilhada da Fase 2 e a ativacao dos blocos financeiro/fiscal, documental, de agenda avancada, de portal ampliado do tutor, de CRM/comunicacao ampliada e de PDV/estoque.
+
+O nucleo operacional do MVP continua cobrindo:
+
+- identidade, perfis e permissoes;
+- unidades e configuracoes por unidade;
+- clientes e pets;
+- servicos e funcionarios;
+- agendamentos, itens de servico, status e historico;
+- check-in com snapshot do checklist;
+- comunicacao manual com templates e logs;
+- transacoes financeiras basicas;
+- report cards;
+- logs de auditoria.
+
+A base compartilhada, financeira, documental, de agenda avancada, de portal do tutor e de CRM da Fase 2 adiciona ao schema:
+
+- `Documentos`, `Assinaturas` e `Midia` como dominio documental ativo, com metadados, vinculos, arquivamento logico e binarios fora do banco;
+- `Depositos`, `Reembolsos`, `CreditosCliente` e `UsoCredito` como base financeira dedicada;
+- `EventosIntegracao` como trilha auditavel para webhooks e integracoes externas;
+- `DocumentosFiscais` como entidade minima para emissao e retorno fiscal.
+- `CapacidadeAgendamento`, `BloqueiosAgenda`, `ListaEspera` e `TaxiDog` como base operacional para capacidade, bloqueios, waitlist e transporte.
+- `PreCheckInTutor` como registro 1:1 do pre-check-in do tutor antes do atendimento.
+- `PreferenciasComunicacaoCliente`, `CampanhasCRM`, `ExecucoesCampanhaCRM` e `DestinatariosCampanhaCRM` como base de consentimento, segmentacao, execucao e rastreabilidade de CRM.
+- `Produtos`, `EstoquesProduto`, `MovimentacoesEstoque`, `VendasPDV` e `ItensVendaPDV` como base operacional de catalogo, saldo por unidade e venda presencial integrada ao financeiro.
+
+Essas estruturas significam que documentos, assinatura operacional minima, agenda avancada, waitlist, Taxi Dog operacional, portal ampliado do tutor, CRM/comunicacao ampliada, PDV/estoque e gestao operacional da equipe ja fazem parte do dominio funcional da Fase 2 no recorte previsto pelo PRD. RH amplo, folha trabalhista completa e componentes amplos de ERP continuam fora do escopo funcional atual.
+
+## Blocos do modelo
+
+### 1. Identidade e acesso
+
+Tabelas:
+
+- `Usuarios`
+- `PerfisAcesso`
+- `Permissoes`
+- `PerfilPermissao`
+- `UsuarioPerfil`
+
+Pontos importantes:
+
+- `Usuarios` concentra identidade, e-mail unico, hash de senha, tipo de usuario e unidade.
+- `PerfisAcesso` e `Permissoes` suportam RBAC real no servidor.
+- um usuario pode ter mais de um perfil.
+
+### 2. Unidades e configuracao
+
+Tabelas:
+
+- `Unidades`
+- `ConfiguracoesUnidade`
+
+Uso no MVP:
+
+- preparar configuracao por unidade sem simular multiunidade completa;
+- centralizar janelas de cancelamento e reagendamento;
+- manter base para timezone, moeda e parametros operacionais.
+
+### 3. Clientes e pets
+
+Tabelas:
+
+- `Clientes`
+- `Pets`
+
+Pontos importantes:
+
+- `Clientes` reaproveita o `id` do usuario tutor.
+- `Pets` pertence sempre a um cliente.
+- dados de saude, alergias e observacoes ficam no pet, visiveis para a operacao.
+
+### 4. Catalogo operacional
+
+Tabelas:
+
+- `Servicos`
+- `Funcionarios`
+
+Pontos importantes:
+
+- `Servicos` guarda preco base, duracao estimada e ativacao.
+- `Funcionarios` guarda cargo, especialidade, percentual de comissao, modo de folha, valor base e jornada padrao por unidade.
+- o percentual de comissao vive no funcionario, mas a comissao calculada fica materializada por item em `AgendamentoServicos`.
+
+### 5. Agenda e atendimento
+
+Tabelas:
+
+- `Agendamentos`
+- `AgendamentoServicos`
+- `StatusAtendimento`
+- `HistoricoStatusAgendamento`
+- `CheckInAgendamento`
+- `PreCheckInTutor`
+- `CapacidadeAgendamento`
+- `BloqueiosAgenda`
+- `ListaEspera`
+- `TaxiDog`
+
+Pontos importantes:
+
+- `Agendamentos` separa `status_atual_id` de `status_financeiro`.
+- `AgendamentoServicos` modela a relacao N:N entre agendamento e servicos, incluindo profissional e preco acordado.
+- `StatusAtendimento` e um lookup operacional.
+- `HistoricoStatusAgendamento` registra quem mudou o status e quando.
+- `CheckInAgendamento` e 1:1 com `Agendamentos` no MVP e armazena `checklist_snapshot` em JSON.
+- `PreCheckInTutor` tambem e 1:1 com `Agendamentos` e armazena telefone de contato, consentimento e payload preparatorio do tutor.
+- `CapacidadeAgendamento` define capacidade ativa por unidade e, quando necessario, por profissional, porte e raca.
+- `BloqueiosAgenda` representa indisponibilidades gerais ou por profissional que precisam ser respeitadas na validacao server-side.
+- `ListaEspera` registra demanda reprimida com janela preferencial, estado da entrada e eventual promocao para `Agendamentos`.
+- `TaxiDog` vincula transporte operacional ao atendimento, com motorista, janelas de coleta/entrega, tarifa e status proprio.
+
+### 6. Comunicacao
+
+Tabelas:
+
+- `TemplatesMensagem`
+- `LogsMensagens`
+
+Uso no MVP:
+
+- templates editaveis por canal;
+- variaveis permitidas por template;
+- historico de envio manual com tutor, agendamento, usuario emissor, mensagem efetiva e status.
+
+O envio continua manual, mas o sistema agora prepara e abre o canal correto para WhatsApp Web ou e-mail.
+
+### 7. Financeiro
+
+Tabelas:
+
+- `TransacoesFinanceiras`
+- `Depositos`
+- `Reembolsos`
+- `CreditosCliente`
+- `UsoCredito`
+- `EventosIntegracao`
+- `DocumentosFiscais`
+
+Enums relevantes:
+
+- `FinancialTransactionType`
+- `PaymentMethod`
+- `PaymentStatus`
+- `AppointmentFinancialStatus`
+
+Pontos importantes:
+
+- `TransacoesFinanceiras` continua sendo o ledger central, agora com suporte a `DEPOSIT` e `REFUND`.
+- `paymentStatus` representa o estado de cada lancamento individual.
+- `financialStatus` no agendamento continua separado e consolidado a partir do snapshot financeiro do atendimento.
+- `AUTHORIZED` e tratado como estado intermediario e nao liquida o atendimento.
+- `Depositos` suportam `SECURITY` e `PREPAYMENT`.
+- `Reembolsos` controlam origem, status e possivel reflexo em transacao financeira ou credito.
+- `CreditosCliente` e `UsoCredito` permitem reaproveitamento financeiro sem distorcer a trilha contabil do atendimento.
+- `EventosIntegracao` suportam idempotencia, reconciliacao e reprocessamento de eventos externos.
+- `DocumentosFiscais` registram emissao minima de NFS-e/NFC-e sem introduzir ainda um modulo fiscal completo.
+- comissao so e liberada quando o `financialStatus` do agendamento chega a `PAID` e o status operacional chega a `COMPLETED`.
+
+### 8. PDV e estoque
+
+Tabelas:
+
+- `Produtos`
+- `EstoquesProduto`
+- `MovimentacoesEstoque`
+- `VendasPDV`
+- `ItensVendaPDV`
+
+Pontos importantes:
+
+- `Produtos` pertence a uma unidade e guarda catalogo de venda, SKU, codigo de barras, politica de controle de estoque e estoque minimo.
+- `EstoquesProduto` materializa o saldo atual por unidade e produto.
+- `MovimentacoesEstoque` registra trilha auditavel de entradas, saidas por venda e ajustes, sempre com quantidade antes/depois.
+- `VendasPDV` representa pre-venda ou venda presencial concluida, com cliente opcional e totais calculados no servidor.
+- `ItensVendaPDV` preserva snapshot do item vendido para manter rastreabilidade mesmo se o produto mudar depois.
+- o fechamento da venda do PDV baixa estoque e cria `TransacoesFinanceiras` de receita na mesma transacao, sem criar um ledger paralelo.
+- a solicitacao fiscal minima do PDV reaproveita `DocumentosFiscais` e `EventosIntegracao` apenas para venda liquidada.
+
+### 9. Equipe, escalas, ponto e folha
+
+Tabelas:
+
+- `EscalasEquipe`
+- `RegistrosPonto`
+- `FolhasPagamento`
+- `ItensFolhaPagamento`
+
+Pontos importantes:
+
+- `EscalasEquipe` registra janela, tipo e status da escala por funcionario, sempre vinculada a unidade.
+- `RegistrosPonto` registra entrada, saida, intervalo e vinculo opcional com a escala correspondente.
+- `FolhasPagamento` representa a rodada de apuracao por periodo e unidade.
+- `ItensFolhaPagamento` materializa a base de calculo por funcionario com modo de folha, minutos previstos/trabalhados, comissao, ajustes manuais e valores bruto/liquido.
+- a fase atual fecha o recorte operacional de payroll sem abrir modulo trabalhista amplo.
+
+### 10. Report cards e auditoria
+
+Tabelas:
+
+- `ReportCards`
+- `LogsAuditoria`
+
+Pontos importantes:
+
+- `ReportCards` fica vinculado ao agendamento e ao usuario que gerou o registro.
+- `LogsAuditoria` guarda unidade, usuario, acao, entidade, horario e detalhes estruturados.
+
+### 11. Fundacao transacional, financeira, documental, de agenda avancada, portal do tutor, CRM, PDV/estoque e equipe na Fase 2
+
+Tabelas:
+
+- `Documentos`
+- `Assinaturas`
+- `Midia`
+- `Depositos`
+- `Reembolsos`
+- `CreditosCliente`
+- `UsoCredito`
+- `EventosIntegracao`
+- `DocumentosFiscais`
+- `CapacidadeAgendamento`
+- `BloqueiosAgenda`
+- `ListaEspera`
+- `TaxiDog`
+- `PreCheckInTutor`
+- `PreferenciasComunicacaoCliente`
+- `CampanhasCRM`
+- `ExecucoesCampanhaCRM`
+- `DestinatariosCampanhaCRM`
+- `Produtos`
+- `EstoquesProduto`
+- `MovimentacoesEstoque`
+- `VendasPDV`
+- `ItensVendaPDV`
+- `EscalasEquipe`
+- `RegistrosPonto`
+- `FolhasPagamento`
+- `ItensFolhaPagamento`
+
+Pontos importantes:
+
+- `Documentos` e `Midia` armazenam apenas referencias, checksums e metadados de storage; o binario continua fora do banco.
+- `Documentos` e `Midia` agora suportam arquivamento logico com trilha de quem arquivou, quando e por qual motivo.
+- `Assinaturas` registra metodo, status e dados minimos do signatario, incluindo assinatura operacional do tutor e registro manual interno quando aplicavel.
+- o acesso de leitura passa por rotas protegidas no servidor e respeita permissao, unidade, vinculo com cliente/pet/agendamento e `AssetAccessLevel`.
+- `Depositos`, `Reembolsos`, `CreditosCliente` e `UsoCredito` agora sustentam os fluxos de deposito, pre-pagamento, no-show protection, reembolso e credito da Fase 2 sem virar ERP completo.
+- `EventosIntegracao` prepara e opera a trilha de idempotencia, auditoria e reconciliacao de eventos externos sem acoplar o schema a um provider unico.
+- formularios e autorizacoes entram neste recorte como documentos gerados e assinaveis, sem transformar o sistema em plataforma juridica ampla.
+- `DocumentosFiscais` registram o pedido, retorno e estado minimo da emissao fiscal sem puxar o dominio documental para um modulo fiscal amplo.
+- `CapacidadeAgendamento` e `BloqueiosAgenda` sustentam a agenda avancada da Fase 2 sem reescrever a agenda validada do MVP.
+- `ListaEspera` operacionaliza entrada, promocao e cancelamento previsiveis sem virar CRM.
+- `TaxiDog` integra transporte ao agendamento e ao valor estimado, ainda sem roteirizacao pesada.
+- `PreCheckInTutor` habilita o fluxo preparatorio do tutor com janela configurada por unidade e validacao server-side antes do atendimento.
+- `PreferenciasComunicacaoCliente` centraliza opt-in, opt-out e preferencia de canal por tutor com trilha de quem atualizou.
+- `CampanhasCRM` guarda tipo, canal, criterios e template reaproveitando o modulo existente de mensagens.
+- `ExecucoesCampanhaCRM` e `DestinatariosCampanhaCRM` registram audiencia preparada, descarte por falta de consentimento/destino, disparo controlado e vinculo opcional com `LogsMensagens`.
+- `Produtos`, `EstoquesProduto` e `MovimentacoesEstoque` sustentam catalogo, saldo e trilha auditavel de estoque sem abrir compras complexas ou supply chain.
+- `VendasPDV` e `ItensVendaPDV` fecham venda presencial no servidor, integram baixa de estoque ao fechamento e reaproveitam o dominio financeiro/fiscal minimo ja existente.
+- `EscalasEquipe`, `RegistrosPonto`, `FolhasPagamento` e `ItensFolhaPagamento` fecham o recorte de gestao da equipe da Fase 2 com jornada prevista, ponto auditavel e base de folha por periodo.
+- a separacao entre status operacional e financeiro permanece intacta; nenhuma dessas tabelas substitui `financialStatus` do agendamento.
+
+### 12. Portal do tutor ampliado
+
+O portal ampliado do tutor reutiliza o dominio ja existente, sem criar um modelo paralelo:
+
+- `Clientes`, `Pets` e `Agendamentos` continuam definindo ownership e escopo;
+- `Documentos`, `Assinaturas` e `Midia` sustentam leitura protegida e assinatura propria;
+- `Depositos`, `Reembolsos` e `CreditosCliente` sustentam a visao financeira propria;
+- `ListaEspera`, `TaxiDog` e `PreCheckInTutor` sustentam jornada, acompanhamento e preparacao pre-atendimento;
+- toda leitura e mutacao continua vinculada ao `clientId` do tutor e validada no servidor.
+
+## Enums implementados
+
+### `UserType`
+
+- `ADMIN`
+- `CLIENT`
+- `EMPLOYEE`
+
+### `AppointmentFinancialStatus`
+
+- `PENDING`
+- `PARTIAL`
+- `PAID`
+- `INVOICED`
+- `REFUNDED`
+- `REVERSED`
+- `EXEMPT`
+
+### `PaymentStatus`
+
+- `PENDING`
+- `AUTHORIZED`
+- `PAID`
+- `PARTIAL`
+- `FAILED`
+- `REFUNDED`
+- `REVERSED`
+- `VOIDED`
+
+### `DepositStatus`
+
+- `PENDING`
+- `CONFIRMED`
+- `APPLIED`
+- `FORFEITED`
+- `REFUNDED`
+- `CANCELED`
+- `EXPIRED`
+
+### `DepositPurpose`
+
+- `SECURITY`
+- `PREPAYMENT`
+
+### `IntegrationProvider`
+
+- `STRIPE`
+- `MERCADO_PAGO`
+- `FISCAL`
+- `OTHER`
+
+### `IntegrationEventStatus`
+
+- `PENDING`
+- `RECEIVED`
+- `PROCESSED`
+- `FAILED`
+- `IGNORED`
+
+### `FiscalDocumentType`
+
+- `SERVICE_INVOICE`
+- `CONSUMER_RECEIPT`
+
+### `FiscalDocumentStatus`
+
+- `PENDING`
+- `ISSUED`
+- `FAILED`
+- `CANCELED`
+
+### `PetSizeCategory`
+
+- `SMALL`
+- `MEDIUM`
+- `LARGE`
+- `GIANT`
+- `UNKNOWN`
+
+### `ScheduleBlockType`
+
+- `UNAVAILABLE`
+- `BREAK`
+- `HOLIDAY`
+- `TRANSPORT`
+- `OTHER`
+
+### `WaitlistStatus`
+
+- `PENDING`
+- `PROMOTED`
+- `CANCELED`
+- `EXPIRED`
+
+### `CrmCampaignType`
+
+- `REVIEW_BOOSTER`
+- `SEGMENTED_CAMPAIGN`
+- `INACTIVE_RECOVERY`
+- `PROFILE_OFFER`
+- `POST_SERVICE_TRIGGER`
+
+### `CrmCampaignStatus`
+
+- `DRAFT`
+- `ACTIVE`
+- `PAUSED`
+- `ARCHIVED`
+
+### `CrmCampaignExecutionStatus`
+
+- `PREPARED`
+- `COMPLETED`
+- `FAILED`
+- `CANCELED`
+
+### `CrmCampaignRecipientStatus`
+
+- `PREPARED`
+- `LAUNCHED`
+- `SKIPPED`
+- `FAILED`
+- `CANCELED`
+
+### `TaxiDogStatus`
+
+- `REQUESTED`
+- `SCHEDULED`
+- `IN_PROGRESS`
+- `COMPLETED`
+- `CANCELED`
+
+### `InventoryMovementType`
+
+- `STOCK_IN`
+- `SALE_OUT`
+- `RETURN_IN`
+- `ADJUSTMENT_IN`
+- `ADJUSTMENT_OUT`
+
+### `PosSaleStatus`
+
+- `OPEN`
+- `COMPLETED`
+- `CANCELED`
+
+### `EmployeePayrollMode`
+
+- `MONTHLY`
+- `HOURLY`
+- `COMMISSION_ONLY`
+
+### `TeamShiftType`
+
+- `WORK`
+- `ON_CALL`
+- `TRAINING`
+- `DAY_OFF`
+
+### `TeamShiftStatus`
+
+- `PLANNED`
+- `CONFIRMED`
+- `CANCELED`
+
+### `TimeClockEntryStatus`
+
+- `OPEN`
+- `CLOSED`
+- `ADJUSTED`
+- `VOIDED`
+
+### `PayrollRunStatus`
+
+- `DRAFT`
+- `FINALIZED`
+- `CANCELED`
+
+### `MessageChannel`
+
+- `EMAIL`
+- `WHATSAPP`
+
+### `MessageDeliveryStatus`
+
+- `DRAFT`
+- `SENT`
+- `FAILED`
+- `CANCELED`
+
+## Relacoes criticas do MVP
+
+- `Usuarios` 1:1 `Clientes`
+- `Usuarios` 1:1 `Funcionarios`
+- `Clientes` 1:N `Pets`
+- `Clientes` 1:N `Agendamentos`
+- `Pets` 1:N `Agendamentos`
+- `Agendamentos` 1:N `AgendamentoServicos`
+- `Agendamentos` 1:N `HistoricoStatusAgendamento`
+- `Agendamentos` 1:1 `CheckInAgendamento`
+- `Agendamentos` 1:N `TransacoesFinanceiras`
+- `Agendamentos` 1:N `Depositos`
+- `Agendamentos` 1:N `Reembolsos`
+- `Agendamentos` 1:1 `TaxiDog`
+- `Agendamentos` 1:0..1 `ListaEspera` como origem de promocao
+- `Agendamentos` 1:1 `ReportCards`
+- `TransacoesFinanceiras` 1:N `Reembolsos` por origem
+- `TransacoesFinanceiras` 1:N `DocumentosFiscais`
+- `TransacoesFinanceiras` N:1 `VendasPDV` quando a liquidacao vier do PDV
+- `Depositos` 1:N `Reembolsos`
+- `Depositos` 1:N `CreditosCliente`
+- `CreditosCliente` 1:N `UsoCredito`
+- `TemplatesMensagem` 1:N `LogsMensagens`
+- `TemplatesMensagem` 1:N `CampanhasCRM`
+- `Clientes` 1:1 `PreferenciasComunicacaoCliente`
+- `CampanhasCRM` 1:N `ExecucoesCampanhaCRM`
+- `CampanhasCRM` 1:N `DestinatariosCampanhaCRM`
+- `ExecucoesCampanhaCRM` 1:N `DestinatariosCampanhaCRM`
+- `LogsMensagens` 1:1 `DestinatariosCampanhaCRM` quando o disparo controlado e aberto pela equipe
+- `Funcionarios` 1:N `CapacidadeAgendamento`
+- `Funcionarios` 1:N `BloqueiosAgenda`
+- `Funcionarios` 1:N `TaxiDog`
+- `Clientes` 1:N `ListaEspera`
+- `Pets` 1:N `ListaEspera`
+- `Unidades` 1:N `Produtos`
+- `Unidades` 1:N `EstoquesProduto`
+- `Unidades` 1:N `MovimentacoesEstoque`
+- `Unidades` 1:N `VendasPDV`
+- `Clientes` 1:N `VendasPDV`
+- `Produtos` 1:0..1 `EstoquesProduto` por unidade
+- `Produtos` 1:N `MovimentacoesEstoque`
+- `Produtos` 1:N `ItensVendaPDV`
+- `VendasPDV` 1:N `ItensVendaPDV`
+- `VendasPDV` 1:N `MovimentacoesEstoque`
+- `Funcionarios` 1:N `EscalasEquipe`
+- `Funcionarios` 1:N `RegistrosPonto`
+- `FolhasPagamento` 1:N `ItensFolhaPagamento`
+- `Funcionarios` 1:N `ItensFolhaPagamento`
+
+## Decisoes de modelagem relevantes
+
+- Status operacional e financeiro permanecem separados, conforme ADR 006.
+- Prisma continua como camada unica de acesso a dados, conforme ADR 004.
+- JSON no MVP fica restrito a snapshots e detalhes auditaveis, nao a relacoes centrais.
+- O schema nasce preparado para unidade e configuracao por unidade, sem afirmar multiunidade completa.
+
+## Fora do escopo atual
+
+Continuam fora da implementacao funcional atual:
+
+- plataforma juridica ampla de formularios, assinatura e gestao documental;
+- planos e assinaturas de planos;
+- compras complexas, supply chain e ERP comercial amplo;
+- RH e folha trabalhista ampla.
+
+O recorte fiscal minimo, no entanto, ja existe no schema e no dominio: `DocumentosFiscais` e `EventosIntegracao` sustentam a emissao e o retorno fiscal minimo da Fase 2 sem abrir ainda um modulo fiscal amplo.
+
+Esses itens so devem entrar mediante autorizacao explicita de nova fase ou ajuste formal de escopo.

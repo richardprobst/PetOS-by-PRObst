@@ -1,184 +1,154 @@
 # PetOS
 
-Sistema SaaS para pet shops, banho e tosa e serviços correlatos, com foco no mercado brasileiro.
+Sistema SaaS para pet shops, banho e tosa e servicos correlatos, com foco no mercado brasileiro.
 
-O **PetOS** foi concebido para centralizar a operação do negócio, melhorar a experiência do tutor e sustentar a evolução do produto para automações, integrações de pagamento, IA aplicada e expansão futura. O escopo inicial prioriza um **MVP enxuto**, com agenda, cadastro de clientes e pets, serviços, comunicação operacional, financeiro básico, portal do tutor, comissões e report card simples.
+## Status atual
 
-## Objetivo do projeto
+O repositorio implementa o MVP operacional do PetOS com:
 
-O projeto busca entregar uma base sólida para a operação diária de banho e tosa, com crescimento planejado em fases. No MVP, o foco está em resolver o núcleo operacional com segurança, consistência de regras de negócio e boa experiência de uso. As fases seguintes expandem o sistema para pagamentos, documentos, automações comerciais, estoque, PDV, multiunidade e IA avançada.
+- autenticacao em `next-auth v4`;
+- RBAC aplicado no servidor;
+- Prisma como camada unica de dados;
+- agenda operacional com status, check-in e historico;
+- cadastro de clientes, pets, servicos e equipe;
+- comunicacao manual via WhatsApp Web e e-mail com templates e logs;
+- financeiro basico com receitas, despesas e vinculo ao atendimento;
+- comissoes calculadas no servidor;
+- portal do tutor com perfil, pets, historico, agendamento e base PWA;
+- report cards simples;
+- auditoria base, rate limiting e validacao com Zod.
 
-## Escopo resumido
+Neste ponto, o repositorio preserva a baseline tecnica do MVP validado e concluiu a **Fase 2** no recorte previsto pelo PRD, com:
 
-### MVP
-- Agenda e operação básicas
-- Fluxo de status do atendimento
-- Check-in com checklist
-- Cadastro de clientes e pets
-- Gestão de serviços
-- Comunicação manual via WhatsApp/e-mail com templates
-- Financeiro básico
-- Portal do tutor básico (PWA)
-- Controle de comissões
-- Report card simples
+- financeiro expandido e fiscal minimo;
+- documentos, assinaturas e midia protegidos;
+- agenda avancada, waitlist e Taxi Dog operacional;
+- portal do tutor ampliado;
+- CRM e comunicacao ampliada;
+- PDV e estoque;
+- escalas, ponto e base de payroll.
 
-### Fase 2
-- Capacidade por profissional, porte e raça
-- Depósito e pré-pagamento
-- Bloqueios de agenda e waitlist
-- Táxi Dog com roteirização
-- Documentos e formulários
-- CRM e automações pós-serviço
-- NFS-e e NFC-e
-- PDV e estoque completos
-- Portal do tutor aprimorado
-- Time clock, payroll e escalas
+Fase 3 e roadmap futuro continuam fora do escopo desta baseline.
 
-### Fase 3
-- IA de visão computacional
-- Análise preditiva
-- Multiunidade operacional completa
+O repositorio tambem fechou a frente interna de **installer/updater assistido**, com:
 
-## Stack definida
+- setup protegido por flag, token e sessao temporaria;
+- runtime state e lifecycle persistidos;
+- maintenance e repair mode;
+- preflight e manifest de release do updater;
+- engine controlada de update com recovery minimo e retry seguro.
 
-A base técnica oficial do projeto utiliza:
-- **Next.js** com **App Router** e **Route Handlers**
-- **TypeScript**
-- **React**
-- **Tailwind CSS**
-- **MySQL**
-- **Prisma ORM**
-- **next-auth v4** (com possibilidade de migração futura para Auth.js/NextAuth v5, fora desta etapa)
-- **Zod**
-- **React Hook Form**
+## Stack
 
-## Regras de produto importantes
+- Next.js 15 com App Router
+- React 19
+- TypeScript com `strict: true`
+- Tailwind CSS
+- Prisma ORM
+- MySQL
+- next-auth v4
+- Zod
+- React Hook Form
 
-O fluxo operacional padrão do atendimento é:
-
-`Agendado -> Confirmado -> Check-in -> Em Atendimento -> Pronto para Retirada -> Concluído -> Faturado`
-
-Além disso:
-- regras de no-show, cancelamento e reagendamento devem ser configuráveis por unidade;
-- comissão deve ser calculada sobre o valor faturado, após descontos, conforme o PRD;
-- mudanças críticas precisam preservar auditoria, rastreabilidade e controle de acesso.
-
-## Documentos principais do repositório
-
-- **`PetOS_PRD.md`** — documento principal de requisitos do produto
-- **`AGENTS.md`** — guia operacional para agentes de IA e automação de desenvolvimento
-
-### Regra de prioridade
-Em caso de conflito entre documentos, usar a seguinte ordem:
-1. `PetOS_PRD.md`
-2. `AGENTS.md`
-3. `docs/domain-rules.md`
-4. `docs/architecture.md`
-5. `docs/payments.md`
-6. `docs/security-notes.md`
-7. `docs/data-model.md`
-8. `docs/decisions/README.md` e ADRs relacionados
-9. decisões técnicas já implementadas no repositório
-10. instruções explícitas do mantenedor do projeto
-
-## Princípios do desenvolvimento
-
-- foco absoluto no escopo da fase atual;
-- segurança desde a concepção;
-- validação de entrada obrigatória;
-- regra de negócio implementada no servidor, não apenas na interface;
-- migrations controladas com Prisma;
-- logs e auditoria para ações críticas;
-- integrações externas com tratamento de falha, idempotência e reconciliação quando necessário.
-
-## Estrutura inicial esperada do repositório
+## Estrutura principal
 
 ```text
 app/
-app/api/
+  (public)/
+  (auth)/
+  admin/
+  tutor/
+  api/
 components/
 features/
 lib/
-server/
 prisma/
-types/
+scripts/
+server/
 tests/
+docs/
 ```
 
-Essa estrutura pode evoluir, desde que preserve consistência arquitetural e boa separação entre UI, domínio, integrações e dados.
+## Setup local rapido
 
-## Como iniciar o projeto localmente
+Fluxo recomendado:
 
-> Esta seção assume que o repositório ainda está em fase inicial de estruturação. Ajuste os comandos conforme a base real do projeto for criada.
+1. Instale dependencias com `npm install`.
+2. Copie `.env.example` para `.env.local`.
+3. Suba o MySQL local com `npm run db:up`.
+4. Aplique schema e seed com `npm run prisma:bootstrap`.
+5. Valide o ambiente com `npm run ops:check`.
+6. Inicie a aplicacao com `npm run dev`.
 
-### Pré-requisitos
-- Node.js na versão definida pelo projeto
-- MySQL disponível localmente ou em ambiente de desenvolvimento
-- gerenciador de pacotes adotado pelo projeto
+Guia completo:
 
-### Passos esperados
-1. Clonar o repositório
-2. Copiar `.env.example` para `.env`
-3. Configurar variáveis de ambiente
-4. Instalar dependências
-5. Executar migrations do Prisma
-6. Iniciar o ambiente de desenvolvimento
+- [docs/setup.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/setup.md)
+- [docs/deploy-staging.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/deploy-staging.md)
+- [docs/operability.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/operability.md)
+- [docs/local-docker-validation.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/local-docker-validation.md)
+- [docs/release-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/release-baseline.md)
+- [docs/phase2-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase2-baseline.md)
+- [docs/release-readiness.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/release-readiness.md)
+- [docs/manual-smoke-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/manual-smoke-checklist.md)
+- [docs/phase2-smoke-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase2-smoke-checklist.md)
+- [docs/installer-updater-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/installer-updater-baseline.md)
+- [docs/installer-updater-smoke-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/installer-updater-smoke-checklist.md)
 
-Exemplo genérico:
+## Scripts principais
 
-```bash
-git clone <repo-url>
-cd petos
-cp .env.example .env
-npm install
-npx prisma migrate dev
-npm run dev
-```
+- `npm run dev`
+- `npm run build`
+- `npm run start`
+- `npm run typecheck`
+- `npm run lint`
+- `npm test`
+- `npm run check:all`
+- `npm run db:up`
+- `npm run db:down`
+- `npm run db:logs`
+- `npm run ops:preflight`
+- `npm run prisma:check`
+- `npm run prisma:bootstrap`
+- `npm run prisma:migrate:dev`
+- `npm run prisma:migrate:deploy`
+- `npm run prisma:seed`
+- `npm run ops:check`
+- `npm run ops:preflight:staging`
+- `npm run ops:check:staging`
+- `npm run ops:preflight:staging:file`
+- `npm run ops:check:staging:file`
+- `npm run start:standalone`
 
-## Variáveis de ambiente esperadas
+## Arquivos de referencia
 
-Os nomes exatos serão definidos em `.env.example`, mas o projeto deverá contemplar ao menos grupos como:
-- banco de dados
-- autenticação
-- Mercado Pago
-- Stripe
-- storage de arquivos
-- e-mail transacional
-- serviços de IA
+- [PetOS_PRD.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PetOS_PRD.md)
+- [AGENTS.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/AGENTS.md)
+- [PLANS.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PLANS.md)
+- [docs/architecture.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/architecture.md)
+- [docs/domain-rules.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/domain-rules.md)
+- [docs/payments.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/payments.md)
+- [docs/security-notes.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/security-notes.md)
+- [docs/data-model.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/data-model.md)
+- [docs/mvp-status.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/mvp-status.md)
+- [docs/decisions/README.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/decisions/README.md)
 
-Política mínima de segredos por ambiente:
-- separar segredos entre `dev`, `staging` e `production`;
-- não reutilizar o mesmo segredo entre ambientes;
-- usar `.env.example` apenas como contrato de chaves, sem valores reais.
+## Convencoes relevantes
 
-## Segurança
+- `next.config.ts` e o arquivo de configuracao ativo do Next.js.
+- o build de producao usa `output: 'standalone'` para facilitar ambientes hospedados sem amarrar um provedor.
+- `npm run start` ja sobe o servidor `standalone` gerado pelo build de producao, carregando `.env.local` e `.env` quando existirem; `start:legacy` ficou apenas para diagnostico local quando necessario.
+- `npm run check:all` e o gate automatizado recomendado para a baseline tecnica atual.
+- `ops:preflight:staging` e `ops:check:staging` assumem variaveis injetadas pelo ambiente hospedado; os sufixos `:file` servem para ensaio local com `.env.staging`.
+- Regras criticas ficam no servidor.
+- Route Handlers e server actions usam validacao Zod.
+- Prisma concentra schema, migrations e acesso a dados.
+- Status operacional e status financeiro permanecem separados.
 
-Este projeto lida com dados pessoais, histórico operacional, pagamentos, documentos e trilhas de auditoria. Por isso:
-- não subir segredos para o repositório;
-- não expor credenciais em código cliente;
-- proteger webhooks com validação por assinatura/segredo;
-- aplicar RBAC no servidor;
-- tratar arquivos sensíveis com storage seguro e controle de acesso.
+## Limites intencionais da baseline atual
 
-## Status do projeto
+Nao fazem parte desta etapa:
 
-Neste estágio, o repositório está sendo organizado com base no **PRD final** e no **AGENTS.md**, para iniciar a implementação do sistema com menor retrabalho e maior consistência.
-
-## Leitura recomendada após este arquivo
-
-Para iniciar no repositório com contexto completo, priorize:
-- `PetOS_PRD.md`
-- `AGENTS.md`
-- `CONTRIBUTING.md`
-- `SECURITY.md`
-- `CHANGELOG.md`
-- `docs/architecture.md`
-- `docs/domain-rules.md`
-- `docs/payments.md`
-- `docs/security-notes.md`
-- `docs/data-model.md`
-- `docs/decisions/README.md`
-
-## Licença
-
-Definir a licença oficial do projeto antes da publicação aberta do repositório.
+- RH amplo e modulo trabalhista completo;
+- fiscal amplo/autonomo;
+- supply chain e compras complexas;
+- analise de imagem, analise preditiva e multiunidade operacional completa.

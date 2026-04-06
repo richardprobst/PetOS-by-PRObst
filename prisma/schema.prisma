@@ -3,7 +3,1605 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider  = "mysql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_DATABASE_URL")
+}
+
+enum UserType {
+  ADMIN
+  CLIENT
+  EMPLOYEE
+}
+
+enum AppointmentFinancialStatus {
+  PENDING
+  PARTIAL
+  PAID
+  INVOICED
+  REFUNDED
+  REVERSED
+  EXEMPT
+}
+
+enum FinancialTransactionType {
+  REVENUE
+  EXPENSE
+  ADJUSTMENT
+  DEPOSIT
+  REFUND
+}
+
+enum PaymentMethod {
+  CASH
+  PIX
+  CARD
+  BOLETO
+  TRANSFER
+  CLIENT_CREDIT
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  PARTIAL
+  FAILED
+  REFUNDED
+  REVERSED
+  VOIDED
+}
+
+enum MessageChannel {
+  EMAIL
+  WHATSAPP
+}
+
+enum MessageDeliveryStatus {
+  DRAFT
+  SENT
+  FAILED
+  CANCELED
+}
+
+enum CrmCampaignType {
+  REVIEW_BOOSTER
+  SEGMENTED_CAMPAIGN
+  INACTIVE_RECOVERY
+  PROFILE_OFFER
+  POST_SERVICE_TRIGGER
+}
+
+enum CrmCampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum CrmCampaignExecutionStatus {
+  PREPARED
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+enum CrmCampaignRecipientStatus {
+  PREPARED
+  LAUNCHED
+  SKIPPED
+  FAILED
+  CANCELED
+}
+
+enum DocumentType {
+  ANAMNESIS
+  SERVICE_AUTHORIZATION
+  TRANSPORT_AUTHORIZATION
+  VACCINATION_RECORD
+  OTHER
+}
+
+enum AssetAccessLevel {
+  PRIVATE
+  PROTECTED
+  PUBLIC
+}
+
+enum SignatureMethod {
+  DIGITAL_TYPED
+  DIGITAL_DRAWN
+  MANUAL
+}
+
+enum SignatureStatus {
+  PENDING
+  SIGNED
+  REVOKED
+  EXPIRED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  PDF
+  OTHER
+}
+
+enum DepositStatus {
+  PENDING
+  CONFIRMED
+  APPLIED
+  FORFEITED
+  REFUNDED
+  CANCELED
+  EXPIRED
+}
+
+enum DepositPurpose {
+  SECURITY
+  PREPAYMENT
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+enum CreditOriginType {
+  REFUND
+  DEPOSIT_CONVERSION
+  MANUAL_ADJUSTMENT
+  PROMOTION
+  OTHER
+}
+
+enum IntegrationProvider {
+  STRIPE
+  MERCADO_PAGO
+  FISCAL
+  OTHER
+}
+
+enum IntegrationEventDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum IntegrationEventStatus {
+  PENDING
+  RECEIVED
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+enum FiscalDocumentType {
+  SERVICE_INVOICE
+  CONSUMER_RECEIPT
+}
+
+enum FiscalDocumentStatus {
+  PENDING
+  ISSUED
+  FAILED
+  CANCELED
+}
+
+enum PetSizeCategory {
+  SMALL
+  MEDIUM
+  LARGE
+  GIANT
+  UNKNOWN
+}
+
+enum ScheduleBlockType {
+  UNAVAILABLE
+  BREAK
+  HOLIDAY
+  TRANSPORT
+  OTHER
+}
+
+enum WaitlistStatus {
+  PENDING
+  PROMOTED
+  CANCELED
+  EXPIRED
+}
+
+enum TaxiDogStatus {
+  REQUESTED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+enum InventoryMovementType {
+  STOCK_IN
+  SALE_OUT
+  RETURN_IN
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+}
+
+enum PosSaleStatus {
+  OPEN
+  COMPLETED
+  CANCELED
+}
+
+enum EmployeePayrollMode {
+  MONTHLY
+  HOURLY
+  COMMISSION_ONLY
+}
+
+enum TeamShiftType {
+  WORK
+  ON_CALL
+  TRAINING
+  DAY_OFF
+}
+
+enum TeamShiftStatus {
+  PLANNED
+  CONFIRMED
+  CANCELED
+}
+
+enum TimeClockEntryStatus {
+  OPEN
+  CLOSED
+  ADJUSTED
+  VOIDED
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  FINALIZED
+  CANCELED
+}
+
+enum SystemLifecycleState {
+  NOT_INSTALLED
+  INSTALLING
+  INSTALLED
+  INSTALL_FAILED
+  MAINTENANCE
+  UPDATING
+  UPDATE_FAILED
+  REPAIR
+}
+
+enum RecoveryIncidentStatus {
+  OPEN
+  RESOLVED
+}
+
+enum UpdateExecutionMode {
+  MANUAL
+  RETRY
+}
+
+enum UpdateExecutionStatus {
+  PREPARING
+  RUNNING
+  FAILED
+  COMPLETED
+}
+
+enum UpdateRecoveryState {
+  NONE
+  RETRY_AVAILABLE
+  MANUAL_INTERVENTION_REQUIRED
+}
+
+enum UpdateExecutionStepStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+model Unit {
+  id                       String                    @id @default(cuid()) @db.VarChar(191)
+  name                     String                    @map("nome_unidade") @db.VarChar(191)
+  address                  String?                   @map("endereco") @db.VarChar(255)
+  phone                    String?                   @map("telefone") @db.VarChar(32)
+  email                    String?                   @map("email") @db.VarChar(191)
+  taxDocument              String?                   @map("cnpj") @db.VarChar(32)
+  active                   Boolean                   @default(true) @map("ativo")
+  createdAt                DateTime                  @default(now()) @map("data_criacao")
+  updatedAt                DateTime                  @updatedAt @map("data_atualizacao")
+  users                    User[]
+  services                 Service[]
+  employees                Employee[]
+  appointments             Appointment[]
+  financialTransactions    FinancialTransaction[]
+  messageTemplates         MessageTemplate[]
+  auditLogs                AuditLog[]
+  settings                 UnitSetting[]
+  documents                Document[]
+  mediaAssets              MediaAsset[]
+  deposits                 Deposit[]
+  refunds                  Refund[]
+  clientCredits            ClientCredit[]
+  integrationEvents        IntegrationEvent[]
+  fiscalDocuments          FiscalDocument[]
+  appointmentCapacityRules AppointmentCapacityRule[]
+  scheduleBlocks           ScheduleBlock[]
+  waitlistEntries          WaitlistEntry[]
+  taxiDogRides             TaxiDogRide[]
+  crmCampaigns             CrmCampaign[]
+  products                 Product[]
+  inventoryStocks          InventoryStock[]
+  inventoryMovements       InventoryMovement[]
+  posSales                 PosSale[]
+  teamShifts               TeamShift[]
+  timeClockEntries         TimeClockEntry[]
+  payrollRuns              PayrollRun[]
+
+  @@map("Unidades")
+}
+
+model User {
+  id                              String                          @id @default(cuid()) @db.VarChar(191)
+  unitId                          String?                         @map("unidade_id") @db.VarChar(191)
+  name                            String                          @map("nome") @db.VarChar(191)
+  email                           String                          @unique(map: "Usuarios_email_key") @db.VarChar(191)
+  passwordHash                    String?                         @map("senha_hash") @db.VarChar(255)
+  phone                           String?                         @map("telefone") @db.VarChar(32)
+  userType                        UserType                        @map("tipo_usuario")
+  active                          Boolean                         @default(true) @map("ativo")
+  createdAt                       DateTime                        @default(now()) @map("data_cadastro")
+  updatedAt                       DateTime                        @updatedAt @map("data_atualizacao")
+  unit                            Unit?                           @relation(fields: [unitId], references: [id])
+  client                          Client?
+  employee                        Employee?
+  profiles                        UserProfile[]
+  auditLogs                       AuditLog[]
+  financialTransactions           FinancialTransaction[]          @relation("FinancialTransactionCreatedBy")
+  messageLogs                     MessageLog[]                    @relation("SentByUser")
+  statusChanges                   AppointmentStatusHistory[]      @relation("StatusChangedBy")
+  reportCards                     ReportCard[]                    @relation("ReportCardCreatedBy")
+  appointmentCheckIns             AppointmentCheckIn[]            @relation("AppointmentCheckInPerformedBy")
+  uploadedDocuments               Document[]                      @relation("DocumentUploadedBy")
+  signatureEntries                Signature[]                     @relation("SignatureSignerUser")
+  uploadedMediaAssets             MediaAsset[]                    @relation("MediaAssetUploadedBy")
+  archivedDocuments               Document[]                      @relation("DocumentArchivedBy")
+  archivedMediaAssets             MediaAsset[]                    @relation("MediaAssetArchivedBy")
+  createdDeposits                 Deposit[]                       @relation("DepositCreatedByUser")
+  createdRefunds                  Refund[]                        @relation("RefundCreatedByUser")
+  createdClientCredits            ClientCredit[]                  @relation("ClientCreditCreatedByUser")
+  createdCreditUsages             CreditUsage[]                   @relation("CreditUsageCreatedByUser")
+  integrationEvents               IntegrationEvent[]              @relation("IntegrationEventExecutedByUser")
+  createdFiscalDocuments          FiscalDocument[]                @relation("FiscalDocumentCreatedByUser")
+  createdAppointmentCapacityRules AppointmentCapacityRule[]       @relation("AppointmentCapacityRuleCreatedByUser")
+  createdScheduleBlocks           ScheduleBlock[]                 @relation("ScheduleBlockCreatedByUser")
+  createdWaitlistEntries          WaitlistEntry[]                 @relation("WaitlistEntryCreatedByUser")
+  canceledWaitlistEntries         WaitlistEntry[]                 @relation("WaitlistEntryCanceledByUser")
+  createdTaxiDogRides             TaxiDogRide[]                   @relation("TaxiDogRideCreatedByUser")
+  submittedTutorPreCheckIns       TutorPreCheckIn[]               @relation("TutorPreCheckInSubmittedByUser")
+  updatedCommunicationPreferences ClientCommunicationPreference[] @relation("ClientCommunicationPreferenceUpdatedByUser")
+  createdCrmCampaigns             CrmCampaign[]                   @relation("CrmCampaignCreatedByUser")
+  executedCrmCampaigns            CrmCampaignExecution[]          @relation("CrmCampaignExecutionExecutedByUser")
+  createdInventoryMovements       InventoryMovement[]             @relation("InventoryMovementCreatedByUser")
+  createdPosSales                 PosSale[]                       @relation("PosSaleCreatedByUser")
+  createdTeamShifts               TeamShift[]                     @relation("TeamShiftCreatedByUser")
+  openedTimeClockEntries          TimeClockEntry[]                @relation("TimeClockEntryOpenedByUser")
+  closedTimeClockEntries          TimeClockEntry[]                @relation("TimeClockEntryClosedByUser")
+  createdPayrollRuns              PayrollRun[]                    @relation("PayrollRunCreatedByUser")
+  finalizedPayrollRuns            PayrollRun[]                    @relation("PayrollRunFinalizedByUser")
+  openedRecoveryIncidents         RecoveryIncident[]              @relation("RecoveryIncidentOpenedByUser")
+  resolvedRecoveryIncidents       RecoveryIncident[]              @relation("RecoveryIncidentResolvedByUser")
+  startedUpdateExecutions         UpdateExecution[]               @relation("UpdateExecutionStartedByUser")
+  completedUpdateExecutions       UpdateExecution[]               @relation("UpdateExecutionCompletedByUser")
+
+  @@index([unitId], map: "Usuarios_unidade_id_idx")
+  @@map("Usuarios")
+}
+
+model Client {
+  userId                  String                         @id @map("id") @db.VarChar(191)
+  address                 String?                        @map("endereco") @db.VarChar(255)
+  city                    String?                        @map("cidade") @db.VarChar(120)
+  state                   String?                        @map("estado") @db.VarChar(64)
+  zipCode                 String?                        @map("cep") @db.VarChar(16)
+  contactPreference       String?                        @map("preferencias_contato") @db.VarChar(191)
+  generalNotes            String?                        @map("observacoes_gerais") @db.Text
+  user                    User                           @relation(fields: [userId], references: [id])
+  pets                    Pet[]
+  appointments            Appointment[]
+  messageLogs             MessageLog[]
+  documents               Document[]
+  mediaAssets             MediaAsset[]
+  deposits                Deposit[]
+  refunds                 Refund[]
+  clientCredits           ClientCredit[]
+  waitlistEntries         WaitlistEntry[]
+  communicationPreference ClientCommunicationPreference?
+  crmCampaignRecipients   CrmCampaignRecipient[]
+  posSales                PosSale[]
+
+  @@map("Clientes")
+}
+
+model Pet {
+  id              String          @id @default(cuid()) @db.VarChar(191)
+  clientId        String          @map("cliente_id") @db.VarChar(191)
+  name            String          @map("nome") @db.VarChar(191)
+  species         String          @map("especie") @db.VarChar(120)
+  breed           String?         @map("raca") @db.VarChar(120)
+  birthDate       DateTime?       @map("data_nascimento") @db.Date
+  weightKg        Decimal?        @map("peso") @db.Decimal(8, 2)
+  healthNotes     String?         @map("observacoes_saude") @db.Text
+  allergies       String?         @map("alergias") @db.Text
+  primaryPhotoUrl String?         @map("foto_url_principal") @db.VarChar(512)
+  createdAt       DateTime        @default(now()) @map("data_criacao")
+  updatedAt       DateTime        @updatedAt @map("data_atualizacao")
+  client          Client          @relation(fields: [clientId], references: [userId])
+  appointments    Appointment[]
+  documents       Document[]
+  mediaAssets     MediaAsset[]
+  waitlistEntries WaitlistEntry[]
+
+  @@index([clientId], map: "Pets_cliente_id_idx")
+  @@map("Pets")
+}
+
+model Service {
+  id                       String               @id @default(cuid()) @db.VarChar(191)
+  unitId                   String?              @map("unidade_id") @db.VarChar(191)
+  name                     String               @map("nome") @db.VarChar(191)
+  description              String?              @map("descricao") @db.Text
+  basePrice                Decimal              @map("preco_base") @db.Decimal(10, 2)
+  estimatedDurationMinutes Int                  @map("duracao_estimada_minutos")
+  active                   Boolean              @default(true) @map("ativo")
+  createdAt                DateTime             @default(now()) @map("data_criacao")
+  updatedAt                DateTime             @updatedAt @map("data_atualizacao")
+  unit                     Unit?                @relation(fields: [unitId], references: [id])
+  appointmentServices      AppointmentService[]
+  waitlistEntries          WaitlistEntry[]
+
+  @@index([unitId], map: "Servicos_unidade_id_idx")
+  @@map("Servicos")
+}
+
+model Product {
+  id                   String              @id @default(cuid()) @db.VarChar(191)
+  unitId               String              @map("unidade_id") @db.VarChar(191)
+  name                 String              @map("nome") @db.VarChar(191)
+  sku                  String?             @map("sku") @db.VarChar(64)
+  barcode              String?             @map("codigo_barras") @db.VarChar(64)
+  description          String?             @map("descricao") @db.Text
+  unitOfMeasure        String              @default("UN") @map("unidade_medida") @db.VarChar(32)
+  salePrice            Decimal             @map("preco_venda") @db.Decimal(10, 2)
+  costPrice            Decimal?            @map("preco_custo") @db.Decimal(10, 2)
+  minimumStockQuantity Decimal             @default(0) @map("estoque_minimo") @db.Decimal(10, 3)
+  trackInventory       Boolean             @default(true) @map("controla_estoque")
+  active               Boolean             @default(true) @map("ativo")
+  createdAt            DateTime            @default(now()) @map("data_criacao")
+  updatedAt            DateTime            @updatedAt @map("data_atualizacao")
+  unit                 Unit                @relation(fields: [unitId], references: [id])
+  inventoryStocks      InventoryStock[]
+  inventoryMovements   InventoryMovement[]
+  saleItems            PosSaleItem[]
+
+  @@unique([unitId, sku], map: "Produtos_unidade_id_sku_key")
+  @@unique([unitId, barcode], map: "Produtos_unidade_id_codigo_barras_key")
+  @@index([unitId, active], map: "Produtos_unidade_id_ativo_idx")
+  @@map("Produtos")
+}
+
+model InventoryStock {
+  id             String    @id @default(cuid()) @db.VarChar(191)
+  unitId         String    @map("unidade_id") @db.VarChar(191)
+  productId      String    @map("produto_id") @db.VarChar(191)
+  quantityOnHand Decimal   @default(0) @map("quantidade_atual") @db.Decimal(10, 3)
+  lastMovementAt DateTime? @map("data_ultimo_movimento")
+  createdAt      DateTime  @default(now()) @map("data_criacao")
+  updatedAt      DateTime  @updatedAt @map("data_atualizacao")
+  unit           Unit      @relation(fields: [unitId], references: [id])
+  product        Product   @relation(fields: [productId], references: [id])
+
+  @@unique([unitId, productId], map: "EstoquesProduto_unidade_id_produto_id_key")
+  @@index([productId], map: "EstoquesProduto_produto_id_idx")
+  @@index([unitId, quantityOnHand], map: "EstoquesProduto_unidade_id_quantidade_atual_idx")
+  @@map("EstoquesProduto")
+}
+
+model InventoryMovement {
+  id              String                @id @default(cuid()) @db.VarChar(191)
+  unitId          String                @map("unidade_id") @db.VarChar(191)
+  productId       String                @map("produto_id") @db.VarChar(191)
+  posSaleId       String?               @map("venda_pdv_id") @db.VarChar(191)
+  posSaleItemId   String?               @map("item_venda_pdv_id") @db.VarChar(191)
+  createdByUserId String?               @map("usuario_criacao_id") @db.VarChar(191)
+  movementType    InventoryMovementType @map("tipo_movimento")
+  quantity        Decimal               @map("quantidade") @db.Decimal(10, 3)
+  quantityBefore  Decimal               @map("quantidade_anterior") @db.Decimal(10, 3)
+  quantityAfter   Decimal               @map("quantidade_posterior") @db.Decimal(10, 3)
+  reason          String?               @map("motivo") @db.VarChar(191)
+  notes           String?               @map("observacoes") @db.Text
+  occurredAt      DateTime              @default(now()) @map("data_movimento")
+  createdAt       DateTime              @default(now()) @map("data_criacao")
+  unit            Unit                  @relation(fields: [unitId], references: [id])
+  product         Product               @relation(fields: [productId], references: [id])
+  posSale         PosSale?              @relation(fields: [posSaleId], references: [id])
+  posSaleItem     PosSaleItem?          @relation(fields: [posSaleItemId], references: [id])
+  createdBy       User?                 @relation("InventoryMovementCreatedByUser", fields: [createdByUserId], references: [id])
+
+  @@index([unitId, occurredAt], map: "MovimentacoesEstoque_unidade_id_data_movimento_idx")
+  @@index([productId, occurredAt], map: "MovimentacoesEstoque_produto_id_data_movimento_idx")
+  @@index([posSaleId], map: "MovimentacoesEstoque_venda_pdv_id_idx")
+  @@index([posSaleItemId], map: "MovimentacoesEstoque_item_venda_pdv_id_idx")
+  @@index([createdByUserId], map: "MovimentacoesEstoque_usuario_criacao_id_idx")
+  @@map("MovimentacoesEstoque")
+}
+
+model PosSale {
+  id                    String                 @id @default(cuid()) @db.VarChar(191)
+  unitId                String                 @map("unidade_id") @db.VarChar(191)
+  clientId              String?                @map("cliente_id") @db.VarChar(191)
+  createdByUserId       String?                @map("usuario_criacao_id") @db.VarChar(191)
+  status                PosSaleStatus          @default(OPEN) @map("status")
+  notes                 String?                @map("observacoes") @db.Text
+  subtotalAmount        Decimal                @default(0) @map("subtotal") @db.Decimal(10, 2)
+  discountAmount        Decimal                @default(0) @map("desconto_total") @db.Decimal(10, 2)
+  totalAmount           Decimal                @default(0) @map("total") @db.Decimal(10, 2)
+  completedAt           DateTime?              @map("data_conclusao")
+  canceledAt            DateTime?              @map("data_cancelamento")
+  cancellationReason    String?                @map("motivo_cancelamento") @db.Text
+  createdAt             DateTime               @default(now()) @map("data_criacao")
+  updatedAt             DateTime               @updatedAt @map("data_atualizacao")
+  unit                  Unit                   @relation(fields: [unitId], references: [id])
+  client                Client?                @relation(fields: [clientId], references: [userId])
+  createdBy             User?                  @relation("PosSaleCreatedByUser", fields: [createdByUserId], references: [id])
+  items                 PosSaleItem[]
+  financialTransactions FinancialTransaction[]
+  inventoryMovements    InventoryMovement[]
+
+  @@index([unitId, status, createdAt], map: "VendasPDV_unidade_id_status_data_criacao_idx")
+  @@index([clientId], map: "VendasPDV_cliente_id_idx")
+  @@index([createdByUserId], map: "VendasPDV_usuario_criacao_id_idx")
+  @@map("VendasPDV")
+}
+
+model PosSaleItem {
+  id                  String              @id @default(cuid()) @db.VarChar(191)
+  saleId              String              @map("venda_pdv_id") @db.VarChar(191)
+  productId           String              @map("produto_id") @db.VarChar(191)
+  quantity            Decimal             @map("quantidade") @db.Decimal(10, 3)
+  unitPrice           Decimal             @map("preco_unitario") @db.Decimal(10, 2)
+  discountAmount      Decimal             @default(0) @map("desconto") @db.Decimal(10, 2)
+  totalAmount         Decimal             @map("total") @db.Decimal(10, 2)
+  productNameSnapshot String              @map("nome_produto_snapshot") @db.VarChar(191)
+  skuSnapshot         String?             @map("sku_snapshot") @db.VarChar(64)
+  createdAt           DateTime            @default(now()) @map("data_criacao")
+  updatedAt           DateTime            @updatedAt @map("data_atualizacao")
+  sale                PosSale             @relation(fields: [saleId], references: [id])
+  product             Product             @relation(fields: [productId], references: [id])
+  inventoryMovements  InventoryMovement[]
+
+  @@index([saleId], map: "ItensVendaPDV_venda_pdv_id_idx")
+  @@index([productId], map: "ItensVendaPDV_produto_id_idx")
+  @@map("ItensVendaPDV")
+}
+
+model Employee {
+  userId                   String                    @id @map("id") @db.VarChar(191)
+  unitId                   String                    @map("unidade_id") @db.VarChar(191)
+  role                     String                    @map("cargo") @db.VarChar(120)
+  specialty                String?                   @map("especialidade") @db.VarChar(191)
+  commissionPercentage     Decimal?                  @map("comissao_percentual") @db.Decimal(5, 2)
+  payrollMode              EmployeePayrollMode       @default(MONTHLY) @map("modo_folha")
+  baseCompensationAmount   Decimal?                  @map("valor_base_folha") @db.Decimal(10, 2)
+  defaultDailyWorkMinutes  Int                       @default(480) @map("jornada_padrao_minutos")
+  createdAt                DateTime                  @default(now()) @map("data_criacao")
+  updatedAt                DateTime                  @updatedAt @map("data_atualizacao")
+  user                     User                      @relation(fields: [userId], references: [id])
+  unit                     Unit                      @relation(fields: [unitId], references: [id])
+  appointmentServices      AppointmentService[]
+  capacityRules            AppointmentCapacityRule[]
+  scheduleBlocks           ScheduleBlock[]
+  preferredWaitlistEntries WaitlistEntry[]           @relation("WaitlistPreferredEmployee")
+  assignedTaxiDogRides     TaxiDogRide[]             @relation("TaxiDogRideAssignedDriver")
+  teamShifts               TeamShift[]
+  timeClockEntries         TimeClockEntry[]
+  payrollRunEntries        PayrollRunEntry[]
+
+  @@index([unitId], map: "Funcionarios_unidade_id_idx")
+  @@map("Funcionarios")
+}
+
+model TeamShift {
+  id               String           @id @default(cuid()) @db.VarChar(191)
+  unitId           String           @map("unidade_id") @db.VarChar(191)
+  employeeUserId   String           @map("funcionario_id") @db.VarChar(191)
+  createdByUserId  String?          @map("usuario_criacao_id") @db.VarChar(191)
+  shiftType        TeamShiftType    @default(WORK) @map("tipo_escala")
+  status           TeamShiftStatus  @default(PLANNED) @map("status")
+  startAt          DateTime         @map("data_hora_inicio")
+  endAt            DateTime         @map("data_hora_fim")
+  notes            String?          @map("observacoes") @db.Text
+  createdAt        DateTime         @default(now()) @map("data_criacao")
+  updatedAt        DateTime         @updatedAt @map("data_atualizacao")
+  unit             Unit             @relation(fields: [unitId], references: [id])
+  employee         Employee         @relation(fields: [employeeUserId], references: [userId])
+  createdBy        User?            @relation("TeamShiftCreatedByUser", fields: [createdByUserId], references: [id])
+  timeClockEntries TimeClockEntry[]
+
+  @@index([unitId, status, startAt], map: "EscalasEquipe_unidade_id_status_data_hora_inicio_idx")
+  @@index([employeeUserId, status, startAt], map: "EscalasEquipe_funcionario_id_status_data_hora_inicio_idx")
+  @@index([createdByUserId], map: "EscalasEquipe_usuario_criacao_id_idx")
+  @@map("EscalasEquipe")
+}
+
+model TimeClockEntry {
+  id             String               @id @default(cuid()) @db.VarChar(191)
+  unitId         String               @map("unidade_id") @db.VarChar(191)
+  employeeUserId String               @map("funcionario_id") @db.VarChar(191)
+  shiftId        String?              @map("escala_id") @db.VarChar(191)
+  openedByUserId String?              @map("usuario_abertura_id") @db.VarChar(191)
+  closedByUserId String?              @map("usuario_fechamento_id") @db.VarChar(191)
+  status         TimeClockEntryStatus @default(OPEN) @map("status")
+  clockInAt      DateTime             @map("data_hora_entrada")
+  clockOutAt     DateTime?            @map("data_hora_saida")
+  breakMinutes   Int                  @default(0) @map("minutos_intervalo")
+  notes          String?              @map("observacoes") @db.Text
+  createdAt      DateTime             @default(now()) @map("data_criacao")
+  updatedAt      DateTime             @updatedAt @map("data_atualizacao")
+  unit           Unit                 @relation(fields: [unitId], references: [id])
+  employee       Employee             @relation(fields: [employeeUserId], references: [userId])
+  shift          TeamShift?           @relation(fields: [shiftId], references: [id])
+  openedBy       User?                @relation("TimeClockEntryOpenedByUser", fields: [openedByUserId], references: [id])
+  closedBy       User?                @relation("TimeClockEntryClosedByUser", fields: [closedByUserId], references: [id])
+
+  @@index([unitId, status, clockInAt], map: "RegistrosPonto_unidade_id_status_data_hora_entrada_idx")
+  @@index([employeeUserId, status, clockInAt], map: "RegistrosPonto_funcionario_id_status_data_hora_entrada_idx")
+  @@index([shiftId], map: "RegistrosPonto_escala_id_idx")
+  @@index([openedByUserId], map: "RegistrosPonto_usuario_abertura_id_idx")
+  @@index([closedByUserId], map: "RegistrosPonto_usuario_fechamento_id_idx")
+  @@map("RegistrosPonto")
+}
+
+model PayrollRun {
+  id                String            @id @default(cuid()) @db.VarChar(191)
+  unitId            String            @map("unidade_id") @db.VarChar(191)
+  createdByUserId   String?           @map("usuario_criacao_id") @db.VarChar(191)
+  finalizedByUserId String?           @map("usuario_fechamento_id") @db.VarChar(191)
+  periodStartAt     DateTime          @map("periodo_inicio")
+  periodEndAt       DateTime          @map("periodo_fim")
+  status            PayrollRunStatus  @default(DRAFT) @map("status")
+  notes             String?           @map("observacoes") @db.Text
+  finalizedAt       DateTime?         @map("data_fechamento")
+  createdAt         DateTime          @default(now()) @map("data_criacao")
+  updatedAt         DateTime          @updatedAt @map("data_atualizacao")
+  unit              Unit              @relation(fields: [unitId], references: [id])
+  createdBy         User?             @relation("PayrollRunCreatedByUser", fields: [createdByUserId], references: [id])
+  finalizedBy       User?             @relation("PayrollRunFinalizedByUser", fields: [finalizedByUserId], references: [id])
+  entries           PayrollRunEntry[]
+
+  @@unique([unitId, periodStartAt, periodEndAt], map: "FolhasPagamento_unidade_id_periodo_inicio_periodo_fim_key")
+  @@index([unitId, status, periodStartAt], map: "FolhasPagamento_unidade_id_status_periodo_inicio_idx")
+  @@index([createdByUserId], map: "FolhasPagamento_usuario_criacao_id_idx")
+  @@index([finalizedByUserId], map: "FolhasPagamento_usuario_fechamento_id_idx")
+  @@map("FolhasPagamento")
+}
+
+model PayrollRunEntry {
+  id                     String              @id @default(cuid()) @db.VarChar(191)
+  payrollRunId           String              @map("folha_pagamento_id") @db.VarChar(191)
+  employeeUserId         String              @map("funcionario_id") @db.VarChar(191)
+  payrollModeSnapshot    EmployeePayrollMode @map("modo_folha_snapshot")
+  baseCompensationAmount Decimal             @default(0) @map("valor_base") @db.Decimal(10, 2)
+  scheduledMinutes       Int                 @default(0) @map("minutos_previstos")
+  workedMinutes          Int                 @default(0) @map("minutos_trabalhados")
+  overtimeMinutes        Int                 @default(0) @map("minutos_extras")
+  absenceMinutes         Int                 @default(0) @map("minutos_faltantes")
+  commissionAmount       Decimal             @default(0) @map("valor_comissao") @db.Decimal(10, 2)
+  manualAdjustmentAmount Decimal             @default(0) @map("valor_ajuste_manual") @db.Decimal(10, 2)
+  manualDeductionAmount  Decimal             @default(0) @map("valor_desconto_manual") @db.Decimal(10, 2)
+  grossAmount            Decimal             @default(0) @map("valor_bruto") @db.Decimal(10, 2)
+  netAmount              Decimal             @default(0) @map("valor_liquido") @db.Decimal(10, 2)
+  notes                  String?             @map("observacoes") @db.Text
+  createdAt              DateTime            @default(now()) @map("data_criacao")
+  updatedAt              DateTime            @updatedAt @map("data_atualizacao")
+  payrollRun             PayrollRun          @relation(fields: [payrollRunId], references: [id])
+  employee               Employee            @relation(fields: [employeeUserId], references: [userId])
+
+  @@unique([payrollRunId, employeeUserId], map: "ItensFolhaPagamento_folha_pagamento_id_funcionario_id_key")
+  @@index([employeeUserId], map: "ItensFolhaPagamento_funcionario_id_idx")
+  @@map("ItensFolhaPagamento")
+}
+
+model Appointment {
+  id                    String                     @id @default(cuid()) @db.VarChar(191)
+  unitId                String                     @map("unidade_id") @db.VarChar(191)
+  clientId              String                     @map("cliente_id") @db.VarChar(191)
+  petId                 String                     @map("pet_id") @db.VarChar(191)
+  operationalStatusId   String                     @map("status_atual_id") @db.VarChar(64)
+  financialStatus       AppointmentFinancialStatus @default(PENDING) @map("status_financeiro")
+  startAt               DateTime                   @map("data_hora_inicio")
+  endAt                 DateTime                   @map("data_hora_fim")
+  clientNotes           String?                    @map("observacoes_cliente") @db.Text
+  internalNotes         String?                    @map("observacoes_internas") @db.Text
+  estimatedTotalAmount  Decimal                    @default(0) @map("valor_total_estimado") @db.Decimal(10, 2)
+  createdAt             DateTime                   @default(now()) @map("data_criacao")
+  updatedAt             DateTime                   @updatedAt @map("data_atualizacao")
+  unit                  Unit                       @relation(fields: [unitId], references: [id])
+  client                Client                     @relation(fields: [clientId], references: [userId])
+  pet                   Pet                        @relation(fields: [petId], references: [id])
+  operationalStatus     OperationalStatus          @relation("CurrentOperationalStatus", fields: [operationalStatusId], references: [id])
+  services              AppointmentService[]
+  statusHistory         AppointmentStatusHistory[]
+  checkIn               AppointmentCheckIn?
+  financialTransactions FinancialTransaction[]
+  reportCard            ReportCard?
+  messageLogs           MessageLog[]
+  documents             Document[]
+  mediaAssets           MediaAsset[]
+  deposits              Deposit[]
+  refunds               Refund[]
+  creditUsages          CreditUsage[]
+  fiscalDocuments       FiscalDocument[]
+  waitlistSource        WaitlistEntry?             @relation("WaitlistPromotedAppointment")
+  taxiDogRide           TaxiDogRide?
+  tutorPreCheckIn       TutorPreCheckIn?
+  crmCampaignRecipients CrmCampaignRecipient[]
+
+  @@index([unitId, startAt], map: "Agendamentos_unidade_id_data_hora_inicio_idx")
+  @@index([clientId, startAt], map: "Agendamentos_cliente_id_data_hora_inicio_idx")
+  @@index([petId, startAt], map: "Agendamentos_pet_id_data_hora_inicio_idx")
+  @@index([operationalStatusId], map: "Agendamentos_status_atual_id_idx")
+  @@map("Agendamentos")
+}
+
+model AppointmentService {
+  id                         String      @id @default(cuid()) @db.VarChar(191)
+  appointmentId              String      @map("agendamento_id") @db.VarChar(191)
+  serviceId                  String      @map("servico_id") @db.VarChar(191)
+  employeeUserId             String?     @map("funcionario_id") @db.VarChar(191)
+  agreedUnitPrice            Decimal     @map("preco_unitario_acordado") @db.Decimal(10, 2)
+  calculatedCommissionAmount Decimal     @default(0) @map("comissao_calculada") @db.Decimal(10, 2)
+  createdAt                  DateTime    @default(now()) @map("data_criacao")
+  updatedAt                  DateTime    @updatedAt @map("data_atualizacao")
+  appointment                Appointment @relation(fields: [appointmentId], references: [id])
+  service                    Service     @relation(fields: [serviceId], references: [id])
+  employee                   Employee?   @relation(fields: [employeeUserId], references: [userId])
+
+  @@index([appointmentId], map: "AgendamentoServicos_agendamento_id_idx")
+  @@index([serviceId], map: "AgendamentoServicos_servico_id_idx")
+  @@index([employeeUserId], map: "AgendamentoServicos_funcionario_id_idx")
+  @@map("AgendamentoServicos")
+}
+
+model OperationalStatus {
+  id           String                     @id @db.VarChar(64)
+  name         String                     @map("nome_status") @db.VarChar(120)
+  description  String?                    @map("descricao") @db.Text
+  displayOrder Int                        @map("ordem_exibicao")
+  appointments Appointment[]              @relation("CurrentOperationalStatus")
+  history      AppointmentStatusHistory[]
+
+  @@unique([name], map: "StatusAtendimento_nome_status_key")
+  @@map("StatusAtendimento")
+}
+
+model AppointmentStatusHistory {
+  id              String            @id @default(cuid()) @db.VarChar(191)
+  appointmentId   String            @map("agendamento_id") @db.VarChar(191)
+  statusId        String            @map("status_id") @db.VarChar(64)
+  changedAt       DateTime          @default(now()) @map("data_hora_mudanca")
+  changedByUserId String?           @map("usuario_id") @db.VarChar(191)
+  appointment     Appointment       @relation(fields: [appointmentId], references: [id])
+  status          OperationalStatus @relation(fields: [statusId], references: [id])
+  changedBy       User?             @relation("StatusChangedBy", fields: [changedByUserId], references: [id])
+
+  @@index([appointmentId, changedAt], map: "HistoricoStatusAgendamento_agendamento_id_data_hora_mudanca_idx")
+  @@index([changedByUserId], map: "HistoricoStatusAgendamento_usuario_id_idx")
+  @@map("HistoricoStatusAgendamento")
+}
+
+model AppointmentCheckIn {
+  id                String      @id @default(cuid()) @db.VarChar(191)
+  appointmentId     String      @unique(map: "CheckInAgendamento_agendamento_id_key") @map("agendamento_id") @db.VarChar(191)
+  performedByUserId String?     @map("usuario_execucao_id") @db.VarChar(191)
+  performedAt       DateTime    @default(now()) @map("data_hora_execucao")
+  checklistSnapshot Json        @map("checklist_snapshot")
+  notes             String?     @map("observacoes") @db.Text
+  appointment       Appointment @relation(fields: [appointmentId], references: [id])
+  performedBy       User?       @relation("AppointmentCheckInPerformedBy", fields: [performedByUserId], references: [id])
+
+  @@index([performedByUserId], map: "CheckInAgendamento_usuario_execucao_id_idx")
+  @@map("CheckInAgendamento")
+}
+
+model TutorPreCheckIn {
+  id                String      @id @default(cuid()) @db.VarChar(191)
+  appointmentId     String      @unique(map: "PreCheckInTutor_agendamento_id_key") @map("agendamento_id") @db.VarChar(191)
+  submittedByUserId String?     @map("usuario_envio_id") @db.VarChar(191)
+  contactPhone      String?     @map("telefone_contato") @db.VarChar(32)
+  consentConfirmed  Boolean     @default(false) @map("consentimento_confirmado")
+  notes             String?     @map("observacoes") @db.Text
+  payload           Json        @map("payload_snapshot")
+  submittedAt       DateTime    @default(now()) @map("data_envio")
+  updatedAt         DateTime    @updatedAt @map("data_atualizacao")
+  appointment       Appointment @relation(fields: [appointmentId], references: [id])
+  submittedBy       User?       @relation("TutorPreCheckInSubmittedByUser", fields: [submittedByUserId], references: [id])
+
+  @@index([submittedByUserId], map: "PreCheckInTutor_usuario_envio_id_idx")
+  @@map("PreCheckInTutor")
+}
+
+model MessageTemplate {
+  id                 String         @id @default(cuid()) @db.VarChar(191)
+  unitId             String?        @map("unidade_id") @db.VarChar(191)
+  name               String         @map("nome_template") @db.VarChar(191)
+  channel            MessageChannel @map("tipo_comunicacao")
+  subject            String?        @map("assunto") @db.VarChar(191)
+  body               String         @map("corpo_mensagem") @db.Text
+  availableVariables Json?          @map("variaveis_disponiveis")
+  active             Boolean        @default(true) @map("ativo")
+  createdAt          DateTime       @default(now()) @map("data_criacao")
+  updatedAt          DateTime       @updatedAt @map("data_atualizacao")
+  unit               Unit?          @relation(fields: [unitId], references: [id])
+  logs               MessageLog[]
+  crmCampaigns       CrmCampaign[]
+
+  @@index([unitId], map: "TemplatesMensagem_unidade_id_idx")
+  @@map("TemplatesMensagem")
+}
+
+model MessageLog {
+  id             String                @id @default(cuid()) @db.VarChar(191)
+  appointmentId  String?               @map("agendamento_id") @db.VarChar(191)
+  clientId       String?               @map("cliente_id") @db.VarChar(191)
+  templateId     String?               @map("template_id") @db.VarChar(191)
+  senderUserId   String?               @map("usuario_envio_id") @db.VarChar(191)
+  channel        MessageChannel        @map("tipo_comunicacao")
+  messageContent String                @map("mensagem_enviada") @db.Text
+  sentAt         DateTime              @default(now()) @map("data_envio")
+  deliveryStatus MessageDeliveryStatus @default(DRAFT) @map("status_envio")
+  appointment    Appointment?          @relation(fields: [appointmentId], references: [id])
+  client         Client?               @relation(fields: [clientId], references: [userId])
+  template       MessageTemplate?      @relation(fields: [templateId], references: [id])
+  sender         User?                 @relation("SentByUser", fields: [senderUserId], references: [id])
+  crmRecipient   CrmCampaignRecipient?
+
+  @@index([appointmentId], map: "LogsMensagens_agendamento_id_idx")
+  @@index([clientId], map: "LogsMensagens_cliente_id_idx")
+  @@index([templateId], map: "LogsMensagens_template_id_idx")
+  @@index([senderUserId], map: "LogsMensagens_usuario_envio_id_idx")
+  @@map("LogsMensagens")
+}
+
+model ClientCommunicationPreference {
+  clientId         String   @id @map("cliente_id") @db.VarChar(191)
+  emailOptIn       Boolean  @default(true) @map("opt_in_email")
+  whatsappOptIn    Boolean  @default(true) @map("opt_in_whatsapp")
+  marketingOptIn   Boolean  @default(false) @map("opt_in_marketing")
+  reviewOptIn      Boolean  @default(true) @map("opt_in_review")
+  postServiceOptIn Boolean  @default(true) @map("opt_in_pos_servico")
+  source           String?  @map("fonte_consentimento") @db.VarChar(120)
+  notes            String?  @map("observacoes") @db.Text
+  updatedByUserId  String?  @map("usuario_atualizacao_id") @db.VarChar(191)
+  createdAt        DateTime @default(now()) @map("data_criacao")
+  updatedAt        DateTime @updatedAt @map("data_atualizacao")
+  client           Client   @relation(fields: [clientId], references: [userId])
+  updatedBy        User?    @relation("ClientCommunicationPreferenceUpdatedByUser", fields: [updatedByUserId], references: [id])
+
+  @@index([updatedByUserId], map: "PreferenciasComunicacaoCliente_usuario_atualizacao_id_idx")
+  @@map("PreferenciasComunicacaoCliente")
+}
+
+model CrmCampaign {
+  id              String                 @id @default(cuid()) @db.VarChar(191)
+  unitId          String                 @map("unidade_id") @db.VarChar(191)
+  templateId      String?                @map("template_id") @db.VarChar(191)
+  createdByUserId String?                @map("usuario_criacao_id") @db.VarChar(191)
+  name            String                 @map("nome") @db.VarChar(191)
+  description     String?                @map("descricao") @db.Text
+  campaignType    CrmCampaignType        @map("tipo_campanha")
+  channel         MessageChannel         @map("canal")
+  status          CrmCampaignStatus      @default(DRAFT) @map("status")
+  criteria        Json                   @map("criterios")
+  lastExecutedAt  DateTime?              @map("data_ultima_execucao")
+  createdAt       DateTime               @default(now()) @map("data_criacao")
+  updatedAt       DateTime               @updatedAt @map("data_atualizacao")
+  unit            Unit                   @relation(fields: [unitId], references: [id])
+  template        MessageTemplate?       @relation(fields: [templateId], references: [id])
+  createdBy       User?                  @relation("CrmCampaignCreatedByUser", fields: [createdByUserId], references: [id])
+  executions      CrmCampaignExecution[]
+  recipients      CrmCampaignRecipient[]
+
+  @@index([unitId, status], map: "CampanhasCRM_unidade_id_status_idx")
+  @@index([templateId], map: "CampanhasCRM_template_id_idx")
+  @@index([createdByUserId], map: "CampanhasCRM_usuario_criacao_id_idx")
+  @@map("CampanhasCRM")
+}
+
+model CrmCampaignExecution {
+  id               String                     @id @default(cuid()) @db.VarChar(191)
+  campaignId       String                     @map("campanha_id") @db.VarChar(191)
+  executedByUserId String?                    @map("usuario_execucao_id") @db.VarChar(191)
+  status           CrmCampaignExecutionStatus @default(PREPARED) @map("status")
+  executionReason  String?                    @map("motivo_execucao") @db.VarChar(191)
+  audienceSnapshot Json?                      @map("audiencia_snapshot")
+  preparedCount    Int                        @default(0) @map("qtd_preparados")
+  launchedCount    Int                        @default(0) @map("qtd_disparados")
+  skippedCount     Int                        @default(0) @map("qtd_descartados")
+  failedCount      Int                        @default(0) @map("qtd_falhas")
+  startedAt        DateTime                   @default(now()) @map("data_inicio")
+  completedAt      DateTime?                  @map("data_conclusao")
+  campaign         CrmCampaign                @relation(fields: [campaignId], references: [id])
+  executedBy       User?                      @relation("CrmCampaignExecutionExecutedByUser", fields: [executedByUserId], references: [id])
+  recipients       CrmCampaignRecipient[]
+
+  @@index([campaignId, startedAt], map: "ExecucoesCampanhaCRM_campanha_id_data_inicio_idx")
+  @@index([executedByUserId], map: "ExecucoesCampanhaCRM_usuario_execucao_id_idx")
+  @@map("ExecucoesCampanhaCRM")
+}
+
+model CrmCampaignRecipient {
+  id              String                     @id @default(cuid()) @db.VarChar(191)
+  campaignId      String                     @map("campanha_id") @db.VarChar(191)
+  executionId     String                     @map("execucao_id") @db.VarChar(191)
+  clientId        String                     @map("cliente_id") @db.VarChar(191)
+  appointmentId   String?                    @map("agendamento_id") @db.VarChar(191)
+  messageLogId    String?                    @unique(map: "DestinatariosCampanhaCRM_message_log_id_key") @map("message_log_id") @db.VarChar(191)
+  channel         MessageChannel             @map("canal")
+  status          CrmCampaignRecipientStatus @default(PREPARED) @map("status")
+  sourceKey       String                     @map("source_key") @db.VarChar(191)
+  preparedMessage String                     @map("mensagem_preparada") @db.Text
+  matchSnapshot   Json?                      @map("match_snapshot")
+  consentSnapshot Json?                      @map("consentimento_snapshot")
+  skippedReason   String?                    @map("motivo_descarte") @db.VarChar(191)
+  launchedAt      DateTime?                  @map("data_disparo")
+  createdAt       DateTime                   @default(now()) @map("data_criacao")
+  updatedAt       DateTime                   @updatedAt @map("data_atualizacao")
+  campaign        CrmCampaign                @relation(fields: [campaignId], references: [id])
+  execution       CrmCampaignExecution       @relation(fields: [executionId], references: [id])
+  client          Client                     @relation(fields: [clientId], references: [userId])
+  appointment     Appointment?               @relation(fields: [appointmentId], references: [id])
+  messageLog      MessageLog?                @relation(fields: [messageLogId], references: [id])
+
+  @@index([campaignId, status], map: "DestinatariosCampanhaCRM_campanha_id_status_idx")
+  @@index([executionId, status], map: "DestinatariosCampanhaCRM_execucao_id_status_idx")
+  @@index([clientId], map: "DestinatariosCampanhaCRM_cliente_id_idx")
+  @@index([appointmentId], map: "DestinatariosCampanhaCRM_agendamento_id_idx")
+  @@index([sourceKey], map: "DestinatariosCampanhaCRM_source_key_idx")
+  @@map("DestinatariosCampanhaCRM")
+}
+
+model FinancialTransaction {
+  id                  String                   @id @default(cuid()) @db.VarChar(191)
+  unitId              String                   @map("unidade_id") @db.VarChar(191)
+  appointmentId       String?                  @map("agendamento_id") @db.VarChar(191)
+  posSaleId           String?                  @map("venda_pdv_id") @db.VarChar(191)
+  createdByUserId     String?                  @map("usuario_id") @db.VarChar(191)
+  transactionType     FinancialTransactionType @map("tipo_transacao")
+  description         String                   @map("descricao") @db.VarChar(255)
+  amount              Decimal                  @map("valor") @db.Decimal(10, 2)
+  paymentMethod       PaymentMethod?           @map("metodo_pagamento")
+  paymentStatus       PaymentStatus            @default(PENDING) @map("status_pagamento")
+  integrationProvider IntegrationProvider?     @map("provedor_integracao")
+  externalReference   String?                  @map("referencia_externa") @db.VarChar(191)
+  metadata            Json?                    @map("metadados_json")
+  occurredAt          DateTime                 @default(now()) @map("data_transacao")
+  createdAt           DateTime                 @default(now()) @map("data_criacao")
+  updatedAt           DateTime                 @updatedAt @map("data_atualizacao")
+  unit                Unit                     @relation(fields: [unitId], references: [id])
+  appointment         Appointment?             @relation(fields: [appointmentId], references: [id])
+  posSale             PosSale?                 @relation(fields: [posSaleId], references: [id])
+  createdBy           User?                    @relation("FinancialTransactionCreatedBy", fields: [createdByUserId], references: [id])
+  deposit             Deposit?                 @relation("DepositFinancialTransaction")
+  refund              Refund?                  @relation("RefundFinancialTransaction")
+  sourcedRefunds      Refund[]                 @relation("RefundSourceFinancialTransaction")
+  creditUsages        CreditUsage[]
+  fiscalDocuments     FiscalDocument[]
+
+  @@index([unitId, occurredAt], map: "TransacoesFinanceiras_unidade_id_data_transacao_idx")
+  @@index([appointmentId], map: "TransacoesFinanceiras_agendamento_id_idx")
+  @@index([posSaleId], map: "TransacoesFinanceiras_venda_pdv_id_idx")
+  @@index([createdByUserId], map: "TransacoesFinanceiras_usuario_id_idx")
+  @@index([integrationProvider, externalReference], map: "TransacoesFinanceiras_provedor_integracao_referencia_externa_idx")
+  @@map("TransacoesFinanceiras")
+}
+
+model Document {
+  id               String           @id @default(cuid()) @db.VarChar(191)
+  unitId           String           @map("unidade_id") @db.VarChar(191)
+  clientId         String?          @map("cliente_id") @db.VarChar(191)
+  petId            String?          @map("pet_id") @db.VarChar(191)
+  appointmentId    String?          @map("agendamento_id") @db.VarChar(191)
+  uploadedByUserId String?          @map("usuario_upload_id") @db.VarChar(191)
+  archivedByUserId String?          @map("usuario_arquivamento_id") @db.VarChar(191)
+  type             DocumentType     @map("tipo_documento")
+  title            String           @map("titulo") @db.VarChar(191)
+  storageKey       String           @map("chave_storage") @db.VarChar(255)
+  originalFileName String?          @map("nome_arquivo_original") @db.VarChar(255)
+  mimeType         String           @map("mime_type") @db.VarChar(191)
+  sizeBytes        BigInt           @map("tamanho_bytes") @db.BigInt
+  checksum         String?          @map("checksum") @db.VarChar(191)
+  accessLevel      AssetAccessLevel @default(PROTECTED) @map("nivel_acesso")
+  expiresAt        DateTime?        @map("data_expiracao")
+  metadata         Json?            @map("metadados_json")
+  archivedAt       DateTime?        @map("data_arquivamento")
+  archiveReason    String?          @map("motivo_arquivamento") @db.Text
+  createdAt        DateTime         @default(now()) @map("data_upload")
+  updatedAt        DateTime         @updatedAt @map("data_atualizacao")
+  unit             Unit             @relation(fields: [unitId], references: [id])
+  client           Client?          @relation(fields: [clientId], references: [userId])
+  pet              Pet?             @relation(fields: [petId], references: [id])
+  appointment      Appointment?     @relation(fields: [appointmentId], references: [id])
+  uploadedBy       User?            @relation("DocumentUploadedBy", fields: [uploadedByUserId], references: [id])
+  archivedBy       User?            @relation("DocumentArchivedBy", fields: [archivedByUserId], references: [id])
+  signatures       Signature[]
+
+  @@index([unitId], map: "Documentos_unidade_id_idx")
+  @@index([clientId], map: "Documentos_cliente_id_idx")
+  @@index([petId], map: "Documentos_pet_id_idx")
+  @@index([appointmentId], map: "Documentos_agendamento_id_idx")
+  @@index([uploadedByUserId], map: "Documentos_usuario_upload_id_idx")
+  @@index([archivedByUserId], map: "Documentos_usuario_arquivamento_id_idx")
+  @@index([archivedAt], map: "Documentos_data_arquivamento_idx")
+  @@map("Documentos")
+}
+
+model Signature {
+  id           String          @id @default(cuid()) @db.VarChar(191)
+  documentId   String          @map("documento_id") @db.VarChar(191)
+  signerUserId String?         @map("usuario_assinante_id") @db.VarChar(191)
+  signerName   String          @map("nome_assinante") @db.VarChar(191)
+  signerEmail  String?         @map("email_assinante") @db.VarChar(191)
+  signerIp     String?         @map("ip_assinante") @db.VarChar(64)
+  method       SignatureMethod @map("metodo_assinatura")
+  status       SignatureStatus @default(PENDING) @map("status_assinatura")
+  payload      Json?           @map("detalhes_json")
+  signedAt     DateTime?       @map("data_assinatura")
+  createdAt    DateTime        @default(now()) @map("data_criacao")
+  updatedAt    DateTime        @updatedAt @map("data_atualizacao")
+  document     Document        @relation(fields: [documentId], references: [id])
+  signerUser   User?           @relation("SignatureSignerUser", fields: [signerUserId], references: [id])
+
+  @@index([documentId], map: "Assinaturas_documento_id_idx")
+  @@index([signerUserId], map: "Assinaturas_usuario_assinante_id_idx")
+  @@map("Assinaturas")
+}
+
+model MediaAsset {
+  id               String           @id @default(cuid()) @db.VarChar(191)
+  unitId           String           @map("unidade_id") @db.VarChar(191)
+  clientId         String?          @map("cliente_id") @db.VarChar(191)
+  petId            String?          @map("pet_id") @db.VarChar(191)
+  appointmentId    String?          @map("agendamento_id") @db.VarChar(191)
+  uploadedByUserId String?          @map("usuario_upload_id") @db.VarChar(191)
+  archivedByUserId String?          @map("usuario_arquivamento_id") @db.VarChar(191)
+  type             MediaType        @map("tipo_midia")
+  storageKey       String           @map("chave_storage") @db.VarChar(255)
+  originalFileName String?          @map("nome_arquivo_original") @db.VarChar(255)
+  mimeType         String           @map("mime_type") @db.VarChar(191)
+  sizeBytes        BigInt           @map("tamanho_bytes") @db.BigInt
+  accessLevel      AssetAccessLevel @default(PROTECTED) @map("nivel_acesso")
+  description      String?          @map("descricao") @db.Text
+  metadata         Json?            @map("metadados_json")
+  archivedAt       DateTime?        @map("data_arquivamento")
+  archiveReason    String?          @map("motivo_arquivamento") @db.Text
+  createdAt        DateTime         @default(now()) @map("data_upload")
+  updatedAt        DateTime         @updatedAt @map("data_atualizacao")
+  unit             Unit             @relation(fields: [unitId], references: [id])
+  client           Client?          @relation(fields: [clientId], references: [userId])
+  pet              Pet?             @relation(fields: [petId], references: [id])
+  appointment      Appointment?     @relation(fields: [appointmentId], references: [id])
+  uploadedBy       User?            @relation("MediaAssetUploadedBy", fields: [uploadedByUserId], references: [id])
+  archivedBy       User?            @relation("MediaAssetArchivedBy", fields: [archivedByUserId], references: [id])
+
+  @@index([unitId], map: "Midia_unidade_id_idx")
+  @@index([clientId], map: "Midia_cliente_id_idx")
+  @@index([petId], map: "Midia_pet_id_idx")
+  @@index([appointmentId], map: "Midia_agendamento_id_idx")
+  @@index([uploadedByUserId], map: "Midia_usuario_upload_id_idx")
+  @@index([archivedByUserId], map: "Midia_usuario_arquivamento_id_idx")
+  @@index([archivedAt], map: "Midia_data_arquivamento_idx")
+  @@map("Midia")
+}
+
+model Deposit {
+  id                     String                @id @default(cuid()) @db.VarChar(191)
+  unitId                 String                @map("unidade_id") @db.VarChar(191)
+  clientId               String                @map("cliente_id") @db.VarChar(191)
+  appointmentId          String?               @map("agendamento_id") @db.VarChar(191)
+  financialTransactionId String?               @unique(map: "Depositos_transacao_financeira_id_key") @map("transacao_financeira_id") @db.VarChar(191)
+  createdByUserId        String?               @map("usuario_criacao_id") @db.VarChar(191)
+  amount                 Decimal               @map("valor") @db.Decimal(10, 2)
+  purpose                DepositPurpose        @default(SECURITY) @map("finalidade")
+  status                 DepositStatus         @default(PENDING) @map("status")
+  externalReference      String?               @map("referencia_externa") @db.VarChar(191)
+  expiresAt              DateTime?             @map("data_expiracao")
+  receivedAt             DateTime?             @map("data_recebimento")
+  appliedAt              DateTime?             @map("data_aplicacao")
+  notes                  String?               @map("observacoes") @db.Text
+  createdAt              DateTime              @default(now()) @map("data_criacao")
+  updatedAt              DateTime              @updatedAt @map("data_atualizacao")
+  unit                   Unit                  @relation(fields: [unitId], references: [id])
+  client                 Client                @relation(fields: [clientId], references: [userId])
+  appointment            Appointment?          @relation(fields: [appointmentId], references: [id])
+  financialTransaction   FinancialTransaction? @relation("DepositFinancialTransaction", fields: [financialTransactionId], references: [id])
+  createdBy              User?                 @relation("DepositCreatedByUser", fields: [createdByUserId], references: [id])
+  clientCredits          ClientCredit[]
+  refunds                Refund[]              @relation("RefundOriginDeposit")
+
+  @@index([unitId, status], map: "Depositos_unidade_id_status_idx")
+  @@index([clientId], map: "Depositos_cliente_id_idx")
+  @@index([appointmentId], map: "Depositos_agendamento_id_idx")
+  @@index([createdByUserId], map: "Depositos_usuario_criacao_id_idx")
+  @@map("Depositos")
+}
+
+model Refund {
+  id                           String                @id @default(cuid()) @db.VarChar(191)
+  unitId                       String                @map("unidade_id") @db.VarChar(191)
+  clientId                     String?               @map("cliente_id") @db.VarChar(191)
+  appointmentId                String?               @map("agendamento_id") @db.VarChar(191)
+  sourceFinancialTransactionId String?               @map("transacao_financeira_origem_id") @db.VarChar(191)
+  originDepositId              String?               @map("deposito_origem_id") @db.VarChar(191)
+  financialTransactionId       String?               @unique(map: "Reembolsos_transacao_financeira_id_key") @map("transacao_financeira_id") @db.VarChar(191)
+  createdByUserId              String?               @map("usuario_criacao_id") @db.VarChar(191)
+  amount                       Decimal               @map("valor") @db.Decimal(10, 2)
+  status                       RefundStatus          @default(PENDING) @map("status")
+  reason                       String                @map("motivo") @db.Text
+  externalReference            String?               @map("referencia_externa") @db.VarChar(191)
+  processedAt                  DateTime?             @map("data_processamento")
+  createdAt                    DateTime              @default(now()) @map("data_criacao")
+  updatedAt                    DateTime              @updatedAt @map("data_atualizacao")
+  unit                         Unit                  @relation(fields: [unitId], references: [id])
+  client                       Client?               @relation(fields: [clientId], references: [userId])
+  appointment                  Appointment?          @relation(fields: [appointmentId], references: [id])
+  financialTransaction         FinancialTransaction? @relation("RefundFinancialTransaction", fields: [financialTransactionId], references: [id])
+  sourceFinancialTransaction   FinancialTransaction? @relation("RefundSourceFinancialTransaction", fields: [sourceFinancialTransactionId], references: [id])
+  originDeposit                Deposit?              @relation("RefundOriginDeposit", fields: [originDepositId], references: [id])
+  createdBy                    User?                 @relation("RefundCreatedByUser", fields: [createdByUserId], references: [id])
+  clientCredits                ClientCredit[]
+
+  @@index([unitId, status], map: "Reembolsos_unidade_id_status_idx")
+  @@index([clientId], map: "Reembolsos_cliente_id_idx")
+  @@index([appointmentId], map: "Reembolsos_agendamento_id_idx")
+  @@index([sourceFinancialTransactionId], map: "Reembolsos_transacao_financeira_origem_id_idx")
+  @@index([originDepositId], map: "Reembolsos_deposito_origem_id_idx")
+  @@index([createdByUserId], map: "Reembolsos_usuario_criacao_id_idx")
+  @@map("Reembolsos")
+}
+
+model ClientCredit {
+  id              String           @id @default(cuid()) @db.VarChar(191)
+  unitId          String           @map("unidade_id") @db.VarChar(191)
+  clientId        String           @map("cliente_id") @db.VarChar(191)
+  originRefundId  String?          @map("reembolso_origem_id") @db.VarChar(191)
+  originDepositId String?          @map("deposito_origem_id") @db.VarChar(191)
+  createdByUserId String?          @map("usuario_criacao_id") @db.VarChar(191)
+  originType      CreditOriginType @map("tipo_origem")
+  totalAmount     Decimal          @map("valor_total") @db.Decimal(10, 2)
+  availableAmount Decimal          @map("valor_disponivel") @db.Decimal(10, 2)
+  expiresAt       DateTime?        @map("data_expiracao")
+  notes           String?          @map("observacoes") @db.Text
+  createdAt       DateTime         @default(now()) @map("data_criacao")
+  updatedAt       DateTime         @updatedAt @map("data_atualizacao")
+  unit            Unit             @relation(fields: [unitId], references: [id])
+  client          Client           @relation(fields: [clientId], references: [userId])
+  originRefund    Refund?          @relation(fields: [originRefundId], references: [id])
+  originDeposit   Deposit?         @relation(fields: [originDepositId], references: [id])
+  createdBy       User?            @relation("ClientCreditCreatedByUser", fields: [createdByUserId], references: [id])
+  usages          CreditUsage[]
+
+  @@index([unitId], map: "CreditosCliente_unidade_id_idx")
+  @@index([clientId], map: "CreditosCliente_cliente_id_idx")
+  @@index([originRefundId], map: "CreditosCliente_reembolso_origem_id_idx")
+  @@index([originDepositId], map: "CreditosCliente_deposito_origem_id_idx")
+  @@index([createdByUserId], map: "CreditosCliente_usuario_criacao_id_idx")
+  @@map("CreditosCliente")
+}
+
+model CreditUsage {
+  id                     String                @id @default(cuid()) @db.VarChar(191)
+  creditId               String                @map("credito_id") @db.VarChar(191)
+  appointmentId          String?               @map("agendamento_id") @db.VarChar(191)
+  financialTransactionId String?               @map("transacao_financeira_id") @db.VarChar(191)
+  createdByUserId        String?               @map("usuario_criacao_id") @db.VarChar(191)
+  amount                 Decimal               @map("valor_utilizado") @db.Decimal(10, 2)
+  usedAt                 DateTime              @default(now()) @map("data_uso")
+  credit                 ClientCredit          @relation(fields: [creditId], references: [id])
+  appointment            Appointment?          @relation(fields: [appointmentId], references: [id])
+  financialTransaction   FinancialTransaction? @relation(fields: [financialTransactionId], references: [id])
+  createdBy              User?                 @relation("CreditUsageCreatedByUser", fields: [createdByUserId], references: [id])
+
+  @@index([creditId], map: "UsoCredito_credito_id_idx")
+  @@index([appointmentId], map: "UsoCredito_agendamento_id_idx")
+  @@index([financialTransactionId], map: "UsoCredito_transacao_financeira_id_idx")
+  @@index([createdByUserId], map: "UsoCredito_usuario_criacao_id_idx")
+  @@map("UsoCredito")
+}
+
+model AppointmentCapacityRule {
+  id                        String           @id @default(cuid()) @db.VarChar(191)
+  unitId                    String           @map("unidade_id") @db.VarChar(191)
+  employeeUserId            String?          @map("funcionario_id") @db.VarChar(191)
+  createdByUserId           String?          @map("usuario_criacao_id") @db.VarChar(191)
+  sizeCategory              PetSizeCategory? @map("porte_pet")
+  breed                     String?          @map("raca_pet") @db.VarChar(120)
+  maxConcurrentAppointments Int              @default(1) @map("capacidade_maxima_concorrente")
+  active                    Boolean          @default(true) @map("ativo")
+  notes                     String?          @map("observacoes") @db.Text
+  createdAt                 DateTime         @default(now()) @map("data_criacao")
+  updatedAt                 DateTime         @updatedAt @map("data_atualizacao")
+  unit                      Unit             @relation(fields: [unitId], references: [id])
+  employee                  Employee?        @relation(fields: [employeeUserId], references: [userId])
+  createdBy                 User?            @relation("AppointmentCapacityRuleCreatedByUser", fields: [createdByUserId], references: [id])
+
+  @@index([unitId, active], map: "CapacidadeAgendamento_unidade_id_ativo_idx")
+  @@index([employeeUserId, active], map: "CapacidadeAgendamento_funcionario_id_ativo_idx")
+  @@index([sizeCategory, breed], map: "CapacidadeAgendamento_porte_pet_raca_pet_idx")
+  @@index([createdByUserId], map: "CapacidadeAgendamento_usuario_criacao_id_idx")
+  @@map("CapacidadeAgendamento")
+}
+
+model ScheduleBlock {
+  id              String            @id @default(cuid()) @db.VarChar(191)
+  unitId          String            @map("unidade_id") @db.VarChar(191)
+  employeeUserId  String?           @map("funcionario_id") @db.VarChar(191)
+  createdByUserId String?           @map("usuario_criacao_id") @db.VarChar(191)
+  blockType       ScheduleBlockType @map("tipo_bloqueio")
+  title           String            @map("titulo") @db.VarChar(191)
+  startAt         DateTime          @map("data_hora_inicio")
+  endAt           DateTime          @map("data_hora_fim")
+  notes           String?           @map("observacoes") @db.Text
+  active          Boolean           @default(true) @map("ativo")
+  createdAt       DateTime          @default(now()) @map("data_criacao")
+  updatedAt       DateTime          @updatedAt @map("data_atualizacao")
+  unit            Unit              @relation(fields: [unitId], references: [id])
+  employee        Employee?         @relation(fields: [employeeUserId], references: [userId])
+  createdBy       User?             @relation("ScheduleBlockCreatedByUser", fields: [createdByUserId], references: [id])
+
+  @@index([unitId, active, startAt], map: "BloqueiosAgenda_unidade_id_ativo_data_hora_inicio_idx")
+  @@index([employeeUserId, active, startAt], map: "BloqueiosAgenda_funcionario_id_ativo_data_hora_inicio_idx")
+  @@index([createdByUserId], map: "BloqueiosAgenda_usuario_criacao_id_idx")
+  @@map("BloqueiosAgenda")
+}
+
+model WaitlistEntry {
+  id                      String         @id @default(cuid()) @db.VarChar(191)
+  unitId                  String         @map("unidade_id") @db.VarChar(191)
+  clientId                String         @map("cliente_id") @db.VarChar(191)
+  petId                   String         @map("pet_id") @db.VarChar(191)
+  desiredServiceId        String         @map("servico_desejado_id") @db.VarChar(191)
+  preferredEmployeeUserId String?        @map("funcionario_preferido_id") @db.VarChar(191)
+  promotedAppointmentId   String?        @unique(map: "ListaEspera_agendamento_promovido_id_key") @map("agendamento_promovido_id") @db.VarChar(191)
+  createdByUserId         String?        @map("usuario_criacao_id") @db.VarChar(191)
+  canceledByUserId        String?        @map("usuario_cancelamento_id") @db.VarChar(191)
+  status                  WaitlistStatus @default(PENDING) @map("status")
+  preferredStartAt        DateTime       @map("data_hora_inicio_preferida")
+  preferredEndAt          DateTime       @map("data_hora_fim_preferida")
+  requestedTransport      Boolean        @default(false) @map("solicita_transporte")
+  notes                   String?        @map("observacoes") @db.Text
+  cancellationReason      String?        @map("motivo_cancelamento") @db.Text
+  createdAt               DateTime       @default(now()) @map("data_solicitacao")
+  statusChangedAt         DateTime       @default(now()) @map("data_atualizacao_status")
+  updatedAt               DateTime       @updatedAt @map("data_atualizacao")
+  unit                    Unit           @relation(fields: [unitId], references: [id])
+  client                  Client         @relation(fields: [clientId], references: [userId])
+  pet                     Pet            @relation(fields: [petId], references: [id])
+  desiredService          Service        @relation(fields: [desiredServiceId], references: [id])
+  preferredEmployee       Employee?      @relation("WaitlistPreferredEmployee", fields: [preferredEmployeeUserId], references: [userId])
+  promotedAppointment     Appointment?   @relation("WaitlistPromotedAppointment", fields: [promotedAppointmentId], references: [id])
+  createdBy               User?          @relation("WaitlistEntryCreatedByUser", fields: [createdByUserId], references: [id])
+  canceledBy              User?          @relation("WaitlistEntryCanceledByUser", fields: [canceledByUserId], references: [id])
+
+  @@index([unitId, status, preferredStartAt], map: "ListaEspera_unidade_id_status_data_hora_inicio_preferida_idx")
+  @@index([clientId], map: "ListaEspera_cliente_id_idx")
+  @@index([petId], map: "ListaEspera_pet_id_idx")
+  @@index([desiredServiceId], map: "ListaEspera_servico_desejado_id_idx")
+  @@index([preferredEmployeeUserId], map: "ListaEspera_funcionario_preferido_id_idx")
+  @@index([createdByUserId], map: "ListaEspera_usuario_criacao_id_idx")
+  @@index([canceledByUserId], map: "ListaEspera_usuario_cancelamento_id_idx")
+  @@map("ListaEspera")
+}
+
+model TaxiDogRide {
+  id                   String        @id @default(cuid()) @db.VarChar(191)
+  unitId               String        @map("unidade_id") @db.VarChar(191)
+  appointmentId        String        @unique(map: "TaxiDog_agendamento_id_key") @map("agendamento_id") @db.VarChar(191)
+  assignedDriverUserId String?       @map("motorista_id") @db.VarChar(191)
+  createdByUserId      String?       @map("usuario_criacao_id") @db.VarChar(191)
+  status               TaxiDogStatus @default(REQUESTED) @map("status")
+  pickupAddress        String?       @map("endereco_coleta") @db.VarChar(255)
+  dropoffAddress       String?       @map("endereco_entrega") @db.VarChar(255)
+  pickupWindowStartAt  DateTime?     @map("janela_coleta_inicio")
+  pickupWindowEndAt    DateTime?     @map("janela_coleta_fim")
+  dropoffWindowStartAt DateTime?     @map("janela_entrega_inicio")
+  dropoffWindowEndAt   DateTime?     @map("janela_entrega_fim")
+  feeAmount            Decimal       @default(0) @map("valor_transporte") @db.Decimal(10, 2)
+  notes                String?       @map("observacoes") @db.Text
+  createdAt            DateTime      @default(now()) @map("data_criacao")
+  updatedAt            DateTime      @updatedAt @map("data_atualizacao")
+  unit                 Unit          @relation(fields: [unitId], references: [id])
+  appointment          Appointment   @relation(fields: [appointmentId], references: [id])
+  assignedDriver       Employee?     @relation("TaxiDogRideAssignedDriver", fields: [assignedDriverUserId], references: [userId])
+  createdBy            User?         @relation("TaxiDogRideCreatedByUser", fields: [createdByUserId], references: [id])
+
+  @@index([unitId, status], map: "TaxiDog_unidade_id_status_idx")
+  @@index([assignedDriverUserId], map: "TaxiDog_motorista_id_idx")
+  @@index([pickupWindowStartAt], map: "TaxiDog_janela_coleta_inicio_idx")
+  @@index([createdByUserId], map: "TaxiDog_usuario_criacao_id_idx")
+  @@map("TaxiDog")
+}
+
+model IntegrationEvent {
+  id               String                    @id @default(cuid()) @db.VarChar(191)
+  unitId           String?                   @map("unidade_id") @db.VarChar(191)
+  executedByUserId String?                   @map("usuario_execucao_id") @db.VarChar(191)
+  provider         IntegrationProvider       @map("provedor")
+  direction        IntegrationEventDirection @default(INBOUND) @map("direcao")
+  eventType        String                    @map("tipo_evento") @db.VarChar(191)
+  externalEventId  String?                   @map("evento_externo_id") @db.VarChar(191)
+  resourceType     String?                   @map("tipo_recurso") @db.VarChar(120)
+  resourceId       String?                   @map("recurso_id") @db.VarChar(191)
+  endpoint         String?                   @map("endpoint") @db.VarChar(255)
+  status           IntegrationEventStatus    @default(RECEIVED) @map("status_processamento")
+  attemptCount     Int                       @default(0) @map("tentativas_processamento")
+  payload          Json?                     @map("payload_json")
+  headers          Json?                     @map("headers_json")
+  receivedAt       DateTime                  @default(now()) @map("data_recebimento")
+  processedAt      DateTime?                 @map("data_processamento")
+  failedAt         DateTime?                 @map("data_falha")
+  lastError        String?                   @map("ultimo_erro") @db.Text
+  updatedAt        DateTime                  @updatedAt @map("data_atualizacao")
+  unit             Unit?                     @relation(fields: [unitId], references: [id])
+  executedBy       User?                     @relation("IntegrationEventExecutedByUser", fields: [executedByUserId], references: [id])
+
+  @@unique([provider, externalEventId], map: "EventosIntegracao_provedor_evento_externo_id_key")
+  @@index([unitId], map: "EventosIntegracao_unidade_id_idx")
+  @@index([executedByUserId], map: "EventosIntegracao_usuario_execucao_id_idx")
+  @@index([status, receivedAt], map: "EventosIntegracao_status_processamento_data_recebimento_idx")
+  @@map("EventosIntegracao")
+}
+
+model FiscalDocument {
+  id                     String                @id @default(cuid()) @db.VarChar(191)
+  unitId                 String                @map("unidade_id") @db.VarChar(191)
+  appointmentId          String?               @map("agendamento_id") @db.VarChar(191)
+  financialTransactionId String?               @map("transacao_financeira_id") @db.VarChar(191)
+  createdByUserId        String?               @map("usuario_criacao_id") @db.VarChar(191)
+  providerName           String?               @map("provedor_nome") @db.VarChar(191)
+  documentType           FiscalDocumentType    @map("tipo_documento")
+  status                 FiscalDocumentStatus  @default(PENDING) @map("status")
+  externalReference      String?               @map("referencia_externa") @db.VarChar(191)
+  documentNumber         String?               @map("numero_documento") @db.VarChar(64)
+  series                 String?               @map("serie") @db.VarChar(64)
+  accessKey              String?               @map("chave_acesso") @db.VarChar(128)
+  issuedAt               DateTime?             @map("data_emissao")
+  canceledAt             DateTime?             @map("data_cancelamento")
+  lastError              String?               @map("ultimo_erro") @db.Text
+  metadata               Json?                 @map("metadados_json")
+  createdAt              DateTime              @default(now()) @map("data_criacao")
+  updatedAt              DateTime              @updatedAt @map("data_atualizacao")
+  unit                   Unit                  @relation(fields: [unitId], references: [id])
+  appointment            Appointment?          @relation(fields: [appointmentId], references: [id])
+  financialTransaction   FinancialTransaction? @relation(fields: [financialTransactionId], references: [id])
+  createdBy              User?                 @relation("FiscalDocumentCreatedByUser", fields: [createdByUserId], references: [id])
+
+  @@index([unitId, status], map: "DocumentosFiscais_unidade_id_status_idx")
+  @@index([appointmentId], map: "DocumentosFiscais_agendamento_id_idx")
+  @@index([financialTransactionId], map: "DocumentosFiscais_transacao_financeira_id_idx")
+  @@index([createdByUserId], map: "DocumentosFiscais_usuario_criacao_id_idx")
+  @@index([providerName, externalReference], map: "DocumentosFiscais_provedor_nome_referencia_externa_idx")
+  @@map("DocumentosFiscais")
+}
+
+model ReportCard {
+  id                       String      @id @default(cuid()) @db.VarChar(191)
+  appointmentId            String      @unique(map: "ReportCards_agendamento_id_key") @map("agendamento_id") @db.VarChar(191)
+  createdByUserId          String?     @map("usuario_criacao_id") @db.VarChar(191)
+  generalNotes             String?     @map("observacoes_gerais") @db.Text
+  petBehavior              String?     @map("comportamento_pet") @db.Text
+  productsUsed             String?     @map("produtos_usados") @db.Text
+  nextReturnRecommendation String?     @map("recomendacao_retorno") @db.Text
+  generatedAt              DateTime    @default(now()) @map("data_geracao")
+  updatedAt                DateTime    @updatedAt @map("data_atualizacao")
+  appointment              Appointment @relation(fields: [appointmentId], references: [id])
+  createdBy                User?       @relation("ReportCardCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([createdByUserId], map: "ReportCards_usuario_criacao_id_idx")
+  @@map("ReportCards")
+}
+
+model AccessProfile {
+  id          String              @id @default(cuid()) @db.VarChar(191)
+  name        String              @unique(map: "PerfisAcesso_nome_perfil_key") @map("nome_perfil") @db.VarChar(120)
+  description String?             @map("descricao") @db.Text
+  createdAt   DateTime            @default(now()) @map("data_criacao")
+  updatedAt   DateTime            @updatedAt @map("data_atualizacao")
+  permissions ProfilePermission[]
+  users       UserProfile[]
+
+  @@map("PerfisAcesso")
+}
+
+model Permission {
+  id          String              @id @default(cuid()) @db.VarChar(191)
+  name        String              @unique(map: "Permissoes_nome_permissao_key") @map("nome_permissao") @db.VarChar(191)
+  description String?             @map("descricao") @db.Text
+  createdAt   DateTime            @default(now()) @map("data_criacao")
+  updatedAt   DateTime            @updatedAt @map("data_atualizacao")
+  profiles    ProfilePermission[]
+
+  @@map("Permissoes")
+}
+
+model ProfilePermission {
+  profileId    String        @map("perfil_id") @db.VarChar(191)
+  permissionId String        @map("permissao_id") @db.VarChar(191)
+  createdAt    DateTime      @default(now()) @map("data_criacao")
+  profile      AccessProfile @relation(fields: [profileId], references: [id])
+  permission   Permission    @relation(fields: [permissionId], references: [id])
+
+  @@id([profileId, permissionId])
+  @@index([permissionId], map: "PerfilPermissao_permissao_id_idx")
+  @@map("PerfilPermissao")
+}
+
+model UserProfile {
+  userId    String        @map("usuario_id") @db.VarChar(191)
+  profileId String        @map("perfil_id") @db.VarChar(191)
+  createdAt DateTime      @default(now()) @map("data_criacao")
+  user      User          @relation(fields: [userId], references: [id])
+  profile   AccessProfile @relation(fields: [profileId], references: [id])
+
+  @@id([userId, profileId])
+  @@index([profileId], map: "UsuarioPerfil_perfil_id_idx")
+  @@map("UsuarioPerfil")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid()) @db.VarChar(191)
+  unitId     String?  @map("unidade_id") @db.VarChar(191)
+  userId     String?  @map("usuario_id") @db.VarChar(191)
+  action     String   @map("acao") @db.VarChar(191)
+  entityName String   @map("entidade_afetada") @db.VarChar(191)
+  entityId   String?  @map("entidade_id") @db.VarChar(191)
+  occurredAt DateTime @default(now()) @map("data_hora")
+  details    Json?    @map("detalhes_json")
+  unit       Unit?    @relation(fields: [unitId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([unitId], map: "LogsAuditoria_unidade_id_idx")
+  @@index([userId, occurredAt], map: "LogsAuditoria_usuario_id_data_hora_idx")
+  @@index([entityName, entityId], map: "LogsAuditoria_entidade_afetada_entidade_id_idx")
+  @@map("LogsAuditoria")
+}
+
+model UnitSetting {
+  id          String   @id @default(cuid()) @db.VarChar(191)
+  unitId      String   @map("unidade_id") @db.VarChar(191)
+  key         String   @map("chave") @db.VarChar(120)
+  value       String   @map("valor") @db.VarChar(255)
+  description String?  @map("descricao") @db.Text
+  createdAt   DateTime @default(now()) @map("data_criacao")
+  updatedAt   DateTime @updatedAt @map("data_atualizacao")
+  unit        Unit     @relation(fields: [unitId], references: [id])
+
+  @@unique([unitId, key], map: "ConfiguracoesUnidade_unidade_id_chave_key")
+  @@index([unitId], map: "ConfiguracoesUnidade_unidade_id_idx")
+  @@map("ConfiguracoesUnidade")
+}
+
+model SystemRuntimeState {
+  id                      String               @id @default("default") @map("chave_runtime") @db.VarChar(64)
+  lifecycleState          SystemLifecycleState @default(NOT_INSTALLED) @map("estado_ciclo_vida")
+  installerLockedAt       DateTime?            @map("instalador_bloqueado_em")
+  installationCompletedAt DateTime?            @map("instalacao_concluida_em")
+  maintenanceReason       String?              @map("motivo_manutencao") @db.VarChar(255)
+  maintenanceActivatedAt  DateTime?            @map("manutencao_ativada_em")
+  currentVersion          String?              @map("versao_atual") @db.VarChar(64)
+  previousVersion         String?              @map("versao_anterior") @db.VarChar(64)
+  manifestHash            String?              @map("manifest_hash") @db.VarChar(191)
+  updatedByUserId         String?              @map("atualizado_por_usuario_id") @db.VarChar(191)
+  lastTransitionAt        DateTime             @default(now()) @map("data_ultima_transicao")
+  createdAt               DateTime             @default(now()) @map("data_criacao")
+  updatedAt               DateTime             @updatedAt @map("data_atualizacao")
+
+  @@map("EstadoRuntimeSistema")
+}
+
+model RecoveryIncident {
+  id               String                 @id @default(cuid()) @db.VarChar(191)
+  openedByUserId   String?                @map("aberto_por_usuario_id") @db.VarChar(191)
+  resolvedByUserId String?                @map("resolvido_por_usuario_id") @db.VarChar(191)
+  lifecycleState   SystemLifecycleState   @map("estado_ciclo_vida")
+  status           RecoveryIncidentStatus @default(OPEN) @map("status_incidente")
+  title            String                 @map("titulo") @db.VarChar(191)
+  summary          String                 @map("resumo") @db.Text
+  details          Json?                  @map("detalhes_json")
+  openedAt         DateTime               @default(now()) @map("aberto_em")
+  resolvedAt       DateTime?              @map("resolvido_em")
+  createdAt        DateTime               @default(now()) @map("data_criacao")
+  updatedAt        DateTime               @updatedAt @map("data_atualizacao")
+  openedByUser     User?                  @relation("RecoveryIncidentOpenedByUser", fields: [openedByUserId], references: [id])
+  resolvedByUser   User?                  @relation("RecoveryIncidentResolvedByUser", fields: [resolvedByUserId], references: [id])
+
+  @@index([status, openedAt], map: "IncidentesRecovery_status_aberto_em_idx")
+  @@index([openedByUserId], map: "IncidentesRecovery_aberto_por_usuario_id_idx")
+  @@index([resolvedByUserId], map: "IncidentesRecovery_resolvido_por_usuario_id_idx")
+  @@map("IncidentesRecovery")
+}
+
+model UpdateExecution {
+  id                     String                 @id @default(cuid()) @db.VarChar(191)
+  startedByUserId        String?                @map("iniciado_por_usuario_id") @db.VarChar(191)
+  completedByUserId      String?                @map("concluido_por_usuario_id") @db.VarChar(191)
+  retriedFromExecutionId String?                @map("retentativa_da_execucao_id") @db.VarChar(191)
+  mode                   UpdateExecutionMode    @default(MANUAL) @map("modo_execucao")
+  status                 UpdateExecutionStatus  @default(PREPARING) @map("status_execucao")
+  recoveryState          UpdateRecoveryState    @default(NONE) @map("estado_recovery")
+  sourceVersion          String                 @map("versao_origem") @db.VarChar(64)
+  targetVersion          String                 @map("versao_alvo") @db.VarChar(64)
+  manifestHash           String                 @map("manifest_hash") @db.VarChar(191)
+  seedPolicy             String                 @map("seed_policy") @db.VarChar(64)
+  requiresMaintenance    Boolean                @default(false) @map("exige_manutencao")
+  requiresBackup         Boolean                @default(false) @map("exige_backup")
+  lastSuccessfulStepCode String?                @map("ultimo_passo_sucesso") @db.VarChar(64)
+  lastFailedStepCode     String?                @map("ultimo_passo_falha") @db.VarChar(64)
+  failureSummary         String?                @map("resumo_falha") @db.Text
+  preflightSnapshot      Json?                  @map("preflight_json")
+  lockExpiresAt          DateTime               @map("lock_expira_em")
+  startedAt              DateTime               @default(now()) @map("iniciado_em")
+  completedAt            DateTime?              @map("concluido_em")
+  failedAt               DateTime?              @map("falhou_em")
+  maintenanceEnteredAt   DateTime?              @map("manutencao_ativada_em")
+  maintenanceExitedAt    DateTime?              @map("manutencao_desativada_em")
+  retryCount             Int                    @default(0) @map("quantidade_retentativas")
+  createdAt              DateTime               @default(now()) @map("data_criacao")
+  updatedAt              DateTime               @updatedAt @map("data_atualizacao")
+  startedByUser          User?                  @relation("UpdateExecutionStartedByUser", fields: [startedByUserId], references: [id])
+  completedByUser        User?                  @relation("UpdateExecutionCompletedByUser", fields: [completedByUserId], references: [id])
+  retriedFromExecution   UpdateExecution?       @relation("UpdateExecutionRetryChain", fields: [retriedFromExecutionId], references: [id])
+  retryExecutions        UpdateExecution[]      @relation("UpdateExecutionRetryChain")
+  steps                  UpdateExecutionStep[]
+
+  @@index([status, lockExpiresAt], map: "ExecucoesUpdate_status_execucao_lock_expira_em_idx")
+  @@index([startedByUserId], map: "ExecucoesUpdate_iniciado_por_usuario_id_idx")
+  @@index([completedByUserId], map: "ExecucoesUpdate_concluido_por_usuario_id_idx")
+  @@index([retriedFromExecutionId], map: "ExecucoesUpdate_retentativa_da_execucao_id_idx")
+  @@index([startedAt], map: "ExecucoesUpdate_iniciado_em_idx")
+  @@map("ExecucoesUpdate")
+}
+
+model UpdateExecutionStep {
+  id            String                    @id @default(cuid()) @db.VarChar(191)
+  executionId   String                    @map("execucao_update_id") @db.VarChar(191)
+  code          String                    @map("codigo_passo") @db.VarChar(64)
+  label         String                    @map("titulo_passo") @db.VarChar(191)
+  position      Int                       @map("ordem_passo")
+  status        UpdateExecutionStepStatus @default(PENDING) @map("status_passo")
+  payload       Json?                     @map("payload_json")
+  errorSummary  String?                   @map("resumo_erro") @db.Text
+  startedAt     DateTime?                 @map("iniciado_em")
+  completedAt   DateTime?                 @map("concluido_em")
+  failedAt      DateTime?                 @map("falhou_em")
+  durationMs    Int?                      @map("duracao_ms")
+  createdAt     DateTime                  @default(now()) @map("data_criacao")
+  updatedAt     DateTime                  @updatedAt @map("data_atualizacao")
+  execution     UpdateExecution           @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@unique([executionId, code], map: "PassosExecucaoUpdate_execucao_update_id_codigo_passo_key")
+  @@index([executionId, position], map: "PassosExecucaoUpdate_execucao_update_id_ordem_passo_idx")
+  @@index([status], map: "PassosExecucaoUpdate_status_passo_idx")
+  @@map("PassosExecucaoUpdate")
 }
