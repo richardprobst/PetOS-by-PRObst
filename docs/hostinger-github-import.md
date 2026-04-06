@@ -1,33 +1,34 @@
 # Hostinger GitHub Import
 
-Guia objetivo para importar o repositório do PetOS no painel da Hostinger usando o fluxo nativo de GitHub.
+Guia objetivo para importar o repositorio do PetOS no painel da Hostinger usando o fluxo nativo de GitHub.
 
 Este documento assume:
 
-- repositório remoto em [richardprobst/PetOS-by-PRObst](https://github.com/richardprobst/PetOS-by-PRObst)
+- repositorio remoto em [richardprobst/PetOS-by-PRObst](https://github.com/richardprobst/PetOS-by-PRObst)
 - branch de deploy `main`
-- domínio alvo `petos.desi.pet`
-- MySQL remoto já existente e validado
+- dominio alvo `petos.desi.pet`
+- MySQL remoto ja existente e validado
 
-## Configuração esperada no painel
+## Configuracao esperada no painel
 
 Se a Hostinger pedir os campos manualmente, use:
 
-- repositório: `richardprobst/PetOS-by-PRObst`
+- repositorio: `richardprobst/PetOS-by-PRObst`
 - branch: `main`
-- diretório raiz do projeto: `/`
-- versão do Node.js: `22`
+- diretorio raiz do projeto: `/`
+- versao do Node.js: `22`
 - install command: `npm install`
 - build command: `npm run build`
 - start command: `npm start`
 
-Observações:
+Observacoes:
 
-- o projeto já está configurado com `output: 'standalone'` em [next.config.ts](/C:/Users/casaprobst/PetOS-by-PRObst-main/next.config.ts)
-- o `start` já sobe o servidor standalone gerado pelo build em [scripts/start-standalone.mjs](/C:/Users/casaprobst/PetOS-by-PRObst-main/scripts/start-standalone.mjs)
-- `postinstall` já executa `prisma generate`, reduzindo fragilidade no primeiro deploy
+- o projeto ja esta configurado com `output: 'standalone'` em [next.config.ts](/C:/Users/casaprobst/PetOS-by-PRObst-main/next.config.ts)
+- o `start` ja sobe o servidor standalone gerado pelo build em [scripts/start-standalone.mjs](/C:/Users/casaprobst/PetOS-by-PRObst-main/scripts/start-standalone.mjs)
+- `postinstall` ja executa `prisma generate`, reduzindo fragilidade no primeiro deploy
+- o build ja foi validado sem `.env.local`, entao a importacao via GitHub nao depende de segredo local da maquina
 
-## Variáveis de ambiente obrigatórias
+## Variaveis de ambiente obrigatorias
 
 Configurar no painel da Hostinger, sem usar `.env.local`:
 
@@ -51,12 +52,12 @@ Configurar no painel da Hostinger, sem usar `.env.local`:
 Regras duras:
 
 - `APP_URL`, `NEXT_PUBLIC_APP_URL` e `NEXTAUTH_URL` precisam compartilhar exatamente a mesma origem
-- não usar `localhost`, `.local` ou placeholders
-- não subir `.env.local` para o host
+- nao usar `localhost`, `.local` ou placeholders
+- nao subir `.env.local` para o host
 
-## Bootstrap após a importação
+## Bootstrap apos a importacao
 
-Depois que a aplicação estiver importada e o terminal do ambiente estiver disponível, rodar:
+Depois que a aplicacao estiver importada e o terminal do ambiente estiver disponivel, rodar:
 
 ```bash
 npm run hostinger:bootstrap
@@ -69,7 +70,7 @@ npm run prisma:migrate:deploy
 npm run prisma:seed
 ```
 
-## Smoke mínimo pós-importação
+## Smoke minimo pos-importacao
 
 Depois do bootstrap, validar:
 
@@ -85,16 +86,16 @@ Leitura esperada:
 - `/setup` deve respeitar o lifecycle real
 - `/api/setup/preflight` deve continuar protegido
 - `/api/auth/providers` deve apontar para `https://petos.desi.pet`, nunca `localhost`
-- `/admin/sistema` deve exigir autenticação
+- `/admin/sistema` deve exigir autenticacao
 
-## Estado atual do repositório
+## Estado atual do repositorio
 
-Este repositório já está pronto para a importação:
+Este repositorio ja esta pronto para a importacao:
 
-- código sincronizado no GitHub
+- codigo sincronizado no GitHub
 - `package-lock.json` presente
 - scripts de `build` e `start` definidos
 - Prisma schema, migrations e seed versionados
-- docs operacionais do installer/updater já incluídas
+- docs operacionais do installer/updater ja incluidas
 
-O próximo risco operacional já não é organização do repositório. É apenas a configuração correta do app no painel da Hostinger.
+O proximo risco operacional ja nao e organizacao do repositorio. E apenas a configuracao correta do app no painel da Hostinger.
