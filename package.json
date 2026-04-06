@@ -11,6 +11,7 @@
   "packageManager": "npm@11.4.2",
   "scripts": {
     "dev": "next dev",
+    "postinstall": "prisma generate",
     "build": "node scripts/clean-path.mjs .next && next build",
     "start": "node scripts/start-standalone.mjs",
     "start:legacy": "next start",
@@ -38,6 +39,8 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
+    "hostinger:bootstrap": "npm run prisma:migrate:deploy && npm run prisma:seed",
+    "hostinger:smoke": "npm run ops:check:staging",
     "netlify:artifacts:sanitize": "node scripts/sanitize-netlify-artifacts.mjs"
   },
   "dependencies": {

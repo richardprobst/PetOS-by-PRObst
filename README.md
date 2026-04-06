@@ -84,6 +84,7 @@ Guia completo:
 
 - [docs/setup.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/setup.md)
 - [docs/deploy-staging.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/deploy-staging.md)
+- [docs/hostinger-github-import.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/hostinger-github-import.md)
 - [docs/operability.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/operability.md)
 - [docs/local-docker-validation.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/local-docker-validation.md)
 - [docs/release-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/release-baseline.md)
