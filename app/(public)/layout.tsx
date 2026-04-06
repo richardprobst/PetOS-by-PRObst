@@ -2,6 +2,8 @@ import type { Route } from 'next'
 import Link from 'next/link'
 import { enforceUiRuntimeAccess } from '@/server/system/access'
 
+export const dynamic = 'force-dynamic'
+
 const publicLinks: Array<{ href: Route; label: string }> = [
   { href: '/', label: 'Visao geral' },
   { href: '/admin', label: 'Shell admin' },
