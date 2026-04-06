@@ -686,6 +686,7 @@ test('startUpdateExecution blocks when another execution already holds the lock'
           buildVersion: '0.2.1',
           environment: createEnvironment(),
           manifestResult: createManifest('0.2.1'),
+          now: () => new Date('2026-04-06T12:10:00.000Z'),
           prismaCapabilities: createPrismaRuntimeCapabilities(),
           prismaClient: stub.prismaClient,
           readinessCollector: async () => stub.takeReadinessChecks(),

@@ -68,6 +68,7 @@ Exemplo:
 - A remediacao final do staging confirmou com mais precisao o bloqueio hospedado: as envs seguras/publicas puderam ser reaplicadas, mas `DATABASE_URL` e `DIRECT_DATABASE_URL` seguem ausentes no contexto `production`, impedindo um rebuild limpo sem `.env.local` local.
 - O repositorio passou a registrar formalmente o fallback operacional com Docker local como validacao tecnica controlada da baseline atual quando o staging hospedado estiver bloqueado por banco externo.
 - O alvo operacional principal de staging deixou de ser a Netlify e passou a refletir o ambiente real da Hostinger Business Web Hosting, onde o MySQL remoto ja foi validado separadamente com readiness verde.
+- O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
 - `docs/release-baseline.md` como marco curto da baseline tecnica do MVP validado.
@@ -118,6 +119,7 @@ Exemplo:
 - O fluxo administrativo do update passou a aceitar `backupConfirmed=true` vindo de checkbox ou input oculto, evitando falso bloqueio de backup por parsing fraco do formulario.
 - A pagina `/setup`, o painel `/admin/sistema` e o `release-manifest.json` deixaram de exibir mensagens stale sobre o estado da frente installer/updater depois da entrega dos blocos E e F.
 - O script `scripts/clean-path.mjs` agora diagnostica melhor `EPERM` ao limpar `.next`, orientando o operador a encerrar runtimes locais antes de um novo build.
+- O diagnostico automatico da Hostinger para "tailwindcss ausente" deixou de ser um risco recorrente no repositorio: `tailwindcss`, `postcss`, `autoprefixer`, `prisma`, `typescript`, `eslint` e tipagens usadas pelo build foram promovidos para `dependencies` e o fluxo foi revalidado com `npm ci --omit=dev && npm run build`.
 - O layout administrativo deixou de truncar o `callbackUrl` das subrotas para `/admin`, preservando o retorno correto para paginas como `/admin/sistema` depois do login.
 - A documentacao de readiness e staging agora registra explicitamente o resultado do rollout hospedado da frente installer/updater: `petos-staging` ainda esta sem deploy/env e o `petos-production` publicado ainda nao contem essa baseline.
 - O fluxo de rollout hospedado da Netlify agora remove `.env.local` dos artefatos de function antes do upload manual, evitando que callbacks e URLs de auth vazem `localhost` para o staging publicado.
