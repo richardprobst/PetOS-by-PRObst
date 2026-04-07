@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O gate documental do Bloco 1 da Fase 3 passou a ter uma rodada curta de ratificacao humana separada para `B1`, `B2` e `C1`, deixando explicito quando o bloco continua bloqueado e em que condicao ele pode ser autorizado.
 - A diretriz de IA da Fase 3 passou a exigir feature flags server-side, fail-closed, desligamento operacional rapido e governanca de custo por modulo e por unidade antes de qualquer implementacao.
 - A documentacao principal passou a refletir o estado atual do host real: o rollout tecnico ja foi fechado na Hostinger e o proximo passo recomendado deixou de ser rollout para virar homologacao operacional guiada por gaps reais de uso.
 - Atualizacao de seguranca e compatibilidade do stack web para `next@15.5.9`, `react@19.1.2`, `react-dom@19.1.2` e `eslint-config-next@15.5.9`, destravando o gate de deploy da Netlify para a baseline do MVP validado.
@@ -73,6 +74,7 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `docs/phase3-block1-approval-round.md` como rodada final curta de aprovacao humana para destravar, ou manter bloqueado, o Bloco 1 da Fase 3.
 - `docs/operational-homologation.md` como runbook da fase seguinte ao rollout tecnico: configuracao operacional, uso real do sistema, captura de gaps e separacao explicita entre correcao de baseline e planejamento de Fase 3.
 - `PHASE3_PLAN.md` como plano explicito da Fase 3, separando IA avancada e multiunidade operacional completa da homologacao atual e da baseline fechada do MVP/Fase 2.
 - `docs/phase3-decision-matrix.md` como matriz executiva de decisoes da Fase 3, cobrindo provider, LGPD/retencao, compartilhamento entre unidades, imagem e predicao antes de qualquer implementacao.

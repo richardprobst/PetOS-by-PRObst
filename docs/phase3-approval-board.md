@@ -23,6 +23,10 @@ Leitura dos status:
 
 Os status abaixo sao **propostos para aprovacao** a partir de [PHASE3_PLAN.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PHASE3_PLAN.md) e [docs/phase3-decision-matrix.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-decision-matrix.md).
 
+Para a rodada curta de ratificacao humana que fecha apenas `B1`, `B2` e `C1`, use tambem:
+
+- [docs/phase3-block1-approval-round.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-approval-round.md)
+
 ---
 
 ## Grupo A - Estrategia de IA
@@ -343,6 +347,8 @@ Os status abaixo sao **propostos para aprovacao** a partir de [PHASE3_PLAN.md](/
 - `B1`
 - `B2`
 - `C1`
+
+Para registrar a resposta humana final desses tres itens, use a rodada curta em [docs/phase3-block1-approval-round.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-approval-round.md).
 
 ### Se sim no futuro, sob quais condicoes?
 
