@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O Bloco 1 da Fase 3 agora possui backlog tecnico por camadas, com ordem de execucao, dependencias reais, validacao por item e estrategia minima de testes, sem abrir implementacao.
 - O Bloco 1 da Fase 3 agora possui um plano operacional proprio, com backlog ordenado, contratos conceituais, criterios de pronto e sinal de saida para o Bloco 2, sem abrir implementacao.
 - A rodada final de ratificacao humana da Fase 3 aprovou `B1` e aprovou com ajustes `B2` e `C1`, destravando documentalmente o Bloco 1 sem iniciar implementacao.
 - O gate documental do Bloco 1 da Fase 3 passou a ter uma rodada curta de ratificacao humana separada para `B1`, `B2` e `C1`, deixando explicito quando o bloco continua bloqueado e em que condicao ele pode ser autorizado.
@@ -76,6 +77,7 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `docs/phase3-block1-technical-backlog.md` como backlog tecnico executavel do Bloco 1 da Fase 3, pronto para handoff de implementacao futura.
 - `docs/phase3-block1-operational-plan.md` como handoff operacional do Bloco 1 da Fase 3, cobrindo fundacao de IA, multiunidade e governanca minima antes de qualquer codigo.
 - `docs/phase3-block1-approval-round.md` como rodada final curta de aprovacao humana para destravar, ou manter bloqueado, o Bloco 1 da Fase 3.
 - `docs/operational-homologation.md` como runbook da fase seguinte ao rollout tecnico: configuracao operacional, uso real do sistema, captura de gaps e separacao explicita entre correcao de baseline e planejamento de Fase 3.

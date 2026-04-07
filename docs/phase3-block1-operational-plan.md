@@ -27,6 +27,10 @@ O Bloco 1 nao faz:
 - automacao critica baseada em IA;
 - qualquer entrega que contradiga o principio de IA desligada por padrao.
 
+Para o backlog tecnico executavel deste bloco, use tambem:
+
+- [docs/phase3-block1-technical-backlog.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-technical-backlog.md)
+
 ---
 
 ## 2. Escopo incluido

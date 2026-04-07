@@ -135,6 +135,7 @@ Guia completo:
 - [docs/phase3-approval-board.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-approval-board.md)
 - [docs/phase3-block1-approval-round.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-approval-round.md)
 - [docs/phase3-block1-operational-plan.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-operational-plan.md)
+- [docs/phase3-block1-technical-backlog.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-technical-backlog.md)
 - [docs/architecture.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/architecture.md)
 - [docs/domain-rules.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/domain-rules.md)
 - [docs/payments.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/payments.md)
