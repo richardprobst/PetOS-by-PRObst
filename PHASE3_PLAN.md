@@ -15,6 +15,7 @@ Para a matriz pronta para aprovacao antes de qualquer implementacao, use tambem:
 
 - [docs/phase3-decision-matrix.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-decision-matrix.md)
 - [docs/phase3-approval-board.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-approval-board.md)
+- [docs/phase3-block1-operational-plan.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-operational-plan.md)
 
 ---
 
@@ -168,6 +169,10 @@ Essa ordem e recomendada porque:
 **Objetivo**
 
 Abrir a Fase 3 pela fundacao necessaria para IA e multiunidade, sem ainda entregar a experiencia final ao usuario.
+
+Para o handoff operacional desse bloco, use:
+
+- [docs/phase3-block1-operational-plan.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-operational-plan.md)
 
 **Modulos, arquivos e sistemas impactados**
 

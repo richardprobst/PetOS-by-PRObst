@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O Bloco 1 da Fase 3 agora possui um plano operacional proprio, com backlog ordenado, contratos conceituais, criterios de pronto e sinal de saida para o Bloco 2, sem abrir implementacao.
 - A rodada final de ratificacao humana da Fase 3 aprovou `B1` e aprovou com ajustes `B2` e `C1`, destravando documentalmente o Bloco 1 sem iniciar implementacao.
 - O gate documental do Bloco 1 da Fase 3 passou a ter uma rodada curta de ratificacao humana separada para `B1`, `B2` e `C1`, deixando explicito quando o bloco continua bloqueado e em que condicao ele pode ser autorizado.
 - A diretriz de IA da Fase 3 passou a exigir feature flags server-side, fail-closed, desligamento operacional rapido e governanca de custo por modulo e por unidade antes de qualquer implementacao.
@@ -75,6 +76,7 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `docs/phase3-block1-operational-plan.md` como handoff operacional do Bloco 1 da Fase 3, cobrindo fundacao de IA, multiunidade e governanca minima antes de qualquer codigo.
 - `docs/phase3-block1-approval-round.md` como rodada final curta de aprovacao humana para destravar, ou manter bloqueado, o Bloco 1 da Fase 3.
 - `docs/operational-homologation.md` como runbook da fase seguinte ao rollout tecnico: configuracao operacional, uso real do sistema, captura de gaps e separacao explicita entre correcao de baseline e planejamento de Fase 3.
 - `PHASE3_PLAN.md` como plano explicito da Fase 3, separando IA avancada e multiunidade operacional completa da homologacao atual e da baseline fechada do MVP/Fase 2.
