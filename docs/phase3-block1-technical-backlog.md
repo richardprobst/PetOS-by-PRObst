@@ -25,6 +25,7 @@ Este backlog nao autoriza:
 Referencia principal:
 
 - [docs/phase3-block1-operational-plan.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-operational-plan.md)
+- [docs/phase3-block1-sprint1-plan.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-sprint1-plan.md)
 
 ---
 

@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O inicio da implementacao do Bloco 1 da Fase 3 agora possui um plano proprio de Sprint 1, restrito a `B1-T01`, `B1-T02` e `B1-T03`, com slices pequenos, reversiveis e validaveis.
 - O Bloco 1 da Fase 3 agora possui backlog tecnico por camadas, com ordem de execucao, dependencias reais, validacao por item e estrategia minima de testes, sem abrir implementacao.
 - O Bloco 1 da Fase 3 agora possui um plano operacional proprio, com backlog ordenado, contratos conceituais, criterios de pronto e sinal de saida para o Bloco 2, sem abrir implementacao.
 - A rodada final de ratificacao humana da Fase 3 aprovou `B1` e aprovou com ajustes `B2` e `C1`, destravando documentalmente o Bloco 1 sem iniciar implementacao.
@@ -77,6 +78,7 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `docs/phase3-block1-sprint1-plan.md` como handoff imediato do primeiro sprint tecnico do Bloco 1 da Fase 3.
 - `docs/phase3-block1-technical-backlog.md` como backlog tecnico executavel do Bloco 1 da Fase 3, pronto para handoff de implementacao futura.
 - `docs/phase3-block1-operational-plan.md` como handoff operacional do Bloco 1 da Fase 3, cobrindo fundacao de IA, multiunidade e governanca minima antes de qualquer codigo.
 - `docs/phase3-block1-approval-round.md` como rodada final curta de aprovacao humana para destravar, ou manter bloqueado, o Bloco 1 da Fase 3.
