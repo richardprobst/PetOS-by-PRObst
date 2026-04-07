@@ -36,8 +36,14 @@ Continuam fora desta baseline:
 
 ## Proximo passo recomendado
 
-O proximo passo mais sensato a partir desta baseline e tratar a Fase 2 como candidata a rollout tecnico controlado:
+Com a baseline ja publicada e saudavel no host real, o proximo passo mais sensato deixa de ser rollout tecnico e passa a ser homologacao operacional guiada:
 
-1. usar [docs/phase2-smoke-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase2-smoke-checklist.md) para regressao em ambiente controlado;
-2. reaproveitar [docs/release-readiness.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/release-readiness.md) e [docs/operability.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/operability.md) como gate tecnico de rollout;
-3. manter qualquer abertura de Fase 3 separada desta baseline, sem misturar estabilizacao com novo escopo.
+1. usar [docs/manual-smoke-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/manual-smoke-checklist.md) e [docs/phase2-smoke-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase2-smoke-checklist.md) como roteiro de uso real;
+2. registrar gaps concretos de uso antes de abrir qualquer nova frente;
+3. corrigir apenas bloqueios reais do MVP ou da baseline da Fase 2;
+4. manter qualquer abertura de Fase 3 separada desta baseline, sem misturar homologacao com novo escopo.
+
+Use tambem:
+
+- [docs/operational-homologation.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/operational-homologation.md)
+- [docs/operability.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/operability.md)

@@ -44,6 +44,8 @@ lerna-debug.log*
 .env.test
 .env.hostinger
 .env.hostinger.import
+.env.hostinger.import.txt
+.env.hostinger.local-db.import.txt
 .env.development.local
 .env.test.local
 .env.production.local

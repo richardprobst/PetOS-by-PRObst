@@ -1,6 +1,6 @@
 # MVP Status
 
-Data da ultima revisao: 2026-04-03
+Data da ultima revisao: 2026-04-07
 
 ## Status geral
 
@@ -31,14 +31,14 @@ Status da estabilizacao automatizada: `concluida`
 
 Status da validacao manual em ambiente real: `concluida com sucesso`
 
-Status da baseline tecnica de release/staging: `pronta como baseline do MVP validado`
+Status da baseline tecnica de release/staging: `publicada e saudavel no host real`
 
 Isso significa:
 
 - o bootstrap do repositorio foi validado;
 - a configuracao do Prisma ficou coerente com `.env.local`;
 - o repositorio tem `docker-compose.yml`, `docs/setup.md` e scripts operacionais para reduzir atrito no setup local;
-- o repositorio tambem tem `.env.staging.example`, `docs/deploy-staging.md`, `ops:preflight:staging`, `ops:check:staging`, `start:standalone` e `/api/health` para reduzir atrito na futura subida em staging;
+- o repositorio tambem tem `.env.staging.example`, `docs/deploy-staging.md`, `ops:preflight:staging`, `ops:check:staging`, `start:standalone` e `/api/health` para reduzir atrito na subida em host real;
 - o repositorio tambem tem `ops:preflight`, logs estruturados leves com `requestId` e `docs/operability.md` para melhorar diagnostico operacional sem abrir infraestrutura nova;
 - os checks automatizados do repositorio passaram;
 - a rodada manual em ambiente real foi concluida com sucesso sem necessidade de abrir novo escopo.
@@ -77,15 +77,15 @@ A rodada manual concluida com sucesso cobriu, de forma objetiva:
 - comunicacao manual por WhatsApp Web e e-mail;
 - portal do tutor, instalabilidade basica do PWA e leitura operacional sem reabrir escopo.
 
-## O que continua dependente do ambiente hospedado
+## O que ja foi validado no ambiente hospedado final
 
-O MVP ja foi validado e a Fase 2 ja foi fechada no repositorio. O que permanece dependente de um proximo ambiente controlado e apenas operacional:
+No host real validado, a baseline atual ja comprovou:
 
 - MySQL acessivel pelo runtime hospedado;
-- execucao real de `prisma migrate deploy` e `prisma db seed` fora da maquina local;
+- `prisma migrate deploy` e `prisma db seed` executados com sucesso fora da maquina local;
 - cookies, sessao e autenticacao atras do host/proxy publico;
-- verificacao de `/api/health` em ambiente hospedado;
-- rodada focada de regressao no ambiente de staging usando a checklist manual como referencia.
+- `GET /api/health` saudavel no ambiente publicado;
+- rodada real de smoke em `/admin`, `/tutor` e modulo de sistema sem bloqueantes de baseline.
 
 ## Escopo do MVP considerado entregue
 
@@ -115,12 +115,14 @@ Continuam fora desta etapa:
 
 O fechamento do MVP ja nao depende mais de validacao funcional, e a Fase 2 ja nao depende mais de implementacao estrutural. O proximo passo mais sensato passa a ser:
 
-1. marcar a baseline interna da Fase 2 concluida;
-2. preparar e executar rollout tecnico controlado dessa baseline;
-3. manter qualquer planejamento de Fase 3 separado de estabilizacao, operacao e regressao da Fase 2.
+1. configurar a operacao real no host publicado;
+2. executar homologacao funcional com dados e fluxos reais;
+3. corrigir apenas gaps concretos de uso que bloqueiem o MVP ou a baseline da Fase 2;
+4. manter qualquer planejamento de Fase 3 separado de homologacao, estabilizacao e operacao.
 
 Para retomar a partir desta baseline tecnica, use tambem:
 
 - [docs/release-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/release-baseline.md)
 - [docs/phase2-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase2-baseline.md)
 - [docs/release-readiness.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/release-readiness.md)
+- [docs/operational-homologation.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/operational-homologation.md)

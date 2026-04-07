@@ -2,7 +2,7 @@
 
 Estado atual do rollout tecnico controlado da baseline installer/updater em ambiente hospedado.
 
-Data da validacao: `2026-04-05`
+Data da validacao: `2026-04-07`
 
 ## Ambiente validado
 
@@ -88,6 +88,17 @@ Data da validacao: `2026-04-05`
 - leitura objetiva:
   - o bloqueio de banco que existia no staging da Netlify nao existe mais para o ambiente real pretendido na Hostinger
   - o proximo bloqueio passou a ser apenas a publicacao do app Next.js no host da Hostinger com as mesmas envs coerentes
+- o app publicado final em [https://petos.desi.pet](https://petos.desi.pet) ficou operacional:
+  - `GET /api/health` responde `200`
+  - login administrativo real responde `200`
+  - `/admin/sistema` responde `200` com sessao autenticada
+  - `GET /api/admin/system/update-preflight` responde `200` com sessao autenticada
+  - `GET /api/admin/system/update-executions` responde `200` e lista vazia
+  - a smoke real de navegacao nos modulos administrativos principais nao encontrou bloqueante funcional da baseline
+- o updater hospedado continua com uma ressalva intencional no host compartilhado:
+  - o preflight autenticado acusa `runtime.migrate.unavailable`
+  - isso bloqueia execucao de update hospedado in-place
+  - isso nao bloqueia o uso normal do sistema nem o deploy via GitHub + Hostinger
 
 ## Leitura objetiva dos achados
 
@@ -120,31 +131,30 @@ Data da validacao: `2026-04-05`
 
 ## Decisao
 
-Estado atual: `NO-GO`
+Estado atual: `GO COM RESSALVAS`
 
 Motivo:
 
-- a baseline installer/updater ja esta publicada de verdade em `petos-staging`;
-- as envs seguras/publicas ja foram reaplicadas com sucesso;
-- mas `DATABASE_URL` e `DIRECT_DATABASE_URL` continuam ausentes no staging;
-- sem essas envs reais de banco, nao foi possivel publicar um novo deploy integrado limpo sem `.env.local`, entao o staging atual segue com health degradado e URLs de auth contaminadas por `localhost`;
-- o `petos-production` continua fora desta validacao final e segue anterior a essa baseline.
+- a baseline atual esta publicada e saudavel no host real `petos.desi.pet`;
+- banco, auth, health e modulos principais do painel administrativo estao operacionais;
+- a frente installer/updater continua valida como camada de preflight, auditoria e gating;
+- a execucao hospedada de update continua limitada pelo runtime compartilhado da Hostinger, que nao expoe tudo o que a engine precisaria para executar migrations in-place dentro da propria app.
 
 ## Proximo passo minimo para destravar
 
-1. configurar em `petos-staging` os valores reais de `DATABASE_URL` e `DIRECT_DATABASE_URL` para um MySQL remoto valido e acessivel pelo runtime
-2. republicar o staging com o fluxo documentado em [docs/deploy-staging.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/deploy-staging.md), agora sem `.env.local` local durante o `netlify deploy --build`
-3. garantir que o banco publicado tenha migrations e seed coerentes com a baseline
-4. rerrodar:
-   - `npm run ops:preflight:staging`
-   - `npm run ops:check:staging`
-   - `GET /api/health`
-   - [docs/installer-updater-smoke-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/installer-updater-smoke-checklist.md)
+1. usar GitHub + Hostinger como trilha oficial de update de codigo;
+2. tratar migrations e seed como etapa operacional separada e controlada;
+3. entrar em homologacao operacional do sistema publicado, usando gaps reais de uso para decidir correcoes;
+4. manter qualquer planejamento de Fase 3 separado da estabilizacao atual.
 
 ## Relacao com a baseline
 
 Este resultado nao invalida a baseline funcional fechada no repositorio.
 
-Ele indica que o rollout hospedado antigo na Netlify nao aconteceu de forma valida para a frente installer/updater, mas o banco remoto real da Hostinger ja foi validado de forma independente.
+Ele indica que o rollout antigo da Netlify permaneceu historicamente `NO-GO`, mas que o host real final na Hostinger ficou valido para uso normal do sistema.
+
+Ao mesmo tempo, ele confirma que o updater interno deve continuar sendo tratado como camada de preflight e auditoria nesse host, nao como motor principal de deploy.
 
 Para a validacao tecnica equivalente em ambiente local controlado, com MySQL via Docker Desktop e baseline operacional saudavel, veja [docs/local-docker-validation.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/local-docker-validation.md).
+
+Para a fase seguinte de uso real e captura de gaps, veja [docs/operational-homologation.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/operational-homologation.md).

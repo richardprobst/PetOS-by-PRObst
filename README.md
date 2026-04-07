@@ -38,6 +38,9 @@ O repositorio tambem fechou a frente interna de **installer/updater assistido**,
 - preflight e manifest de release do updater;
 - engine controlada de update com recovery minimo e retry seguro.
 
+No estado atual do host real, o proximo passo recomendado ja nao e rollout tecnico.
+O sistema entra em **homologacao operacional**, usando a baseline publicada para capturar gaps reais de uso antes de qualquer novo desenvolvimento.
+
 ## Stack
 
 - Next.js 15 com App Router
@@ -89,6 +92,7 @@ Guia completo:
 - [docs/local-docker-validation.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/local-docker-validation.md)
 - [docs/release-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/release-baseline.md)
 - [docs/phase2-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase2-baseline.md)
+- [docs/operational-homologation.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/operational-homologation.md)
 - [docs/release-readiness.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/release-readiness.md)
 - [docs/manual-smoke-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/manual-smoke-checklist.md)
 - [docs/phase2-smoke-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase2-smoke-checklist.md)
@@ -125,6 +129,10 @@ Guia completo:
 - [PetOS_PRD.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PetOS_PRD.md)
 - [AGENTS.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/AGENTS.md)
 - [PLANS.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PLANS.md)
+- [PHASE2_PLAN.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PHASE2_PLAN.md)
+- [PHASE3_PLAN.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PHASE3_PLAN.md)
+- [docs/phase3-decision-matrix.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-decision-matrix.md)
+- [docs/phase3-approval-board.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-approval-board.md)
 - [docs/architecture.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/architecture.md)
 - [docs/domain-rules.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/domain-rules.md)
 - [docs/payments.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/payments.md)
