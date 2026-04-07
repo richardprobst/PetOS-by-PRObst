@@ -17,7 +17,7 @@ import {
   type AiQuotaEvaluationStatus,
 } from './schemas'
 
-type AiQuotaEnvironment = Pick<
+export type AiQuotaEnvironment = Pick<
   Environment,
   | 'AI_ENABLED'
   | 'AI_IMAGE_ANALYSIS_ENABLED'
@@ -26,7 +26,7 @@ type AiQuotaEnvironment = Pick<
   | 'AI_PREDICTIVE_INSIGHTS_BASE_QUOTA'
 >
 
-interface AiQuotaSnapshotInput {
+export interface AiQuotaSnapshotInput {
   moduleRequestedUnits?: number
   moduleUsedUnits?: number
   temporarilyUnavailable?: boolean

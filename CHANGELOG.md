@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O `B1-T04` da Fase 3 agora abre o primeiro envelope real de execucao da camada de IA, consumindo contrato, gating e politica ja existentes para responder de forma padronizada com estados `PENDING`, `BLOCKED` ou `FAILED`, ainda sem provider real, job real ou persistencia definitiva.
 - O gate formal de saida do Sprint 1 do Bloco 1 da Fase 3 foi registrado como `GO COM RESSALVAS`, com `build`, `typecheck` e suite ampla verdes e com autorizacao para abrir o Sprint 2 sem reescrever a fundacao da camada de IA.
 - O `B1-T03` da Fase 3 agora adiciona uma fundacao central de quota/politica por modulo sobre o gating existente, distinguindo bloqueio por flag, quota esgotada, quota ausente ou invalida e indisponibilidade operacional sem abrir billing real nem persistencia definitiva.
 - O `B1-T02` da Fase 3 agora centraliza o gating server-side da IA em um unico funil fail-closed, avaliando `ai.enabled`, flags por modulo e suporte minimo do contrato antes de qualquer caminho futuro de custo, job ou retry.
@@ -82,6 +83,7 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `features/ai/execution.ts` como orquestrador inicial server-side do envelope de execucao da IA da Fase 3.
 - `docs/phase3-block1-sprint1-exit-gate.md` como registro formal da decisao de saida do Sprint 1 do Bloco 1 da Fase 3.
 - `features/ai/policy.ts` como camada central inicial de quota/politica da IA da Fase 3, com quotas base por modulo, previsao explicita de quota por unidade e resolucao provider-neutral integrada ao contrato do Sprint 1.
 - `features/ai/gating.ts` como autoridade central inicial de gating da IA da Fase 3, com hierarquia minima de flags, motivo de bloqueio padronizado, preparacao para escopo por unidade e resolucao compatível com o contrato do `B1-T01`.

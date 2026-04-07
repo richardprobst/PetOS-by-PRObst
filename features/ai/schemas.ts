@@ -330,6 +330,58 @@ export const aiFailedOutcomeSchema = z.object({
 
 export type AiFailedOutcome = z.infer<typeof aiFailedOutcomeSchema>
 
+export const aiExecutionStateSchema = z.enum([
+  'BLOCKED',
+  'PENDING',
+  'COMPLETED',
+  'FAILED',
+  'DISCARDED',
+])
+
+export type AiExecutionState = z.infer<typeof aiExecutionStateSchema>
+
+export const aiExecutionModeSchema = z.enum(['DEFERRED'])
+
+export type AiExecutionMode = z.infer<typeof aiExecutionModeSchema>
+
+export const aiExecutionProviderStatusSchema = z.enum(['NOT_STARTED'])
+
+export type AiExecutionProviderStatus = z.infer<
+  typeof aiExecutionProviderStatusSchema
+>
+
+export const aiExecutionJobStatusSchema = z.enum(['NOT_SCHEDULED'])
+
+export type AiExecutionJobStatus = z.infer<typeof aiExecutionJobStatusSchema>
+
+export const aiExecutionNextStepSchema = z.enum([
+  'NONE',
+  'AWAIT_PROVIDER_ADAPTER',
+])
+
+export type AiExecutionNextStep = z.infer<typeof aiExecutionNextStepSchema>
+
+export const aiExecutionRecordSchema = z.object({
+  executionId: z.string().trim().min(1).nullable().default(null),
+  state: aiExecutionStateSchema,
+  executionMode: aiExecutionModeSchema,
+  providerStatus: aiExecutionProviderStatusSchema,
+  jobStatus: aiExecutionJobStatusSchema,
+  nextStep: aiExecutionNextStepSchema,
+  module: aiInferenceModuleSchema,
+  inferenceKey: z.string().trim().min(1),
+  origin: aiInferenceOriginSchema,
+  requestId: z.string().trim().min(1).nullable().default(null),
+  unitId: z.string().trim().min(1).nullable().default(null),
+  requestedByUserId: z.string().trim().min(1).nullable().default(null),
+  requestedAt: z.coerce.date(),
+  handledAt: z.coerce.date(),
+  policyReasonCode: aiPolicyReasonCodeSchema.nullable().default(null),
+  errorCode: aiLayerErrorCodeSchema.nullable().default(null),
+})
+
+export type AiExecutionRecord = z.infer<typeof aiExecutionRecordSchema>
+
 export const aiInferenceOutcomeSchema = z.discriminatedUnion('status', [
   aiCompletedOutcomeSchema,
   aiBlockedOutcomeSchema,
@@ -358,3 +410,53 @@ export const aiAuditSnapshotSchema = z.object({
 })
 
 export type AiAuditSnapshot = z.infer<typeof aiAuditSnapshotSchema>
+
+const aiExecutionEnvelopeBaseSchema = z.object({
+  request: aiInferenceRequestSchema,
+  execution: aiExecutionRecordSchema,
+  technicalMetadata: aiTechnicalMetadataSchema,
+})
+
+export const aiPendingExecutionEnvelopeSchema = aiExecutionEnvelopeBaseSchema.extend(
+  {
+    status: z.literal('PENDING'),
+    policy: aiPolicyResultSchema,
+    outcome: z.null(),
+  },
+)
+
+export type AiPendingExecutionEnvelope = z.infer<
+  typeof aiPendingExecutionEnvelopeSchema
+>
+
+export const aiBlockedExecutionEnvelopeSchema = aiExecutionEnvelopeBaseSchema.extend(
+  {
+    status: z.literal('BLOCKED'),
+    policy: aiPolicyResultSchema,
+    outcome: aiBlockedOutcomeSchema,
+  },
+)
+
+export type AiBlockedExecutionEnvelope = z.infer<
+  typeof aiBlockedExecutionEnvelopeSchema
+>
+
+export const aiFailedExecutionEnvelopeSchema = aiExecutionEnvelopeBaseSchema.extend(
+  {
+    status: z.literal('FAILED'),
+    policy: aiPolicyResultSchema.nullable().default(null),
+    outcome: aiFailedOutcomeSchema,
+  },
+)
+
+export type AiFailedExecutionEnvelope = z.infer<
+  typeof aiFailedExecutionEnvelopeSchema
+>
+
+export const aiExecutionEnvelopeSchema = z.discriminatedUnion('status', [
+  aiPendingExecutionEnvelopeSchema,
+  aiBlockedExecutionEnvelopeSchema,
+  aiFailedExecutionEnvelopeSchema,
+])
+
+export type AiExecutionEnvelope = z.infer<typeof aiExecutionEnvelopeSchema>
