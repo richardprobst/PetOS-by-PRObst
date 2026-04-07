@@ -17,12 +17,14 @@ import {
   type AiCompletedOutcome,
   type AiFailedOutcome,
   type AiGateDecision,
-  type AiGateReasonCode,
   type AiGatingResult,
   type AiInferenceFlagKeys,
   type AiInferenceModule,
   type AiInferenceRequest,
   type AiLayerError,
+  type AiLayerErrorCode,
+  type AiPolicyReasonCode,
+  type AiPolicyResult,
   type AiTechnicalMetadata,
 } from './schemas'
 
@@ -41,10 +43,8 @@ type CreateAiLayerErrorInput = z.input<typeof aiLayerErrorSchema>
 
 type CreateBlockedOutcomeInput = {
   message: string
-  reasonCode: Extract<
-    AiGateReasonCode,
-    'DISABLED_BY_POLICY' | 'MISSING_CONFIGURATION' | 'NOT_SUPPORTED'
-  >
+  reasonCode: Exclude<AiPolicyReasonCode, 'ENABLED'>
+  gateDecision?: AiGateDecision
   technicalMetadata?: CreateAiTechnicalMetadataInput
   details?: AiLayerError['details']
 }
@@ -143,12 +143,20 @@ export function createAiBlockedOutcome(
   request: AiInferenceRequest,
   input: CreateBlockedOutcomeInput,
 ): AiBlockedOutcome {
+  const gateDecision =
+    input.gateDecision ??
+    (input.reasonCode === 'DISABLED_BY_POLICY' ||
+    input.reasonCode === 'MISSING_CONFIGURATION' ||
+    input.reasonCode === 'NOT_SUPPORTED'
+      ? createAiBlockedGateDecision(request, input.reasonCode)
+      : createAiAllowedGateDecision(request))
+
   return aiBlockedOutcomeSchema.parse({
     status: 'BLOCKED',
     request,
-    gateDecision: createAiBlockedGateDecision(request, input.reasonCode),
+    gateDecision,
     error: createAiLayerError({
-      code: input.reasonCode === 'NOT_SUPPORTED' ? 'NOT_SUPPORTED' : 'DISABLED',
+      code: mapAiBlockedReasonCodeToErrorCode(input.reasonCode),
       details: input.details,
       message: input.message,
       retryable: false,
@@ -236,8 +244,67 @@ export function createAiBlockedOutcomeFromGatingResult(
     )
   }
 
+  return createAiBlockedOutcome(gatingResult.request, {
+    details: {
+      evaluations: gatingResult.evaluations,
+    },
+    message: getAiBlockedReasonMessage(blockedReasonCode),
+    reasonCode: blockedReasonCode,
+  })
+}
+
+export function createAiBlockedOutcomeFromPolicyResult(
+  policyResult: AiPolicyResult,
+): AiBlockedOutcome {
+  if (policyResult.decision.allowed) {
+    throw new Error(
+      'Cannot create a blocked AI outcome from a policy result that is enabled.',
+    )
+  }
+
+  const blockedReasonCode = policyResult.decision.reasonCode
+
+  if (blockedReasonCode === 'ENABLED') {
+    throw new Error(
+      'Blocked AI policy results cannot carry the ENABLED reason code.',
+    )
+  }
+
+  return createAiBlockedOutcome(policyResult.request, {
+    details: {
+      gating: policyResult.gating,
+      moduleQuota: policyResult.moduleQuota,
+      unitQuota: policyResult.unitQuota,
+    },
+    gateDecision: policyResult.gating.decision,
+    message: getAiBlockedReasonMessage(blockedReasonCode),
+    reasonCode: blockedReasonCode,
+  })
+}
+
+function mapAiBlockedReasonCodeToErrorCode(
+  reasonCode: Exclude<AiPolicyReasonCode, 'ENABLED'>,
+): Exclude<AiLayerErrorCode, 'OPERATIONAL_FAILURE'> {
+  switch (reasonCode) {
+    case 'DISABLED_BY_POLICY':
+    case 'MISSING_CONFIGURATION':
+      return 'DISABLED'
+    case 'NOT_SUPPORTED':
+      return 'NOT_SUPPORTED'
+    case 'QUOTA_EXCEEDED':
+      return 'QUOTA_EXCEEDED'
+    case 'QUOTA_NOT_CONFIGURED':
+      return 'QUOTA_NOT_CONFIGURED'
+    case 'TEMPORARILY_UNAVAILABLE':
+      return 'TEMPORARILY_UNAVAILABLE'
+  }
+}
+
+function getAiBlockedReasonMessage(
+  reasonCode: Exclude<AiPolicyReasonCode, 'ENABLED'>,
+) {
   const messageByReasonCode: Record<
-    Exclude<AiGateReasonCode, 'ENABLED'>,
+    Exclude<AiPolicyReasonCode, 'ENABLED'>,
     string
   > = {
     DISABLED_BY_POLICY:
@@ -246,13 +313,13 @@ export function createAiBlockedOutcomeFromGatingResult(
       'AI inference is disabled because the required AI flag configuration is missing or invalid.',
     NOT_SUPPORTED:
       'AI inference is not supported by the current internal AI contract.',
+    QUOTA_EXCEEDED:
+      'AI inference is blocked because the configured module quota has been exhausted.',
+    QUOTA_NOT_CONFIGURED:
+      'AI inference is blocked because the module quota policy is missing or invalid.',
+    TEMPORARILY_UNAVAILABLE:
+      'AI inference is temporarily unavailable by operational policy.',
   }
 
-  return createAiBlockedOutcome(gatingResult.request, {
-    details: {
-      evaluations: gatingResult.evaluations,
-    },
-    message: messageByReasonCode[blockedReasonCode],
-    reasonCode: blockedReasonCode,
-  })
+  return messageByReasonCode[reasonCode]
 }

@@ -85,6 +85,8 @@ export const envSchema = z
     AI_ENABLED: optionalString,
     AI_IMAGE_ANALYSIS_ENABLED: optionalString,
     AI_PREDICTIVE_INSIGHTS_ENABLED: optionalString,
+    AI_IMAGE_ANALYSIS_BASE_QUOTA: optionalString,
+    AI_PREDICTIVE_INSIGHTS_BASE_QUOTA: optionalString,
     LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
     RATE_LIMIT_ENABLED: envBoolean.default(true),
     RATE_LIMIT_WINDOW_MS: positiveInteger.default(60000),

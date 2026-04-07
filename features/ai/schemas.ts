@@ -7,6 +7,14 @@ export const AI_UNIT_FLAG_KEY = 'ai.enabledByUnit'
 export const AI_GLOBAL_ENV_KEY = 'AI_ENABLED'
 export const AI_IMAGE_ANALYSIS_ENV_KEY = 'AI_IMAGE_ANALYSIS_ENABLED'
 export const AI_PREDICTIVE_INSIGHTS_ENV_KEY = 'AI_PREDICTIVE_INSIGHTS_ENABLED'
+export const AI_IMAGE_ANALYSIS_BASE_QUOTA_KEY = 'ai.imageAnalysis.baseQuota'
+export const AI_PREDICTIVE_INSIGHTS_BASE_QUOTA_KEY = 'ai.predictiveInsights.baseQuota'
+export const AI_IMAGE_ANALYSIS_UNIT_QUOTA_KEY = 'ai.imageAnalysis.unitQuota'
+export const AI_PREDICTIVE_INSIGHTS_UNIT_QUOTA_KEY =
+  'ai.predictiveInsights.unitQuota'
+export const AI_IMAGE_ANALYSIS_BASE_QUOTA_ENV_KEY = 'AI_IMAGE_ANALYSIS_BASE_QUOTA'
+export const AI_PREDICTIVE_INSIGHTS_BASE_QUOTA_ENV_KEY =
+  'AI_PREDICTIVE_INSIGHTS_BASE_QUOTA'
 
 export const aiInferenceModuleSchema = z.enum([
   'IMAGE_ANALYSIS',
@@ -31,6 +39,21 @@ export const aiModuleFlagKeyMap = {
 export const aiModuleEnvFlagKeyMap = {
   IMAGE_ANALYSIS: AI_IMAGE_ANALYSIS_ENV_KEY,
   PREDICTIVE_INSIGHTS: AI_PREDICTIVE_INSIGHTS_ENV_KEY,
+} as const satisfies Record<AiInferenceModule, string>
+
+export const aiModuleQuotaKeyMap = {
+  IMAGE_ANALYSIS: AI_IMAGE_ANALYSIS_BASE_QUOTA_KEY,
+  PREDICTIVE_INSIGHTS: AI_PREDICTIVE_INSIGHTS_BASE_QUOTA_KEY,
+} as const satisfies Record<AiInferenceModule, string>
+
+export const aiModuleQuotaEnvKeyMap = {
+  IMAGE_ANALYSIS: AI_IMAGE_ANALYSIS_BASE_QUOTA_ENV_KEY,
+  PREDICTIVE_INSIGHTS: AI_PREDICTIVE_INSIGHTS_BASE_QUOTA_ENV_KEY,
+} as const satisfies Record<AiInferenceModule, string>
+
+export const aiUnitQuotaKeyMap = {
+  IMAGE_ANALYSIS: AI_IMAGE_ANALYSIS_UNIT_QUOTA_KEY,
+  PREDICTIVE_INSIGHTS: AI_PREDICTIVE_INSIGHTS_UNIT_QUOTA_KEY,
 } as const satisfies Record<AiInferenceModule, string>
 
 export const aiInferenceFlagKeysSchema = z.object({
@@ -88,6 +111,18 @@ export const aiGateReasonCodeSchema = z.enum([
 
 export type AiGateReasonCode = z.infer<typeof aiGateReasonCodeSchema>
 
+export const aiPolicyReasonCodeSchema = z.enum([
+  'ENABLED',
+  'DISABLED_BY_POLICY',
+  'MISSING_CONFIGURATION',
+  'NOT_SUPPORTED',
+  'QUOTA_EXCEEDED',
+  'QUOTA_NOT_CONFIGURED',
+  'TEMPORARILY_UNAVAILABLE',
+])
+
+export type AiPolicyReasonCode = z.infer<typeof aiPolicyReasonCodeSchema>
+
 export const aiGateEvaluationStatusSchema = z.enum([
   'ENABLED',
   'DISABLED',
@@ -134,6 +169,67 @@ export const aiGatingResultSchema = z.object({
 
 export type AiGatingResult = z.infer<typeof aiGatingResultSchema>
 
+export const aiQuotaEvaluationScopeSchema = z.enum([
+  'MODULE',
+  'UNIT',
+])
+
+export type AiQuotaEvaluationScope = z.infer<typeof aiQuotaEvaluationScopeSchema>
+
+export const aiQuotaEvaluationStatusSchema = z.enum([
+  'AVAILABLE',
+  'EXCEEDED',
+  'NOT_CONFIGURED',
+  'INVALID_CONFIGURATION',
+  'NOT_EVALUATED',
+])
+
+export type AiQuotaEvaluationStatus = z.infer<
+  typeof aiQuotaEvaluationStatusSchema
+>
+
+export const aiQuotaEvaluationSchema = z.object({
+  key: z.string().trim().min(1),
+  scope: aiQuotaEvaluationScopeSchema,
+  environmentKey: z.string().trim().min(1).nullable().default(null),
+  status: aiQuotaEvaluationStatusSchema,
+  rawValue: z.string().trim().min(1).nullable().default(null),
+  limit: z.number().int().nonnegative().nullable().default(null),
+  used: z.number().int().nonnegative().nullable().default(null),
+  requested: z.number().int().nonnegative().nullable().default(null),
+  remaining: z.number().int().nonnegative().nullable().default(null),
+})
+
+export type AiQuotaEvaluation = z.infer<typeof aiQuotaEvaluationSchema>
+
+export const aiPolicyStateSchema = z.enum([
+  'ENABLED',
+  'DISABLED',
+  'NOT_SUPPORTED',
+  'UNAVAILABLE',
+])
+
+export type AiPolicyState = z.infer<typeof aiPolicyStateSchema>
+
+export const aiPolicyDecisionSchema = z.object({
+  failClosed: z.literal(true),
+  allowed: z.boolean(),
+  state: aiPolicyStateSchema,
+  reasonCode: aiPolicyReasonCodeSchema,
+})
+
+export type AiPolicyDecision = z.infer<typeof aiPolicyDecisionSchema>
+
+export const aiPolicyResultSchema = z.object({
+  request: aiInferenceRequestSchema,
+  gating: aiGatingResultSchema,
+  decision: aiPolicyDecisionSchema,
+  moduleQuota: aiQuotaEvaluationSchema,
+  unitQuota: aiQuotaEvaluationSchema,
+})
+
+export type AiPolicyResult = z.infer<typeof aiPolicyResultSchema>
+
 const aiInterpretedSignalValueSchema = z.union([
   z.string().trim().min(1),
   z.number(),
@@ -171,6 +267,9 @@ export type AiTechnicalMetadata = z.infer<typeof aiTechnicalMetadataSchema>
 export const aiLayerErrorCodeSchema = z.enum([
   'DISABLED',
   'NOT_SUPPORTED',
+  'QUOTA_EXCEEDED',
+  'QUOTA_NOT_CONFIGURED',
+  'TEMPORARILY_UNAVAILABLE',
   'OPERATIONAL_FAILURE',
 ])
 
@@ -191,16 +290,6 @@ const aiAllowedGateDecisionSchema = aiGateDecisionSchema.extend({
   reasonCode: z.literal('ENABLED'),
 })
 
-const aiBlockedGateDecisionSchema = aiGateDecisionSchema.extend({
-  allowed: z.literal(false),
-  state: z.enum(['DISABLED', 'NOT_SUPPORTED']),
-  reasonCode: z.enum([
-    'DISABLED_BY_POLICY',
-    'MISSING_CONFIGURATION',
-    'NOT_SUPPORTED',
-  ]),
-})
-
 export const aiCompletedOutcomeSchema = z.object({
   status: z.literal('COMPLETED'),
   request: aiInferenceRequestSchema,
@@ -214,9 +303,15 @@ export type AiCompletedOutcome = z.infer<typeof aiCompletedOutcomeSchema>
 export const aiBlockedOutcomeSchema = z.object({
   status: z.literal('BLOCKED'),
   request: aiInferenceRequestSchema,
-  gateDecision: aiBlockedGateDecisionSchema,
+  gateDecision: aiGateDecisionSchema,
   error: aiLayerErrorSchema.extend({
-    code: z.enum(['DISABLED', 'NOT_SUPPORTED']),
+    code: z.enum([
+      'DISABLED',
+      'NOT_SUPPORTED',
+      'QUOTA_EXCEEDED',
+      'QUOTA_NOT_CONFIGURED',
+      'TEMPORARILY_UNAVAILABLE',
+    ]),
   }),
   technicalMetadata: aiTechnicalMetadataSchema,
 })
