@@ -18,6 +18,7 @@ import {
   type AiFailedOutcome,
   type AiGateDecision,
   type AiGateReasonCode,
+  type AiGatingResult,
   type AiInferenceFlagKeys,
   type AiInferenceModule,
   type AiInferenceRequest,
@@ -215,5 +216,43 @@ export function createAiMissingConfigurationOutcome(
   return createAiBlockedOutcome(request, {
     message,
     reasonCode: 'MISSING_CONFIGURATION',
+  })
+}
+
+export function createAiBlockedOutcomeFromGatingResult(
+  gatingResult: AiGatingResult,
+): AiBlockedOutcome {
+  if (gatingResult.decision.allowed) {
+    throw new Error(
+      'Cannot create a blocked AI outcome from a gating result that is enabled.',
+    )
+  }
+
+  const blockedReasonCode = gatingResult.decision.reasonCode
+
+  if (blockedReasonCode === 'ENABLED') {
+    throw new Error(
+      'Blocked AI gating results cannot carry the ENABLED reason code.',
+    )
+  }
+
+  const messageByReasonCode: Record<
+    Exclude<AiGateReasonCode, 'ENABLED'>,
+    string
+  > = {
+    DISABLED_BY_POLICY:
+      'AI inference is disabled by the current system policy.',
+    MISSING_CONFIGURATION:
+      'AI inference is disabled because the required AI flag configuration is missing or invalid.',
+    NOT_SUPPORTED:
+      'AI inference is not supported by the current internal AI contract.',
+  }
+
+  return createAiBlockedOutcome(gatingResult.request, {
+    details: {
+      evaluations: gatingResult.evaluations,
+    },
+    message: messageByReasonCode[blockedReasonCode],
+    reasonCode: blockedReasonCode,
   })
 }

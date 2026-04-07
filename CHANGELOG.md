@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O `B1-T02` da Fase 3 agora centraliza o gating server-side da IA em um unico funil fail-closed, avaliando `ai.enabled`, flags por modulo e suporte minimo do contrato antes de qualquer caminho futuro de custo, job ou retry.
 - O Bloco 1 da Fase 3 iniciou sua implementacao real de forma controlada pelo `B1-T01`, abrindo o contrato interno central da camada de IA, a fronteira futura com adaptadores externos e a base de resultado/erro/auditoria sem integrar provider real nem liberar consumo pago.
 - O inicio da implementacao do Bloco 1 da Fase 3 agora possui um plano proprio de Sprint 1, restrito a `B1-T01`, `B1-T02` e `B1-T03`, com slices pequenos, reversiveis e validaveis.
 - O Bloco 1 da Fase 3 agora possui backlog tecnico por camadas, com ordem de execucao, dependencias reais, validacao por item e estrategia minima de testes, sem abrir implementacao.
@@ -79,6 +80,7 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `features/ai/gating.ts` como autoridade central inicial de gating da IA da Fase 3, com hierarquia minima de flags, motivo de bloqueio padronizado, preparacao para escopo por unidade e resolucao compatível com o contrato do `B1-T01`.
 - `features/ai/` como fundacao inicial da camada interna de IA da Fase 3, com contrato normalizado de requisicao, resultado assistivo, erro padronizado, decisao compativel com fail-closed e snapshot minimo para auditoria.
 - `server/integrations/ai/contract.ts` como fronteira provider-neutral para adaptadores futuros da Fase 3, mantendo a UI e o dominio desacoplados de formatos externos.
 - `docs/phase3-block1-sprint1-plan.md` como handoff imediato do primeiro sprint tecnico do Bloco 1 da Fase 3.

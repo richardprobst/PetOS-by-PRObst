@@ -4,6 +4,9 @@ export const AI_GLOBAL_FLAG_KEY = 'ai.enabled'
 export const AI_IMAGE_ANALYSIS_FLAG_KEY = 'ai.imageAnalysis.enabled'
 export const AI_PREDICTIVE_INSIGHTS_FLAG_KEY = 'ai.predictiveInsights.enabled'
 export const AI_UNIT_FLAG_KEY = 'ai.enabledByUnit'
+export const AI_GLOBAL_ENV_KEY = 'AI_ENABLED'
+export const AI_IMAGE_ANALYSIS_ENV_KEY = 'AI_IMAGE_ANALYSIS_ENABLED'
+export const AI_PREDICTIVE_INSIGHTS_ENV_KEY = 'AI_PREDICTIVE_INSIGHTS_ENABLED'
 
 export const aiInferenceModuleSchema = z.enum([
   'IMAGE_ANALYSIS',
@@ -23,6 +26,11 @@ export type AiInferenceOrigin = z.infer<typeof aiInferenceOriginSchema>
 export const aiModuleFlagKeyMap = {
   IMAGE_ANALYSIS: AI_IMAGE_ANALYSIS_FLAG_KEY,
   PREDICTIVE_INSIGHTS: AI_PREDICTIVE_INSIGHTS_FLAG_KEY,
+} as const satisfies Record<AiInferenceModule, string>
+
+export const aiModuleEnvFlagKeyMap = {
+  IMAGE_ANALYSIS: AI_IMAGE_ANALYSIS_ENV_KEY,
+  PREDICTIVE_INSIGHTS: AI_PREDICTIVE_INSIGHTS_ENV_KEY,
 } as const satisfies Record<AiInferenceModule, string>
 
 export const aiInferenceFlagKeysSchema = z.object({
@@ -80,6 +88,34 @@ export const aiGateReasonCodeSchema = z.enum([
 
 export type AiGateReasonCode = z.infer<typeof aiGateReasonCodeSchema>
 
+export const aiGateEvaluationStatusSchema = z.enum([
+  'ENABLED',
+  'DISABLED',
+  'MISSING',
+  'INVALID',
+  'NOT_EVALUATED',
+])
+
+export type AiGateEvaluationStatus = z.infer<typeof aiGateEvaluationStatusSchema>
+
+export const aiGateEvaluationSourceSchema = z.enum([
+  'ENVIRONMENT',
+  'UNIT_SCOPE',
+])
+
+export type AiGateEvaluationSource = z.infer<typeof aiGateEvaluationSourceSchema>
+
+export const aiGateEvaluationSchema = z.object({
+  key: z.string().trim().min(1),
+  source: aiGateEvaluationSourceSchema,
+  environmentKey: z.string().trim().min(1).nullable().default(null),
+  status: aiGateEvaluationStatusSchema,
+  normalizedValue: z.boolean().nullable().default(null),
+  rawValue: z.string().trim().min(1).nullable().default(null),
+})
+
+export type AiGateEvaluation = z.infer<typeof aiGateEvaluationSchema>
+
 export const aiGateDecisionSchema = z.object({
   failClosed: z.literal(true),
   allowed: z.boolean(),
@@ -89,6 +125,14 @@ export const aiGateDecisionSchema = z.object({
 })
 
 export type AiGateDecision = z.infer<typeof aiGateDecisionSchema>
+
+export const aiGatingResultSchema = z.object({
+  request: aiInferenceRequestSchema,
+  decision: aiGateDecisionSchema,
+  evaluations: z.array(aiGateEvaluationSchema).min(1),
+})
+
+export type AiGatingResult = z.infer<typeof aiGatingResultSchema>
 
 const aiInterpretedSignalValueSchema = z.union([
   z.string().trim().min(1),
