@@ -111,28 +111,27 @@ Para a rodada curta de ratificacao humana que fecha apenas `B1`, `B2` e `C1`, us
 - **ID da decisao**: `B1`
 - **Nome da decisao**: consentimento para uso de imagem
 - **Resumo curto**: define a base juridica e operacional para analise de imagem
-- **Status**: `pendente`
+- **Status**: `aprovado`
 - **Decisao recomendada**: opt-in por fluxo e por finalidade explicita
-- **Ajustes exigidos**:
-  - aprovar finalidade inicial exata;
-  - aprovar texto base de consentimento;
-  - aprovar politica minima de revogacao.
+- **Ajustes exigidos**: nenhum antes do Bloco 1
 - **O que fica bloqueado se permanecer pendente**: inicio de qualquer implementacao de analise de imagem
-- **Observacoes executivas**: pendencia critica; nao deve ser empurrada para depois do Bloco 1
+- **Observacoes executivas**:
+  - consentimento deve ser separado de aceites genericos de cadastro;
+  - a UI deve deixar explicito que o uso e assistivo e nao diagnostico.
 
 ### B2 - Retencao de imagem e resultados
 
 - **ID da decisao**: `B2`
 - **Nome da decisao**: retencao e descarte
 - **Resumo curto**: define o que o sistema guarda, por quanto tempo e o que deve ser descartado
-- **Status**: `pendente`
+- **Status**: `aprovado com ajustes`
 - **Decisao recomendada**: reter imagem original quando necessaria, reter resultado interpretado e descartar payload bruto por padrao, com expiracao automatica
 - **Ajustes exigidos**:
-  - aprovar janela de retencao;
-  - aprovar regra de purge;
-  - aprovar se ha excecao para auditoria ou disputa operacional.
+  - prazo base de retencao tecnica: `180 dias`;
+  - excecoes permitidas: auditoria formal, incidente operacional, contestacao documentada, exigencia regulatoria ou contratual especifica;
+  - retencao estendida apenas por perfil administrativo global com trilha de auditoria obrigatoria.
 - **O que fica bloqueado se permanecer pendente**: desenho de storage e metadados de IA
-- **Observacoes executivas**: pendencia critica de LGPD e custo
+- **Observacoes executivas**: a direcao conservadora de LGPD e custo foi formalmente ratificada
 
 ### B3 - Visibilidade dos resultados
 
@@ -156,14 +155,14 @@ Para a rodada curta de ratificacao humana que fecha apenas `B1`, `B2` e `C1`, us
 - **ID da decisao**: `C1`
 - **Nome da decisao**: compartilhamento de cliente e pet entre unidades
 - **Resumo curto**: define identidade, ownership, historico e risco de vazamento cross-unit
-- **Status**: `pendente`
+- **Status**: `aprovado com ajustes`
 - **Decisao recomendada**: modelo mestre com vinculo por unidade
 - **Ajustes exigidos**:
-  - aprovar se o tutor ve historico consolidado ou recortado;
-  - aprovar regra de cadastro duplicado vs identidade unica;
-  - aprovar criterio de visibilidade cross-unit para operacao interna.
+  - perfis locais so veem registros vinculados a propria unidade; visao cross-unit apenas para perfis globais explicitamente autorizados;
+  - so a unidade vinculada ao registro pode editar dados operacionais locais; alteracao estrutural cross-unit apenas por papel global autorizado;
+  - ownership principal do cadastro na unidade de criacao inicial, com reatribuicao auditada por papel global.
 - **O que fica bloqueado se permanecer pendente**: inicio do Bloco 2 e parte da fundacao de multiunidade
-- **Observacoes executivas**: pendencia critica de arquitetura e dados
+- **Observacoes executivas**: a ratificacao preserva identidade unica sem abrir visibilidade irrestrita entre unidades
 
 ### C2 - Compartilhamento de estoque, equipe e servicos
 
@@ -281,6 +280,7 @@ Para a rodada curta de ratificacao humana que fecha apenas `B1`, `B2` e `C1`, us
 
 - `A1` arquitetura de integracao de IA
 - `A5` politica de habilitacao e desligamento da IA
+- `B1` consentimento para analise de imagem
 - `D2` revisao humana
 - `E3` natureza da saida preditiva
 
@@ -289,7 +289,9 @@ Para a rodada curta de ratificacao humana que fecha apenas `B1`, `B2` e `C1`, us
 - `A2` modelo de hospedagem da IA
 - `A3` modo de execucao
 - `A4` fallback e controle de custo
+- `B2` retencao de imagem e resultados
 - `B3` visibilidade dos resultados
+- `C1` compartilhamento de cliente e pet entre unidades
 - `C2` compartilhamento de estoque, equipe e servicos
 - `C3` visao global, papeis globais e troca de contexto
 - `D3` linguagem obrigatoria de UI
@@ -297,9 +299,7 @@ Para a rodada curta de ratificacao humana que fecha apenas `B1`, `B2` e `C1`, us
 
 ### C. Pendencias criticas
 
-- `B1` consentimento para analise de imagem
-- `B2` retencao de imagem e resultados
-- `C1` compartilhamento de cliente e pet entre unidades
+- nenhuma pendencia critica aberta neste momento
 
 ### D. Pendencias nao bloqueantes
 
@@ -317,8 +317,8 @@ Para a rodada curta de ratificacao humana que fecha apenas `B1`, `B2` e `C1`, us
 ### Pacote minimo recomendado para aprovacao imediata
 
 - aprovar `A1`, `A5`, `D2` e `E3`;
-- aceitar `A2`, `A3`, `A4`, `B3`, `C2`, `C3`, `D3` e `E2` como `aprovado com ajustes`;
-- manter `B1`, `B2` e `C1` como pendencias criticas ate decisao humana explicita.
+- aprovar `B1`;
+- aceitar `A2`, `A3`, `A4`, `B2`, `B3`, `C1`, `C2`, `C3`, `D3` e `E2` como `aprovado com ajustes`.
 
 ### Pacote que pode ficar aprovado com ajustes
 
@@ -332,33 +332,26 @@ Para a rodada curta de ratificacao humana que fecha apenas `B1`, `B2` e `C1`, us
 
 ### O que deve permanecer pendente
 
-- consentimento final de imagem;
-- politica final de retencao;
-- compartilhamento final de cliente/pet entre unidades;
 - escolha do primeiro caso exato de imagem;
 - escolha do primeiro insight exato do preditivo.
 
 ### A Fase 3 pode iniciar o Bloco 1?
 
-- **Ainda nao**
+- **Sim**
 
 ### Se nao, quais decisoes ainda bloqueiam?
 
-- `B1`
-- `B2`
-- `C1`
-
-Para registrar a resposta humana final desses tres itens, use a rodada curta em [docs/phase3-block1-approval-round.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-approval-round.md).
+- nenhuma, desde que o pacote ratificado nesta rodada seja preservado
 
 ### Se sim no futuro, sob quais condicoes?
 
-O Bloco 1 pode ser autorizado quando:
+O Bloco 1 esta autorizado sob estas condicoes:
 
-- `B1` estiver ao menos `aprovado com ajustes`;
-- `B2` estiver ao menos `aprovado com ajustes`;
-- `C1` estiver ao menos `aprovado com ajustes`;
-- o pacote `A1`, `A2`, `A3`, `A4` e `A5` estiver formalmente aceito;
-- a diretriz de IA desligada por padrao permanecer inalterada.
+- `B1` mantido como `aprovado`;
+- `B2` mantido como `aprovado com ajustes`;
+- `C1` mantido como `aprovado com ajustes`;
+- o pacote `A1`, `A2`, `A3`, `A4` e `A5` permanece formalmente aceito;
+- a diretriz de IA desligada por padrao permanece inalterada.
 
 ---
 
@@ -392,3 +385,8 @@ O Bloco 1 pode ser autorizado quando:
 - politica minima de consentimento e retencao aprovada;
 - regra central de identidade multiunidade aprovada;
 - nenhum item critico restante em `pendente`.
+
+### Estado atual do gate
+
+- **Bloco 1 autorizado**
+- Ratificacao final registrada em [docs/phase3-block1-approval-round.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-approval-round.md)

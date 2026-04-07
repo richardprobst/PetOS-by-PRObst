@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- A rodada final de ratificacao humana da Fase 3 aprovou `B1` e aprovou com ajustes `B2` e `C1`, destravando documentalmente o Bloco 1 sem iniciar implementacao.
 - O gate documental do Bloco 1 da Fase 3 passou a ter uma rodada curta de ratificacao humana separada para `B1`, `B2` e `C1`, deixando explicito quando o bloco continua bloqueado e em que condicao ele pode ser autorizado.
 - A diretriz de IA da Fase 3 passou a exigir feature flags server-side, fail-closed, desligamento operacional rapido e governanca de custo por modulo e por unidade antes de qualquer implementacao.
 - A documentacao principal passou a refletir o estado atual do host real: o rollout tecnico ja foi fechado na Hostinger e o proximo passo recomendado deixou de ser rollout para virar homologacao operacional guiada por gaps reais de uso.

@@ -103,20 +103,25 @@ Ela apenas fecha o gate documental do Bloco 1 da Fase 3.
 
 ## Resposta consolidada do decisor
 
-Sem ratificacao humana explicita registrada no repositorio nesta rodada, o estado formal atual permanece:
+Ratificacao humana registrada nesta rodada:
 
-- `B1`: `pendente`
-- `B2`: `pendente`
-- `C1`: `pendente`
+- `B1`: `aprovado`
+- `B2`: `aprovado com ajustes`
+- `C1`: `aprovado com ajustes`
 
-Leitura pronta para decisao:
+Pacote ratificado:
 
-- se o decisor aceitar a recomendacao sem alterar a direcao material:
-  - `B1` passa para `aprovado`
-  - `B2` passa para `aprovado com ajustes`
-  - `C1` passa para `aprovado com ajustes`
-- se houver discordancia material em qualquer um dos tres:
-  - o Bloco 1 continua bloqueado ate nova ratificacao
+- `B1`
+  - analise de imagem so pode ocorrer com opt-in por fluxo e por finalidade explicita;
+  - o consentimento deve ser separado de aceites genericos de cadastro;
+  - a UI deve deixar explicito que o uso e assistivo e nao diagnostico.
+- `B2`
+  - imagem original so e retida quando houver necessidade operacional real;
+  - resultado interpretado pode ser retido;
+  - payload bruto de provider deve ser descartado por padrao;
+  - artefatos tecnicos devem expirar automaticamente.
+- `C1`
+  - adotar modelo mestre com vinculo por unidade.
 
 ---
 
@@ -126,15 +131,15 @@ Estes ajustes so se aplicam se o decisor marcar `aprovado com ajustes`.
 
 ### B2
 
-- definir prazo base de retencao;
-- definir excecoes de retencao;
-- definir quem autoriza retencao estendida.
+- prazo base de retencao tecnica: `180 dias`;
+- excecoes permitidas: auditoria formal, incidente operacional, contestacao documentada, exigencia regulatoria ou contratual especifica;
+- quem pode autorizar retencao estendida: perfil administrativo global com trilha de auditoria obrigatoria.
 
 ### C1
 
-- definir visibilidade entre unidades;
-- definir regra de edicao cross-unit;
-- definir ownership principal do cadastro.
+- visibilidade entre unidades: perfis locais so veem registros vinculados a propria unidade; visao cross-unit apenas para perfis globais explicitamente autorizados;
+- edicao cross-unit: so a unidade vinculada ao registro pode editar dados operacionais locais; alteracao estrutural cross-unit apenas por papel global autorizado;
+- ownership principal do cadastro: unidade de criacao inicial, com possibilidade de reatribuicao auditada por papel global.
 
 ---
 
@@ -142,31 +147,27 @@ Estes ajustes so se aplicam se o decisor marcar `aprovado com ajustes`.
 
 ### Estado formal atual
 
-- **Bloco 1 nao autorizado**
+- **Bloco 1 autorizado**
 
 ### Justificativa curta
 
-O gate continua fechado porque as tres pendencias criticas ainda nao receberam ratificacao humana formal no repositorio:
-
-- `B1`
-- `B2`
-- `C1`
+O gate abriu porque as tres pendencias criticas receberam ratificacao humana formal nesta rodada e sairam de `pendente` sem nenhum item `rejeitado`.
 
 ### Condicao objetiva para abrir o gate
 
-O Bloco 1 fica autorizado quando:
-
-- `B1` sair de `pendente`;
-- `B2` sair de `pendente`;
-- `C1` sair de `pendente`;
-- nenhum dos tres for marcado como `rejeitado`.
-
-### Leitura executiva
-
-Se o decisor adotar o pacote recomendado desta rodada sem alteracao material, o resultado esperado passa a ser:
+O pacote ratificado que autoriza o Bloco 1 ficou assim:
 
 - `B1`: `aprovado`
 - `B2`: `aprovado com ajustes`
 - `C1`: `aprovado com ajustes`
-- **Bloco 1 autorizado**
+- nenhum dos tres marcado como `rejeitado`
 
+### Leitura executiva
+
+O Bloco 1 da Fase 3 esta documentalmente destravado, mas a autorizacao nao altera as regras ja aprovadas para governanca de IA:
+
+- IA segue desligada por padrao;
+- backend segue como autoridade;
+- `ai.enabled`, `ai.imageAnalysis.enabled` e `ai.predictiveInsights.enabled` continuam obrigatorios;
+- comportamento `fail-closed`;
+- nenhuma chamada paga, job, retry ou consumo em background quando a IA estiver desligada.
