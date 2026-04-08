@@ -4,6 +4,12 @@ import { prisma } from '@/server/db/prisma'
 import { AppError } from '@/server/http/errors'
 import { writeAuditLog } from '@/server/audit/logging'
 import type { CreatePetInput, ListPetsQuery, UpdatePetInput } from '@/features/pets/schemas'
+import {
+  assertActorCanAccessOwnershipBinding,
+  assertActorCanStructurallyWriteOwnershipBinding,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
+import { buildClientOwnershipBinding } from '@/features/clients/ownership'
 
 const petDetailsInclude = Prisma.validator<Prisma.PetInclude>()({
   client: {
@@ -13,7 +19,11 @@ const petDetailsInclude = Prisma.validator<Prisma.PetInclude>()({
   },
 })
 
-async function assertClientAccess(actor: AuthenticatedUserData, clientId: string) {
+async function assertClientAccess(
+  actor: AuthenticatedUserData,
+  clientId: string,
+  operation: 'READ' | 'STRUCTURAL_WRITE' = 'READ',
+) {
   const client = await prisma.client.findUnique({
     where: {
       userId: clientId,
@@ -27,14 +37,24 @@ async function assertClientAccess(actor: AuthenticatedUserData, clientId: string
     throw new AppError('NOT_FOUND', 404, 'Client not found for pet operation.')
   }
 
-  if (actor.unitId && client.user.unitId && actor.unitId !== client.user.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this client.')
+  const ownership = buildClientOwnershipBinding(client.user.unitId)
+
+  if (operation === 'STRUCTURAL_WRITE') {
+    assertActorCanStructurallyWriteOwnershipBinding(actor, ownership, {
+      requestedUnitId: client.user.unitId,
+    })
+  } else {
+    assertActorCanAccessOwnershipBinding(actor, ownership, {
+      requestedUnitId: client.user.unitId,
+    })
   }
 
   return client
 }
 
 export async function listPets(actor: AuthenticatedUserData, query: ListPetsQuery) {
+  const unitId = resolveScopedUnitId(actor)
+
   return prisma.pet.findMany({
     where: {
       ...(query.clientId ? { clientId: query.clientId } : {}),
@@ -54,11 +74,11 @@ export async function listPets(actor: AuthenticatedUserData, query: ListPetsQuer
             ],
           }
         : {}),
-      ...(actor.unitId
+      ...(unitId
         ? {
             client: {
               user: {
-                unitId: actor.unitId,
+                unitId,
               },
             },
           }
@@ -83,15 +103,16 @@ export async function getPetById(actor: AuthenticatedUserData, petId: string) {
     throw new AppError('NOT_FOUND', 404, 'Pet not found.')
   }
 
-  if (actor.unitId && pet.client.user.unitId && actor.unitId !== pet.client.user.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this pet.')
-  }
+  const ownership = buildClientOwnershipBinding(pet.client.user.unitId)
+  assertActorCanAccessOwnershipBinding(actor, ownership, {
+    requestedUnitId: pet.client.user.unitId,
+  })
 
   return pet
 }
 
 export async function createPet(actor: AuthenticatedUserData, input: CreatePetInput) {
-  const client = await assertClientAccess(actor, input.clientId)
+  const client = await assertClientAccess(actor, input.clientId, 'STRUCTURAL_WRITE')
 
   return prisma.$transaction(async (tx) => {
     const pet = await tx.pet.create({
@@ -126,8 +147,15 @@ export async function createPet(actor: AuthenticatedUserData, input: CreatePetIn
 
 export async function updatePet(actor: AuthenticatedUserData, petId: string, input: UpdatePetInput) {
   const existingPet = await getPetById(actor, petId)
+  assertActorCanStructurallyWriteOwnershipBinding(
+    actor,
+    buildClientOwnershipBinding(existingPet.client.user.unitId),
+    {
+      requestedUnitId: existingPet.client.user.unitId,
+    },
+  )
   const targetClientId = input.clientId ?? existingPet.clientId
-  const client = await assertClientAccess(actor, targetClientId)
+  const client = await assertClientAccess(actor, targetClientId, 'STRUCTURAL_WRITE')
 
   return prisma.$transaction(async (tx) => {
     const pet = await tx.pet.update({

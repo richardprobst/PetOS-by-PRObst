@@ -4,13 +4,18 @@ import { prisma } from '@/server/db/prisma'
 import { AppError } from '@/server/http/errors'
 import { hashPassword } from '@/server/auth/password'
 import { normalizeEmailAddress } from '@/server/auth/user-access'
-import { resolveScopedUnitId } from '@/server/authorization/scope'
+import {
+  assertActorCanAccessOwnershipBinding,
+  assertActorCanStructurallyWriteOwnershipBinding,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { writeAuditLog } from '@/server/audit/logging'
 import type {
   CreateClientInput,
   ListClientsQuery,
   UpdateClientInput,
 } from '@/features/clients/schemas'
+import { buildClientOwnershipBinding } from '@/features/clients/ownership'
 
 const clientDetailsInclude = Prisma.validator<Prisma.ClientInclude>()({
   user: true,
@@ -18,15 +23,13 @@ const clientDetailsInclude = Prisma.validator<Prisma.ClientInclude>()({
 })
 
 function buildClientSearchWhere(
-  actor: AuthenticatedUserData,
+  unitId: string,
   query: ListClientsQuery,
 ): Prisma.ClientWhereInput {
   const where: Prisma.ClientWhereInput = {}
   const userWhere: Prisma.UserWhereInput = {}
 
-  if (actor.unitId) {
-    userWhere.unitId = actor.unitId
-  }
+  userWhere.unitId = unitId
 
   if (query.active !== undefined) {
     userWhere.active = query.active
@@ -70,8 +73,10 @@ function buildClientSearchWhere(
 }
 
 export async function listClients(actor: AuthenticatedUserData, query: ListClientsQuery) {
+  const unitId = resolveScopedUnitId(actor)
+
   return prisma.client.findMany({
-    where: buildClientSearchWhere(actor, query),
+    where: buildClientSearchWhere(unitId, query),
     include: clientDetailsInclude,
     orderBy: {
       user: {
@@ -93,15 +98,23 @@ export async function getClientById(actor: AuthenticatedUserData, clientId: stri
     throw new AppError('NOT_FOUND', 404, 'Client not found.')
   }
 
-  if (actor.unitId && client.user.unitId && actor.unitId !== client.user.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this client.')
-  }
+  const ownership = buildClientOwnershipBinding(client.user.unitId)
+  assertActorCanAccessOwnershipBinding(actor, ownership, {
+    requestedUnitId: client.user.unitId,
+  })
 
   return client
 }
 
 export async function createClient(actor: AuthenticatedUserData, input: CreateClientInput) {
   const unitId = resolveScopedUnitId(actor, input.unitId ?? null)
+  assertActorCanStructurallyWriteOwnershipBinding(
+    actor,
+    buildClientOwnershipBinding(unitId),
+    {
+      requestedUnitId: input.unitId ?? null,
+    },
+  )
   const tutorProfile = await prisma.accessProfile.findUnique({
     where: {
       name: 'Tutor',
@@ -179,7 +192,14 @@ export async function updateClient(
   input: UpdateClientInput,
 ) {
   const existingClient = await getClientById(actor, clientId)
-  const unitId = resolveScopedUnitId(actor, input.unitId ?? existingClient.user.unitId ?? null)
+  const existingUnitId = existingClient.user.unitId
+  const unitId = resolveScopedUnitId(actor, input.unitId ?? existingUnitId ?? null)
+  const ownership = buildClientOwnershipBinding(existingUnitId)
+  const targetUnitId = input.unitId ?? existingUnitId ?? null
+
+  assertActorCanStructurallyWriteOwnershipBinding(actor, ownership, {
+    requestedUnitId: targetUnitId,
+  })
   const passwordHash = input.password ? await hashPassword(input.password) : undefined
 
   return prisma.$transaction(async (tx) => {

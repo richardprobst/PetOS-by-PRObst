@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O `B1-T08` da Fase 3 agora conecta ownership e visibilidade base de cliente/pet ao contexto multiunidade server-side, aplicando leitura local, leitura global autorizada e bloqueio de edicao cross-unit por padrao sem abrir multiunidade operacional completa.
 - O `B1-T07` da Fase 3 agora adiciona a fundacao server-side de contexto de unidade e isolamento base multiunidade, com snapshot de sessao, decisao central de escopo, bloqueio cross-unit por padrao e permissao global explicita para leitura ou edicao estrutural sem abrir a operacao multiunidade completa.
 - O `B1-T06` da Fase 3 agora adiciona metadados operacionais provider-neutral ao envelope da IA, representando provider/modelo declarados, classe de custo estimado, fallback e observabilidade minima sem integrar provider real, billing real ou storage definitivo.
 - O `B1-T05` da Fase 3 agora adiciona a politica transversal de retencao e descarte da camada de IA, classificando resultado interpretado, metadado tecnico, payload bruto e referencia de entrada no envelope provider-neutral sem abrir storage definitivo, payload cru de provider ou schema.
@@ -86,6 +87,8 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `features/clients/ownership.ts` como contrato minimo de ownership de cliente/pet por unidade, reutilizado pela camada de autorizacao multiunidade.
+- Cobertura de testes `tests/server/multiunit/client-pet-ownership.test.ts` para leitura local, leitura global autorizada e bloqueio de edicao cross-unit sem permissao global.
 - `features/ai/execution.ts` como orquestrador inicial server-side do envelope de execucao da IA da Fase 3.
 - `docs/phase3-block1-sprint1-exit-gate.md` como registro formal da decisao de saida do Sprint 1 do Bloco 1 da Fase 3.
 - `features/ai/policy.ts` como camada central inicial de quota/politica da IA da Fase 3, com quotas base por modulo, previsao explicita de quota por unidade e resolucao provider-neutral integrada ao contrato do Sprint 1.
