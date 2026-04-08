@@ -4,6 +4,7 @@ import {
   type AiQuotaEnvironment,
   type AiQuotaSnapshotInput,
 } from './policy'
+import { createAiRetentionPolicySnapshot } from './retention'
 import {
   aiBlockedExecutionEnvelopeSchema,
   aiExecutionRecordSchema,
@@ -54,6 +55,7 @@ function createPendingExecutionEnvelope(
   policy: AiPendingExecutionEnvelope['policy'],
 ): AiPendingExecutionEnvelope {
   const technicalMetadata = createAiTechnicalMetadata()
+  const retention = createAiRetentionPolicySnapshot(request)
 
   return aiPendingExecutionEnvelopeSchema.parse({
     execution: createExecutionRecord({
@@ -66,6 +68,7 @@ function createPendingExecutionEnvelope(
     outcome: null,
     policy,
     request,
+    retention,
     status: 'PENDING',
     technicalMetadata,
   })
@@ -76,6 +79,8 @@ function createBlockedExecutionEnvelope(
   policy: AiBlockedExecutionEnvelope['policy'],
   outcome: AiBlockedOutcome,
 ): AiBlockedExecutionEnvelope {
+  const retention = createAiRetentionPolicySnapshot(request)
+
   return aiBlockedExecutionEnvelopeSchema.parse({
     execution: createExecutionRecord({
       errorCode: outcome.error.code,
@@ -88,6 +93,7 @@ function createBlockedExecutionEnvelope(
     outcome,
     policy,
     request,
+    retention,
     status: 'BLOCKED',
     technicalMetadata: outcome.technicalMetadata,
   })
@@ -98,6 +104,7 @@ function createFailedExecutionEnvelope(
   error: unknown,
 ): AiFailedExecutionEnvelope {
   const technicalMetadata = createAiTechnicalMetadata()
+  const retention = createAiRetentionPolicySnapshot(request)
   const outcome = createAiFailedOutcome(request, {
     details: normalizeExecutionErrorDetails(error),
     message:
@@ -120,6 +127,7 @@ function createFailedExecutionEnvelope(
     outcome,
     policy: null,
     request,
+    retention,
     status: 'FAILED',
     technicalMetadata: outcome.technicalMetadata,
   })

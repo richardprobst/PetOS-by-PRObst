@@ -48,6 +48,7 @@ test('startAiInferenceExecution blocks the request when gating denies execution'
   assert.equal(envelope.execution.state, 'BLOCKED')
   assert.equal(envelope.execution.nextStep, 'NONE')
   assert.equal(envelope.policy.moduleQuota.status, 'NOT_EVALUATED')
+  assert.equal(envelope.retention.policyVersion, 'PHASE3_B2_BASELINE')
 })
 
 test('startAiInferenceExecution blocks the request when quota policy denies execution', () => {
@@ -85,6 +86,18 @@ test('startAiInferenceExecution returns a pending execution envelope when policy
   assert.equal(envelope.execution.providerStatus, 'NOT_STARTED')
   assert.equal(envelope.execution.jobStatus, 'NOT_SCHEDULED')
   assert.equal(envelope.technicalMetadata.providerId, null)
+  assert.equal(
+    envelope.retention.artifacts.find(
+      (artifact) => artifact.artifactCategory === 'RAW_PROVIDER_PAYLOAD',
+    )?.status,
+    'DISCARD_BY_DEFAULT',
+  )
+  assert.equal(
+    envelope.retention.artifacts.find(
+      (artifact) => artifact.artifactCategory === 'TECHNICAL_METADATA',
+    )?.baseRetentionDays,
+    180,
+  )
 })
 
 test('startAiInferenceExecution keeps the minimum request, unit and actor references in the execution envelope', () => {
@@ -115,4 +128,5 @@ test('startAiInferenceExecution returns a controlled operational failure when th
   assert.equal(envelope.execution.errorCode, 'OPERATIONAL_FAILURE')
   assert.equal(envelope.execution.policyReasonCode, null)
   assert.equal(envelope.technicalMetadata.providerId, null)
+  assert.equal(envelope.retention.policyVersion, 'PHASE3_B2_BASELINE')
 })

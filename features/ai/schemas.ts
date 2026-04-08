@@ -264,6 +264,97 @@ export const aiTechnicalMetadataSchema = z.object({
 
 export type AiTechnicalMetadata = z.infer<typeof aiTechnicalMetadataSchema>
 
+export const AI_TECHNICAL_RETENTION_DAYS = 180
+
+export const aiRetentionArtifactCategorySchema = z.enum([
+  'INTERPRETED_RESULT',
+  'TECHNICAL_METADATA',
+  'RAW_PROVIDER_PAYLOAD',
+  'INPUT_REFERENCE',
+])
+
+export type AiRetentionArtifactCategory = z.infer<
+  typeof aiRetentionArtifactCategorySchema
+>
+
+export const aiRetentionStatusSchema = z.enum([
+  'RETAINABLE',
+  'DISCARD_BY_DEFAULT',
+  'CONDITIONAL',
+  'TRANSIENT_ONLY',
+])
+
+export type AiRetentionStatus = z.infer<typeof aiRetentionStatusSchema>
+
+export const aiRetentionPersistenceEligibilitySchema = z.enum([
+  'ALLOWED',
+  'CONDITIONAL',
+  'PROHIBITED',
+])
+
+export type AiRetentionPersistenceEligibility = z.infer<
+  typeof aiRetentionPersistenceEligibilitySchema
+>
+
+export const aiRetentionExceptionReasonSchema = z.enum([
+  'FORMAL_AUDIT',
+  'OPERATIONAL_INCIDENT',
+  'DOCUMENTED_DISPUTE',
+  'REGULATORY_OR_CONTRACTUAL_REQUIREMENT',
+])
+
+export type AiRetentionExceptionReason = z.infer<
+  typeof aiRetentionExceptionReasonSchema
+>
+
+export const aiRetentionExtendedAuthorizerRoleSchema = z.enum(['GLOBAL_ADMIN'])
+
+export type AiRetentionExtendedAuthorizerRole = z.infer<
+  typeof aiRetentionExtendedAuthorizerRoleSchema
+>
+
+export const aiRetentionExceptionRequestSchema = z.object({
+  reason: aiRetentionExceptionReasonSchema,
+  justificationSummary: z.string().trim().min(1),
+  requestedByUserId: z.string().trim().min(1).nullable().default(null),
+  requiredAuthorizerRole: aiRetentionExtendedAuthorizerRoleSchema,
+  auditTrailRequired: z.literal(true),
+})
+
+export type AiRetentionExceptionRequest = z.infer<
+  typeof aiRetentionExceptionRequestSchema
+>
+
+export const aiArtifactRetentionPolicySchema = z.object({
+  artifactCategory: aiRetentionArtifactCategorySchema,
+  status: aiRetentionStatusSchema,
+  persistenceEligibility: aiRetentionPersistenceEligibilitySchema,
+  presentInCurrentEnvelope: z.boolean().default(false),
+  discardByDefault: z.boolean().default(false),
+  automaticExpiry: z.boolean().default(false),
+  baseRetentionDays: z.number().int().positive().nullable().default(null),
+  requiresOperationalNecessity: z.boolean().default(false),
+  extendedRetentionAllowed: z.boolean().default(false),
+  extendedRetentionRequiresAuditTrail: z.boolean().default(false),
+  requiredExtendedRetentionAuthorizerRole:
+    aiRetentionExtendedAuthorizerRoleSchema.nullable().default(null),
+  allowedExceptionReasons: z.array(aiRetentionExceptionReasonSchema).default([]),
+})
+
+export type AiArtifactRetentionPolicy = z.infer<
+  typeof aiArtifactRetentionPolicySchema
+>
+
+export const aiRetentionPolicySnapshotSchema = z.object({
+  policyVersion: z.literal('PHASE3_B2_BASELINE'),
+  technicalRetentionDays: z.literal(AI_TECHNICAL_RETENTION_DAYS),
+  artifacts: z.array(aiArtifactRetentionPolicySchema).min(4),
+})
+
+export type AiRetentionPolicySnapshot = z.infer<
+  typeof aiRetentionPolicySnapshotSchema
+>
+
 export const aiLayerErrorCodeSchema = z.enum([
   'DISABLED',
   'NOT_SUPPORTED',
@@ -414,6 +505,7 @@ export type AiAuditSnapshot = z.infer<typeof aiAuditSnapshotSchema>
 const aiExecutionEnvelopeBaseSchema = z.object({
   request: aiInferenceRequestSchema,
   execution: aiExecutionRecordSchema,
+  retention: aiRetentionPolicySnapshotSchema,
   technicalMetadata: aiTechnicalMetadataSchema,
 })
 
