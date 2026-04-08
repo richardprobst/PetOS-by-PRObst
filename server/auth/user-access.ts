@@ -51,6 +51,11 @@ function mapAuthUserRecord(record: AuthUserRecord): StoredAuthenticatedUser {
     passwordHash: record.passwordHash,
     userType: record.userType,
     unitId: record.unitId,
+    multiUnitContext: {
+      activeUnitId: record.unitId,
+      contextOrigin: 'SESSION_DEFAULT',
+      contextType: 'LOCAL',
+    },
     active: record.active,
     profiles,
     permissions,
@@ -90,6 +95,11 @@ export function toAuthenticatedUserData(user: StoredAuthenticatedUser): Authenti
     email: user.email,
     userType: user.userType,
     unitId: user.unitId,
+    multiUnitContext: user.multiUnitContext ?? {
+      activeUnitId: user.unitId,
+      contextOrigin: 'SESSION_DEFAULT',
+      contextType: 'LOCAL',
+    },
     active: user.active,
     profiles: user.profiles,
     permissions: user.permissions,

@@ -118,6 +118,7 @@ export function getAuthOptions(): NextAuthOptions {
           token.email = user.email
           token.userType = user.userType
           token.unitId = user.unitId
+          token.multiUnitContext = user.multiUnitContext
           token.active = user.active
           token.profiles = user.profiles
           token.permissions = user.permissions
@@ -141,6 +142,7 @@ export function getAuthOptions(): NextAuthOptions {
         token.email = storedUser.email
         token.userType = storedUser.userType
         token.unitId = storedUser.unitId
+        token.multiUnitContext = storedUser.multiUnitContext
         token.active = storedUser.active
         token.profiles = storedUser.profiles
         token.permissions = storedUser.permissions
@@ -159,6 +161,12 @@ export function getAuthOptions(): NextAuthOptions {
           email: token.email,
           userType: token.userType,
           unitId: token.unitId ?? null,
+          multiUnitContext:
+            token.multiUnitContext ?? {
+              activeUnitId: token.unitId ?? null,
+              contextOrigin: 'SESSION_DEFAULT',
+              contextType: 'LOCAL',
+            },
           active: token.active ?? true,
           profiles: token.profiles ?? [],
           permissions: token.permissions ?? [],

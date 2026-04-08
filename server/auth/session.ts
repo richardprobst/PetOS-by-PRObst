@@ -38,6 +38,7 @@ export async function getCurrentAuthUser(): Promise<AuthenticatedUserData | null
     email: sessionUser.email,
     userType: sessionUser.userType,
     unitId: sessionUser.unitId ?? null,
+    multiUnitContext: sessionUser.multiUnitContext,
     active: sessionUser.active,
     profiles: sessionUser.profiles,
     permissions: sessionUser.permissions,

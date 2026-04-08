@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O `B1-T07` da Fase 3 agora adiciona a fundacao server-side de contexto de unidade e isolamento base multiunidade, com snapshot de sessao, decisao central de escopo, bloqueio cross-unit por padrao e permissao global explicita para leitura ou edicao estrutural sem abrir a operacao multiunidade completa.
 - O `B1-T06` da Fase 3 agora adiciona metadados operacionais provider-neutral ao envelope da IA, representando provider/modelo declarados, classe de custo estimado, fallback e observabilidade minima sem integrar provider real, billing real ou storage definitivo.
 - O `B1-T05` da Fase 3 agora adiciona a politica transversal de retencao e descarte da camada de IA, classificando resultado interpretado, metadado tecnico, payload bruto e referencia de entrada no envelope provider-neutral sem abrir storage definitivo, payload cru de provider ou schema.
 - O `B1-T04` da Fase 3 agora abre o primeiro envelope real de execucao da camada de IA, consumindo contrato, gating e politica ja existentes para responder de forma padronizada com estados `PENDING`, `BLOCKED` ou `FAILED`, ainda sem provider real, job real ou persistencia definitiva.
