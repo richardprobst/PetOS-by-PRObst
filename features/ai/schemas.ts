@@ -355,6 +355,161 @@ export type AiRetentionPolicySnapshot = z.infer<
   typeof aiRetentionPolicySnapshotSchema
 >
 
+export const aiProviderLogicalStatusSchema = z.enum([
+  'NOT_CONFIGURED',
+  'PLANNED',
+  'DECLARED',
+])
+
+export type AiProviderLogicalStatus = z.infer<
+  typeof aiProviderLogicalStatusSchema
+>
+
+export const aiModelLogicalStatusSchema = z.enum([
+  'NOT_CONFIGURED',
+  'DECLARED',
+])
+
+export type AiModelLogicalStatus = z.infer<typeof aiModelLogicalStatusSchema>
+
+export const aiOperationalMetadataOriginSchema = z.enum([
+  'NOT_EVALUATED',
+  'DECLARED',
+  'ESTIMATED',
+  'CONFIGURED',
+])
+
+export type AiOperationalMetadataOrigin = z.infer<
+  typeof aiOperationalMetadataOriginSchema
+>
+
+export const aiOperationalStatusSchema = z.enum([
+  'NOT_EVALUATED',
+  'NOT_CONFIGURED',
+  'DECLARED',
+  'TEMPORARILY_UNAVAILABLE',
+])
+
+export type AiOperationalStatus = z.infer<typeof aiOperationalStatusSchema>
+
+export const aiOperationalReasonCodeSchema = z.enum([
+  'NOT_EVALUATED',
+  'PROVIDER_NOT_CONFIGURED',
+  'DECLARED_FOR_FUTURE_EXECUTION',
+  'POLICY_TEMPORARILY_UNAVAILABLE',
+  'OPERATIONAL_FAILURE',
+])
+
+export type AiOperationalReasonCode = z.infer<
+  typeof aiOperationalReasonCodeSchema
+>
+
+export const aiFallbackStatusSchema = z.enum(['NOT_EVALUATED'])
+
+export type AiFallbackStatus = z.infer<typeof aiFallbackStatusSchema>
+
+export const aiCostStatusSchema = z.enum([
+  'NOT_EVALUATED',
+  'ESTIMATED',
+  'UNAVAILABLE',
+  'NOT_CONFIGURED',
+])
+
+export type AiCostStatus = z.infer<typeof aiCostStatusSchema>
+
+export const aiCostClassSchema = z.enum([
+  'NOT_CLASSIFIED',
+  'LOW',
+  'MEDIUM',
+  'HIGH',
+])
+
+export type AiCostClass = z.infer<typeof aiCostClassSchema>
+
+export const aiCostMeasurementUnitSchema = z.enum(['INFERENCE_REQUEST'])
+
+export type AiCostMeasurementUnit = z.infer<
+  typeof aiCostMeasurementUnitSchema
+>
+
+export const aiProviderDescriptorSchema = z.object({
+  providerId: z.string().trim().min(1).nullable().default(null),
+  providerStatus: aiProviderLogicalStatusSchema,
+  contractVersion: z.string().trim().min(1).nullable().default(null),
+  metadataOrigin: aiOperationalMetadataOriginSchema,
+})
+
+export type AiProviderDescriptor = z.infer<typeof aiProviderDescriptorSchema>
+
+export const aiModelDescriptorSchema = z.object({
+  modelId: z.string().trim().min(1).nullable().default(null),
+  modelStatus: aiModelLogicalStatusSchema,
+  metadataOrigin: aiOperationalMetadataOriginSchema,
+})
+
+export type AiModelDescriptor = z.infer<typeof aiModelDescriptorSchema>
+
+export const aiCostMetadataSchema = z.object({
+  status: aiCostStatusSchema,
+  costClass: aiCostClassSchema,
+  measurementUnit: aiCostMeasurementUnitSchema,
+  metadataOrigin: aiOperationalMetadataOriginSchema,
+  estimateLabel: z.string().trim().min(1).nullable().default(null),
+})
+
+export type AiCostMetadata = z.infer<typeof aiCostMetadataSchema>
+
+export const aiOperationalMetadataSchema = z.object({
+  metadataVersion: z.literal('PHASE3_B1_T06'),
+  provider: aiProviderDescriptorSchema,
+  model: aiModelDescriptorSchema,
+  cost: aiCostMetadataSchema,
+  operationalStatus: aiOperationalStatusSchema,
+  operationalReasonCode: aiOperationalReasonCodeSchema,
+  fallbackStatus: aiFallbackStatusSchema,
+})
+
+export type AiOperationalMetadata = z.infer<typeof aiOperationalMetadataSchema>
+
+export const aiExecutionEventNameSchema = z.enum([
+  'AI_EXECUTION_PENDING',
+  'AI_EXECUTION_BLOCKED',
+  'AI_EXECUTION_FAILED',
+])
+
+export type AiExecutionEventName = z.infer<typeof aiExecutionEventNameSchema>
+
+export const aiExecutionDecisionClassSchema = z.enum([
+  'ACCEPTED_FOR_FUTURE_EXECUTION',
+  'FUNCTIONAL_BLOCK',
+  'OPERATIONAL_BLOCK',
+  'OPERATIONAL_FAILURE',
+])
+
+export type AiExecutionDecisionClass = z.infer<
+  typeof aiExecutionDecisionClassSchema
+>
+
+export const aiExecutionObservabilitySnapshotSchema = z.object({
+  eventName: aiExecutionEventNameSchema,
+  decisionClass: aiExecutionDecisionClassSchema,
+  executionStatus: z.enum(['PENDING', 'BLOCKED', 'FAILED']),
+  module: aiInferenceModuleSchema,
+  inferenceKey: z.string().trim().min(1),
+  unitId: z.string().trim().min(1).nullable().default(null),
+  providerStatus: aiProviderLogicalStatusSchema,
+  operationalStatus: aiOperationalStatusSchema,
+  costStatus: aiCostStatusSchema,
+  fallbackStatus: aiFallbackStatusSchema,
+  evaluatedFlags: z.array(aiGateEvaluationSchema).default([]),
+  policyReasonCode: aiPolicyReasonCodeSchema.nullable().default(null),
+  retentionPolicyVersion: aiRetentionPolicySnapshotSchema.shape.policyVersion,
+})
+
+export type AiExecutionObservabilitySnapshot = z.infer<
+  typeof aiExecutionObservabilitySnapshotSchema
+>
+
 export const aiLayerErrorCodeSchema = z.enum([
   'DISABLED',
   'NOT_SUPPORTED',
@@ -505,6 +660,8 @@ export type AiAuditSnapshot = z.infer<typeof aiAuditSnapshotSchema>
 const aiExecutionEnvelopeBaseSchema = z.object({
   request: aiInferenceRequestSchema,
   execution: aiExecutionRecordSchema,
+  observability: aiExecutionObservabilitySnapshotSchema,
+  operational: aiOperationalMetadataSchema,
   retention: aiRetentionPolicySnapshotSchema,
   technicalMetadata: aiTechnicalMetadataSchema,
 })

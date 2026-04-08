@@ -4,6 +4,11 @@ import {
   type AiQuotaEnvironment,
   type AiQuotaSnapshotInput,
 } from './policy'
+import {
+  createAiExecutionObservabilitySnapshot,
+  createAiOperationalMetadata,
+  type AiOperationalMetadataInput,
+} from './operational'
 import { createAiRetentionPolicySnapshot } from './retention'
 import {
   aiBlockedExecutionEnvelopeSchema,
@@ -22,6 +27,7 @@ import {
 
 export interface StartAiInferenceExecutionOptions {
   environment?: AiQuotaEnvironment
+  operationalMetadata?: AiOperationalMetadataInput
   quotaSnapshot?: AiQuotaSnapshotInput
 }
 
@@ -41,21 +47,39 @@ export function startAiInferenceExecution(
         request,
         policyResolution.policy,
         policyResolution.outcome,
+        options.operationalMetadata,
       )
     }
 
-    return createPendingExecutionEnvelope(request, policyResolution.policy)
+    return createPendingExecutionEnvelope(
+      request,
+      policyResolution.policy,
+      options.operationalMetadata,
+    )
   } catch (error) {
-    return createFailedExecutionEnvelope(request, error)
+    return createFailedExecutionEnvelope(request, error, options.operationalMetadata)
   }
 }
 
 function createPendingExecutionEnvelope(
   request: AiInferenceRequest,
   policy: AiPendingExecutionEnvelope['policy'],
+  operationalMetadataInput?: AiOperationalMetadataInput,
 ): AiPendingExecutionEnvelope {
   const technicalMetadata = createAiTechnicalMetadata()
+  const operational = createAiOperationalMetadata(
+    request,
+    policy,
+    operationalMetadataInput,
+  )
   const retention = createAiRetentionPolicySnapshot(request)
+  const observability = createAiExecutionObservabilitySnapshot({
+    operational,
+    policy,
+    request,
+    retention,
+    status: 'PENDING',
+  })
 
   return aiPendingExecutionEnvelopeSchema.parse({
     execution: createExecutionRecord({
@@ -65,6 +89,8 @@ function createPendingExecutionEnvelope(
       request,
       state: 'PENDING',
     }),
+    observability,
+    operational,
     outcome: null,
     policy,
     request,
@@ -78,8 +104,21 @@ function createBlockedExecutionEnvelope(
   request: AiInferenceRequest,
   policy: AiBlockedExecutionEnvelope['policy'],
   outcome: AiBlockedOutcome,
+  operationalMetadataInput?: AiOperationalMetadataInput,
 ): AiBlockedExecutionEnvelope {
+  const operational = createAiOperationalMetadata(
+    request,
+    policy,
+    operationalMetadataInput,
+  )
   const retention = createAiRetentionPolicySnapshot(request)
+  const observability = createAiExecutionObservabilitySnapshot({
+    operational,
+    policy,
+    request,
+    retention,
+    status: 'BLOCKED',
+  })
 
   return aiBlockedExecutionEnvelopeSchema.parse({
     execution: createExecutionRecord({
@@ -90,6 +129,8 @@ function createBlockedExecutionEnvelope(
       request,
       state: 'BLOCKED',
     }),
+    observability,
+    operational,
     outcome,
     policy,
     request,
@@ -102,8 +143,14 @@ function createBlockedExecutionEnvelope(
 function createFailedExecutionEnvelope(
   request: AiInferenceRequest,
   error: unknown,
+  operationalMetadataInput?: AiOperationalMetadataInput,
 ): AiFailedExecutionEnvelope {
   const technicalMetadata = createAiTechnicalMetadata()
+  const operational = createAiOperationalMetadata(
+    request,
+    null,
+    operationalMetadataInput,
+  )
   const retention = createAiRetentionPolicySnapshot(request)
   const outcome = createAiFailedOutcome(request, {
     details: normalizeExecutionErrorDetails(error),
@@ -113,6 +160,13 @@ function createFailedExecutionEnvelope(
     technicalMetadata: {
       handledAt: technicalMetadata.handledAt,
     },
+  })
+  const observability = createAiExecutionObservabilitySnapshot({
+    operational,
+    policy: null,
+    request,
+    retention,
+    status: 'FAILED',
   })
 
   return aiFailedExecutionEnvelopeSchema.parse({
@@ -124,6 +178,8 @@ function createFailedExecutionEnvelope(
       request,
       state: 'FAILED',
     }),
+    observability,
+    operational,
     outcome,
     policy: null,
     request,

@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O `B1-T06` da Fase 3 agora adiciona metadados operacionais provider-neutral ao envelope da IA, representando provider/modelo declarados, classe de custo estimado, fallback e observabilidade minima sem integrar provider real, billing real ou storage definitivo.
 - O `B1-T05` da Fase 3 agora adiciona a politica transversal de retencao e descarte da camada de IA, classificando resultado interpretado, metadado tecnico, payload bruto e referencia de entrada no envelope provider-neutral sem abrir storage definitivo, payload cru de provider ou schema.
 - O `B1-T04` da Fase 3 agora abre o primeiro envelope real de execucao da camada de IA, consumindo contrato, gating e politica ja existentes para responder de forma padronizada com estados `PENDING`, `BLOCKED` ou `FAILED`, ainda sem provider real, job real ou persistencia definitiva.
 - O gate formal de saida do Sprint 1 do Bloco 1 da Fase 3 foi registrado como `GO COM RESSALVAS`, com `build`, `typecheck` e suite ampla verdes e com autorizacao para abrir o Sprint 2 sem reescrever a fundacao da camada de IA.

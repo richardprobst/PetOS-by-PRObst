@@ -72,6 +72,23 @@ test('startAiInferenceExecution returns a pending execution envelope when policy
   const request = createImageRequest()
   const envelope = startAiInferenceExecution(request, {
     environment: enabledEnvironment,
+    operationalMetadata: {
+      cost: {
+        costClass: 'LOW',
+        estimateLabel: 'estimated-low-per-request',
+        metadataOrigin: 'ESTIMATED',
+        status: 'ESTIMATED',
+      },
+      model: {
+        modelId: 'assistive-vision-v1',
+        modelStatus: 'DECLARED',
+      },
+      provider: {
+        contractVersion: 'internal-adapter-v1',
+        providerId: 'provider-assistive',
+        providerStatus: 'DECLARED',
+      },
+    },
     quotaSnapshot: {
       moduleRequestedUnits: 1,
       moduleUsedUnits: 3,
@@ -86,6 +103,16 @@ test('startAiInferenceExecution returns a pending execution envelope when policy
   assert.equal(envelope.execution.providerStatus, 'NOT_STARTED')
   assert.equal(envelope.execution.jobStatus, 'NOT_SCHEDULED')
   assert.equal(envelope.technicalMetadata.providerId, null)
+  assert.equal(envelope.operational.provider.providerStatus, 'DECLARED')
+  assert.equal(envelope.operational.model.modelStatus, 'DECLARED')
+  assert.equal(envelope.operational.cost.status, 'ESTIMATED')
+  assert.equal(envelope.operational.fallbackStatus, 'NOT_EVALUATED')
+  assert.equal(
+    envelope.observability.decisionClass,
+    'ACCEPTED_FOR_FUTURE_EXECUTION',
+  )
+  assert.equal(envelope.observability.providerStatus, 'DECLARED')
+  assert.equal(envelope.observability.costStatus, 'ESTIMATED')
   assert.equal(
     envelope.retention.artifacts.find(
       (artifact) => artifact.artifactCategory === 'RAW_PROVIDER_PAYLOAD',
@@ -128,5 +155,27 @@ test('startAiInferenceExecution returns a controlled operational failure when th
   assert.equal(envelope.execution.errorCode, 'OPERATIONAL_FAILURE')
   assert.equal(envelope.execution.policyReasonCode, null)
   assert.equal(envelope.technicalMetadata.providerId, null)
+  assert.equal(envelope.observability.decisionClass, 'OPERATIONAL_FAILURE')
+  assert.equal(envelope.operational.provider.providerStatus, 'NOT_CONFIGURED')
   assert.equal(envelope.retention.policyVersion, 'PHASE3_B2_BASELINE')
+})
+
+test('startAiInferenceExecution keeps temporary operational unavailability distinct from functional blocking', () => {
+  const request = createImageRequest()
+  const envelope = startAiInferenceExecution(request, {
+    environment: enabledEnvironment,
+    quotaSnapshot: {
+      temporarilyUnavailable: true,
+    },
+  })
+
+  assert.equal(envelope.status, 'BLOCKED')
+  assert.equal(envelope.policy.decision.reasonCode, 'TEMPORARILY_UNAVAILABLE')
+  assert.equal(envelope.observability.decisionClass, 'OPERATIONAL_BLOCK')
+  assert.equal(envelope.operational.operationalStatus, 'TEMPORARILY_UNAVAILABLE')
+  assert.equal(
+    envelope.operational.operationalReasonCode,
+    'POLICY_TEMPORARILY_UNAVAILABLE',
+  )
+  assert.equal(envelope.operational.cost.status, 'UNAVAILABLE')
 })
