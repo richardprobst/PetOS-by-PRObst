@@ -93,8 +93,10 @@ export async function uploadMediaAssetAction(formData: FormData) {
     const input = createMediaAssetInputSchema.parse({
       accessLevel: getOptionalFormValue(formData, 'accessLevel'),
       appointmentId: getOptionalFormValue(formData, 'appointmentId'),
+      captureStage: getOptionalFormValue(formData, 'captureStage'),
       clientId: getOptionalFormValue(formData, 'clientId'),
       description: getOptionalFormValue(formData, 'description'),
+      galleryLabel: getOptionalFormValue(formData, 'galleryLabel'),
       metadataJson: getOptionalFormValue(formData, 'metadataJson'),
       petId: getOptionalFormValue(formData, 'petId'),
       type: getOptionalFormValue(formData, 'type'),

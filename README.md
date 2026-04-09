@@ -28,7 +28,7 @@ Neste ponto, o repositorio preserva a baseline tecnica do MVP validado e conclui
 - PDV e estoque;
 - escalas, ponto e base de payroll.
 
-Dentro da Fase 3, o **Bloco 1** ficou fechado como fundacao tecnica e documental, e o **Bloco 2** foi fechado como rollout operacional multiunidade server-side controlado.
+Dentro da Fase 3, o **Bloco 1** ficou fechado como fundacao tecnica e documental, o **Bloco 2** foi fechado como rollout operacional multiunidade server-side controlado e o **Bloco 3** foi fechado como primeiro corte assistivo de analise de imagem.
 
 As evidencias documentais centrais da Fase 3 ate aqui sao:
 
@@ -36,8 +36,10 @@ As evidencias documentais centrais da Fase 3 ate aqui sao:
 - [docs/phase3-block1-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-exit-checklist.md)
 - [docs/phase3-block2-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block2-test-suite.md)
 - [docs/phase3-block2-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block2-exit-checklist.md)
+- [docs/phase3-block3-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block3-test-suite.md)
+- [docs/phase3-block3-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block3-exit-checklist.md)
 
-O proximo bloco da Fase 3 continua sendo o **Bloco 3 - Analise de imagem**, sobre a base de multiunidade ja estabilizada.
+O proximo bloco da Fase 3 passa a ser o **Bloco 4 - Analise preditiva e insights**, sobre a base de multiunidade e imagem assistiva ja estabilizadas.
 
 O repositorio tambem fechou a frente interna de **installer/updater assistido**, com:
 
@@ -118,6 +120,7 @@ Guia completo:
 - `npm test`
 - `npm run test:phase3:block1`
 - `npm run test:phase3:block2`
+- `npm run test:phase3:block3`
 - `npm run check:all`
 - `npm run db:up`
 - `npm run db:down`
@@ -151,6 +154,8 @@ Guia completo:
 - [docs/phase3-block1-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-exit-checklist.md)
 - [docs/phase3-block2-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block2-test-suite.md)
 - [docs/phase3-block2-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block2-exit-checklist.md)
+- [docs/phase3-block3-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block3-test-suite.md)
+- [docs/phase3-block3-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block3-exit-checklist.md)
 - [docs/phase3-block1-sprint1-plan.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-sprint1-plan.md)
 - [docs/phase3-block1-sprint1-exit-gate.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-sprint1-exit-gate.md)
 - [docs/architecture.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/architecture.md)
@@ -180,7 +185,8 @@ Nao fazem parte desta etapa:
 - RH amplo e modulo trabalhista completo;
 - fiscal amplo/autonomo;
 - supply chain e compras complexas;
-- analise de imagem;
+- provider real de analise de imagem;
 - analise preditiva;
+- visibilidade final do tutor para analise de imagem;
 - UI final de troca de contexto multiunidade;
 - dashboards globais finais consolidados.

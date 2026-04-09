@@ -1,5 +1,6 @@
 import { AssetAccessLevel, DocumentType, MediaType, SignatureMethod } from '@prisma/client'
 import { z } from 'zod'
+import { mediaCaptureStageSchema } from '@/features/ai/vision/schemas'
 
 const emptyStringToUndefined = (value: unknown) => {
   if (typeof value !== 'string') {
@@ -67,11 +68,24 @@ export const listMediaAssetsQuerySchema = z.object({
 export const createMediaAssetInputSchema = z.object({
   accessLevel: z.nativeEnum(AssetAccessLevel).default(AssetAccessLevel.PROTECTED),
   appointmentId: optionalString,
+  captureStage: mediaCaptureStageSchema.optional(),
   clientId: optionalString,
   description: optionalString,
+  galleryLabel: optionalString,
   metadataJson: optionalString,
   petId: optionalString,
   type: z.nativeEnum(MediaType).optional(),
+}).superRefine((input, context) => {
+  if (
+    (input.captureStage === 'PRE_SERVICE' || input.captureStage === 'POST_SERVICE') &&
+    !input.appointmentId
+  ) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Pre and post service captures must be linked to an appointment.',
+      path: ['appointmentId'],
+    })
+  }
 })
 
 export const archiveMediaAssetInputSchema = z.object({

@@ -188,6 +188,18 @@ const mvpPermissions = [
     name: 'report_card.editar',
   },
   {
+    description: 'Permite consultar analises assistivas de imagem no administrativo.',
+    name: 'ai.imagem.visualizar',
+  },
+  {
+    description: 'Permite disparar analises assistivas de imagem no administrativo.',
+    name: 'ai.imagem.executar',
+  },
+  {
+    description: 'Permite revisar e registrar decisao humana sobre analises de imagem.',
+    name: 'ai.imagem.revisar',
+  },
+  {
     description: 'Permite ao tutor consultar apenas os proprios report cards.',
     name: 'report_card.visualizar_proprio',
   },
@@ -295,6 +307,8 @@ const profiles = [
       'crm.campanha.editar',
       'crm.campanha.executar',
       'report_card.visualizar',
+      'ai.imagem.visualizar',
+      'ai.imagem.executar',
     ],
   },
   {
@@ -318,6 +332,9 @@ const profiles = [
       'midia.editar',
       'report_card.visualizar',
       'report_card.editar',
+      'ai.imagem.visualizar',
+      'ai.imagem.executar',
+      'ai.imagem.revisar',
     ],
   },
   {

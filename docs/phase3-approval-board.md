@@ -199,11 +199,9 @@ Para a rodada curta de ratificacao humana que fecha apenas `B1`, `B2` e `C1`, us
 - **ID da decisao**: `D1`
 - **Nome da decisao**: primeiro corte de analise de imagem
 - **Resumo curto**: define qual caso de uso entra primeiro e evita abrir a frente mais sensivel cedo demais
-- **Status**: `pendente`
+- **Status**: `aprovado`
 - **Decisao recomendada**: comecar por galeria/metadados e verificacao assistida pre/post-servico; nao comecar por saude preliminar
-- **Ajustes exigidos**:
-  - aprovar o primeiro caso de uso exato;
-  - aprovar o criterio de valor operacional para esse corte.
+- **Ajustes exigidos**: nenhum para o primeiro corte ratificado do Bloco 3
 - **O que fica bloqueado se permanecer pendente**: backlog do Bloco 3
 - **Observacoes executivas**: nao bloqueia o Bloco 1, mas bloqueia a abertura do Bloco 3
 

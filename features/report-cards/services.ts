@@ -67,6 +67,13 @@ async function getReportCardOrThrow(actor: AuthenticatedUserData, reportCardId: 
   return reportCard
 }
 
+export async function getReportCardById(
+  actor: AuthenticatedUserData,
+  reportCardId: string,
+) {
+  return getReportCardOrThrow(actor, reportCardId)
+}
+
 async function getAppointmentForReportCard(actor: AuthenticatedUserData, appointmentId: string) {
   const appointment = await prisma.appointment.findUnique({
     where: {

@@ -666,6 +666,11 @@ export async function createMediaAsset(
   assertAllowedMimeType(file.type, allowedMimeTypes)
   assertAllowedFileSize(file.size, environment.UPLOAD_MAX_FILE_SIZE_MB)
   const content = Buffer.from(await file.arrayBuffer())
+  const metadata = toInputJsonObject({
+    ...parseMetadataJson(input.metadataJson, 'Media metadata'),
+    ...(input.captureStage ? { captureStage: input.captureStage } : {}),
+    ...(input.galleryLabel ? { galleryLabel: input.galleryLabel } : {}),
+  })
   const storedBinary = await storeBinaryObject({
     content,
     kind: 'media',
@@ -689,7 +694,7 @@ export async function createMediaAsset(
           sizeBytes: BigInt(content.length),
           accessLevel: input.accessLevel,
           description: input.description ?? null,
-          metadata: parseMetadataJson(input.metadataJson, 'Media metadata'),
+          metadata,
         },
         include: mediaAssetDetailsInclude,
       })
@@ -703,7 +708,11 @@ export async function createMediaAsset(
         details: {
           accessLevel: mediaAsset.accessLevel,
           appointmentId: mediaAsset.appointmentId,
+          captureStage:
+            typeof metadata.captureStage === 'string' ? metadata.captureStage : null,
           clientId: mediaAsset.clientId,
+          galleryLabel:
+            typeof metadata.galleryLabel === 'string' ? metadata.galleryLabel : null,
           petId: mediaAsset.petId,
           type: mediaAsset.type,
         },
