@@ -28,6 +28,7 @@ export const listDocumentsQuerySchema = z.object({
   includeArchived: formBoolean.default(false),
   petId: optionalString,
   type: z.nativeEnum(DocumentType).optional(),
+  unitId: optionalString,
 })
 
 export const createDocumentInputSchema = z.object({
@@ -60,6 +61,7 @@ export const listMediaAssetsQuerySchema = z.object({
   includeArchived: formBoolean.default(false),
   petId: optionalString,
   type: z.nativeEnum(MediaType).optional(),
+  unitId: optionalString,
 })
 
 export const createMediaAssetInputSchema = z.object({

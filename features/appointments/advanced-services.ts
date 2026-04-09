@@ -1,7 +1,10 @@
 import { Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { prisma } from '@/server/db/prisma'
-import { resolveScopedUnitId } from '@/server/authorization/scope'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { writeAuditLog } from '@/server/audit/logging'
 import { AppError } from '@/server/http/errors'
 import {
@@ -47,9 +50,7 @@ async function getCapacityRuleOrThrow(actor: AuthenticatedUserData, ruleId: stri
     throw new AppError('NOT_FOUND', 404, 'Appointment capacity rule not found.')
   }
 
-  if (actor.unitId && rule.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this capacity rule.')
-  }
+  assertActorCanAccessLocalUnitRecord(actor, rule.unitId)
 
   return rule
 }
@@ -66,9 +67,7 @@ async function getScheduleBlockOrThrow(actor: AuthenticatedUserData, blockId: st
     throw new AppError('NOT_FOUND', 404, 'Schedule block not found.')
   }
 
-  if (actor.unitId && block.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this schedule block.')
-  }
+  assertActorCanAccessLocalUnitRecord(actor, block.unitId)
 
   return block
 }
@@ -129,9 +128,11 @@ export async function listAppointmentCapacityRules(
   actor: AuthenticatedUserData,
   query: ListAppointmentCapacityRulesQuery,
 ) {
+  const unitId = resolveScopedUnitId(actor, query.unitId ?? null)
+
   return prisma.appointmentCapacityRule.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId,
       ...(query.employeeUserId ? { employeeUserId: query.employeeUserId } : {}),
       ...(query.active !== undefined ? { active: query.active } : {}),
     },
@@ -144,7 +145,7 @@ export async function createAppointmentCapacityRule(
   actor: AuthenticatedUserData,
   input: CreateAppointmentCapacityRuleInput,
 ) {
-  const unitId = resolveScopedUnitId(actor, actor.unitId ?? null)
+  const unitId = resolveScopedUnitId(actor, null)
   await assertEmployeeScope(unitId, input.employeeUserId)
   await assertCapacityRuleUniqueness(unitId, input.employeeUserId, input.sizeCategory, input.breed)
 
@@ -238,9 +239,11 @@ export async function listScheduleBlocks(
   actor: AuthenticatedUserData,
   query: ListScheduleBlocksQuery,
 ) {
+  const unitId = resolveScopedUnitId(actor, query.unitId ?? null)
+
   return prisma.scheduleBlock.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId,
       ...(query.employeeUserId ? { employeeUserId: query.employeeUserId } : {}),
       ...(query.active !== undefined ? { active: query.active } : {}),
       ...((query.startFrom || query.startTo)
@@ -274,7 +277,7 @@ export async function listScheduleBlocks(
 }
 
 export async function createScheduleBlock(actor: AuthenticatedUserData, input: CreateScheduleBlockInput) {
-  const unitId = resolveScopedUnitId(actor, actor.unitId ?? null)
+  const unitId = resolveScopedUnitId(actor, null)
   assertScheduleBlockWindow(input.startAt, input.endAt)
   await assertEmployeeScope(unitId, input.employeeUserId)
 

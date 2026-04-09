@@ -46,6 +46,8 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O Bloco 2 da Fase 3 agora fecha a propagacao operacional do contexto multiunidade pelos modulos centrais (`appointments`, `finance`, `fiscal`, `inventory`, `messages`, `crm`, `employees`, `team-operations`, `services`, `waitlist`, `taxi-dog`, `pos`, `report-cards`, `documents`, `media` e `integration-events`), substituindo filtros cegos por `actor.unitId` por resolucao server-side do contexto ativo ou global autorizado sem abrir escrita estrutural cross-unit.
+- O layout administrativo agora exibe o contexto multiunidade ativo da sessao em modo somente leitura, deixando explicita a separacao entre escopo `LOCAL` e `GLOBAL_AUTHORIZED` sem abrir a UI final de troca de contexto.
 - A primeira fatia controlada do Bloco 2 da Fase 3 agora aplica escopo multiunidade server-side nas leituras de `appointments`, fazendo listagem e detalhe consumirem o contexto resolvido da sessao ou `unitId` explicitamente autorizado sem abrir escrita estrutural cross-unit, UI final ou rollout amplo do modulo.
 - O `B1-T19` da Fase 3 agora fecha o Bloco 1 com um checklist formal e auditavel de saida para o Bloco 2, alinhado ao plano operacional, ao mapa de impacto multiunidade, a `npm run test:phase3:block1` e ao smoke final administrativo interno, sem abrir feature nova, provider real ou multiunidade operacional completa.
 - O `B1-T18` da Fase 3 agora consolida a suite minima de testes do Bloco 1, com script dedicado, smoke administrativo interno e documento explicito de cobertura e sinais de handoff, sem abrir nova feature, provider real ou Bloco 2.
@@ -99,6 +101,8 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `tests/server/phase3-block2-smoke.test.ts` como smoke reconhecivel do Bloco 2, cobrindo leituras operacionais multiunidade, bloqueio de escrita estrutural cross-unit e guardrails do portal do tutor.
+- `docs/phase3-block2-test-suite.md` e `docs/phase3-block2-exit-checklist.md` como suite minima e checklist formal de saida do Bloco 2 para o Bloco 3.
 - `server/jobs/ai.ts` como ponto unico inicial de scheduling logico da camada de IA, sem fila real de producao.
 - `server/integrations/ai/adapter.ts` como executor unico do adaptador interno de provider da Fase 3, consumindo envelope, gating e politica existentes antes de qualquer integracao real.
 - `features/ai/provider-routing.ts`, `features/ai/vision/contract.ts` e `features/insights/contract.ts` como base dos subdominios e do roteamento provider-neutral por modulo.

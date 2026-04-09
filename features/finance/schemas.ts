@@ -57,12 +57,14 @@ export const updateFinancialTransactionInputSchema = z
   })
 
 export const listFinancialTransactionsQuerySchema = z.object({
+  unitId: optionalString,
   appointmentId: optionalString,
   transactionType: z.nativeEnum(FinancialTransactionType).optional(),
   paymentStatus: z.nativeEnum(PaymentStatus).optional(),
 })
 
 export const listDepositsQuerySchema = z.object({
+  unitId: optionalString,
   appointmentId: optionalString,
   clientId: optionalString,
   purpose: z.nativeEnum(DepositPurpose).optional(),
@@ -95,6 +97,7 @@ export const updateDepositStatusInputSchema = z.object({
 })
 
 export const listRefundsQuerySchema = z.object({
+  unitId: optionalString,
   appointmentId: optionalString,
   clientId: optionalString,
   status: z.nativeEnum(RefundStatus).optional(),
@@ -124,6 +127,7 @@ export const createRefundInputSchema = z
   )
 
 export const listClientCreditsQuerySchema = z.object({
+  unitId: optionalString,
   clientId: optionalString,
   includeExpired: optionalBoolean.default(false),
 })

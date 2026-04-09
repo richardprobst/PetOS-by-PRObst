@@ -2,17 +2,44 @@ import type { AuthenticatedUserData } from '@/server/auth/types'
 import { prisma } from '@/server/db/prisma'
 import { AppError } from '@/server/http/errors'
 import { writeAuditLog } from '@/server/audit/logging'
-import { resolveScopedUnitId } from '@/server/authorization/scope'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import type {
   CreateServiceInput,
   ListServicesQuery,
   UpdateServiceInput,
 } from '@/features/services/schemas'
 
+export function resolveServiceReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId ?? null)
+}
+
+export function assertActorCanReadServiceInScope(
+  actor: AuthenticatedUserData,
+  serviceUnitId: string | null,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  if (!serviceUnitId) {
+    return
+  }
+
+  assertActorCanAccessLocalUnitRecord(actor, serviceUnitId, options)
+}
+
 export async function listServices(actor: AuthenticatedUserData, query: ListServicesQuery) {
+  const unitId = resolveServiceReadUnitId(actor, query.unitId ?? null)
+
   return prisma.service.findMany({
     where: {
-      ...(actor.unitId ? { OR: [{ unitId: actor.unitId }, { unitId: null }] } : {}),
+      OR: [{ unitId }, { unitId: null }],
       ...(query.active !== undefined ? { active: query.active } : {}),
       ...(query.search
         ? {
@@ -28,7 +55,13 @@ export async function listServices(actor: AuthenticatedUserData, query: ListServ
   })
 }
 
-export async function getServiceById(actor: AuthenticatedUserData, serviceId: string) {
+export async function getServiceById(
+  actor: AuthenticatedUserData,
+  serviceId: string,
+  query: {
+    unitId?: string
+  } = {},
+) {
   const service = await prisma.service.findUnique({
     where: {
       id: serviceId,
@@ -39,9 +72,9 @@ export async function getServiceById(actor: AuthenticatedUserData, serviceId: st
     throw new AppError('NOT_FOUND', 404, 'Service not found.')
   }
 
-  if (actor.unitId && service.unitId && actor.unitId !== service.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this service.')
-  }
+  assertActorCanReadServiceInScope(actor, service.unitId, {
+    requestedUnitId: query.unitId ?? service.unitId,
+  })
 
   return service
 }
@@ -79,7 +112,10 @@ export async function updateService(
   input: UpdateServiceInput,
 ) {
   const existingService = await getServiceById(actor, serviceId)
-  const unitId = resolveScopedUnitId(actor, input.unitId ?? existingService.unitId ?? null)
+  const unitId =
+    input.unitId === undefined && existingService.unitId === null
+      ? null
+      : resolveScopedUnitId(actor, input.unitId ?? existingService.unitId ?? null)
 
   return prisma.$transaction(async (tx) => {
     const service = await tx.service.update({

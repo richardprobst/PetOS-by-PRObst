@@ -141,6 +141,7 @@ export const updateAppointmentCapacityRuleInputSchema = z
   })
 
 export const listAppointmentCapacityRulesQuerySchema = z.object({
+  unitId: optionalString,
   employeeUserId: optionalString,
   active: z.coerce.boolean().optional(),
 })
@@ -169,6 +170,7 @@ export const updateScheduleBlockInputSchema = z
   })
 
 export const listScheduleBlocksQuerySchema = z.object({
+  unitId: optionalString,
   employeeUserId: optionalString,
   active: z.coerce.boolean().optional(),
   startFrom: optionalDate,

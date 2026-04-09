@@ -4,7 +4,10 @@ import { prisma } from '@/server/db/prisma'
 import { AppError } from '@/server/http/errors'
 import { hashPassword } from '@/server/auth/password'
 import { normalizeEmailAddress } from '@/server/auth/user-access'
-import { resolveScopedUnitId } from '@/server/authorization/scope'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { writeAuditLog } from '@/server/audit/logging'
 import type {
   CreateEmployeeInput,
@@ -25,6 +28,28 @@ const employeeDetailsInclude = Prisma.validator<Prisma.EmployeeInclude>()({
   unit: true,
 })
 
+type EmployeeScopeQuery = {
+  unitId?: string
+}
+
+export function resolveEmployeeReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId ?? null)
+}
+
+export function assertActorCanReadEmployeeInScope(
+  actor: AuthenticatedUserData,
+  employeeUnitId: string,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  assertActorCanAccessLocalUnitRecord(actor, employeeUnitId, options)
+}
+
 async function getProfilesByName(profileNames: string[]) {
   const profiles = await prisma.accessProfile.findMany({
     where: {
@@ -42,9 +67,11 @@ async function getProfilesByName(profileNames: string[]) {
 }
 
 export async function listEmployees(actor: AuthenticatedUserData, query: ListEmployeesQuery) {
+  const scopedUnitId = resolveEmployeeReadUnitId(actor, query.unitId ?? null)
+
   return prisma.employee.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId: scopedUnitId,
       ...(query.active !== undefined ? { user: { active: query.active } } : {}),
       ...(query.search
         ? {
@@ -74,7 +101,11 @@ export async function listEmployees(actor: AuthenticatedUserData, query: ListEmp
   })
 }
 
-export async function getEmployeeById(actor: AuthenticatedUserData, employeeUserId: string) {
+export async function getEmployeeById(
+  actor: AuthenticatedUserData,
+  employeeUserId: string,
+  query: EmployeeScopeQuery = {},
+) {
   const employee = await prisma.employee.findUnique({
     where: {
       userId: employeeUserId,
@@ -86,9 +117,9 @@ export async function getEmployeeById(actor: AuthenticatedUserData, employeeUser
     throw new AppError('NOT_FOUND', 404, 'Employee not found.')
   }
 
-  if (actor.unitId && employee.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this employee.')
-  }
+  assertActorCanReadEmployeeInScope(actor, employee.unitId, {
+    requestedUnitId: query.unitId ?? null,
+  })
 
   return employee
 }

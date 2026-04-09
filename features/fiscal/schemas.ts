@@ -11,6 +11,7 @@ export const listFiscalDocumentsQuerySchema = z.object({
   appointmentId: optionalString,
   financialTransactionId: optionalString,
   status: z.nativeEnum(FiscalDocumentStatus).optional(),
+  unitId: optionalString,
 })
 
 export const createFiscalDocumentInputSchema = z

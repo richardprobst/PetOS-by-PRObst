@@ -7,6 +7,7 @@ import {
   hasPermission,
   isInternalUser,
 } from '@/server/authorization/access-control'
+import { resolveActorUnitSessionContext } from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
 import { getEnv } from '@/server/env'
 import { getCurrentAuthUser } from '@/server/auth/session'
@@ -70,6 +71,9 @@ export default async function AdminLayout({
     collectSystemRuntimeSnapshot(prisma, getEnv()),
   ])
   const internalUser = user && user.active && isInternalUser(user) ? user : null
+  const multiUnitContext = internalUser
+    ? resolveActorUnitSessionContext(internalUser)
+    : null
   const visibleNavigation = adminNavigation.filter(
     (item) =>
       item.permission === null ||
@@ -135,7 +139,30 @@ export default async function AdminLayout({
                   {runtime.lifecycleState}
                 </StatusBadge>
                 <StatusBadge tone="info">{runtime.currentInstalledVersion ?? runtime.buildVersion}</StatusBadge>
+                {multiUnitContext?.contextType ? (
+                  <StatusBadge
+                    tone={multiUnitContext.contextType === 'GLOBAL_AUTHORIZED' ? 'warning' : 'success'}
+                  >
+                    {multiUnitContext.contextType}
+                  </StatusBadge>
+                ) : null}
               </div>
+              {multiUnitContext ? (
+                <div className="mt-3 text-sm text-[color:var(--foreground-soft)]">
+                  <p>
+                    Unidade ativa:{' '}
+                    <span className="font-semibold text-[color:var(--foreground)]">
+                      {multiUnitContext.activeUnitId ?? 'nao resolvida'}
+                    </span>
+                  </p>
+                  <p className="mt-1">
+                    Unidade base:{' '}
+                    <span className="font-semibold text-[color:var(--foreground)]">
+                      {multiUnitContext.homeUnitId ?? 'nao informada'}
+                    </span>
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-3">

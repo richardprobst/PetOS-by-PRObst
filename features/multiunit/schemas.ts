@@ -104,6 +104,13 @@ export const multiUnitScopeDecisionSchema = z.object({
   ownership: multiUnitOwnershipBindingSchema.nullable().default(null),
 })
 
+export const multiUnitReadScopeQuerySchema = z.object({
+  unitId: z.string().trim().min(1).optional(),
+})
+
 export type MultiUnitScopeDecision = z.infer<
   typeof multiUnitScopeDecisionSchema
+>
+export type MultiUnitReadScopeQuery = z.infer<
+  typeof multiUnitReadScopeQuerySchema
 >

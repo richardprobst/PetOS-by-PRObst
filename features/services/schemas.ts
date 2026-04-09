@@ -36,6 +36,7 @@ export const updateServiceInputSchema = z
   })
 
 export const listServicesQuerySchema = z.object({
+  unitId: optionalString,
   search: optionalString,
   active: optionalBoolean,
 })

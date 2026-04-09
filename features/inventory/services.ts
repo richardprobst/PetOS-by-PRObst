@@ -1,7 +1,10 @@
 import { InventoryMovementType, Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { writeAuditLog } from '@/server/audit/logging'
-import { resolveScopedUnitId } from '@/server/authorization/scope'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
 import { AppError } from '@/server/http/errors'
 import {
@@ -53,6 +56,28 @@ const manualInventoryMovementTypes = new Set<InventoryMovementType>([
   'ADJUSTMENT_OUT',
 ])
 
+type InventoryScopeQuery = {
+  unitId?: string
+}
+
+export function resolveInventoryReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId ?? null)
+}
+
+export function assertActorCanReadInventoryRecordInScope(
+  actor: AuthenticatedUserData,
+  recordUnitId: string,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  assertActorCanAccessLocalUnitRecord(actor, recordUnitId, options)
+}
+
 async function getProductOrThrow(actor: AuthenticatedUserData, productId: string) {
   const product = await prisma.product.findUnique({
     where: {
@@ -65,9 +90,7 @@ async function getProductOrThrow(actor: AuthenticatedUserData, productId: string
     throw new AppError('NOT_FOUND', 404, 'Product not found.')
   }
 
-  if (actor.unitId && actor.unitId !== product.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this product.')
-  }
+  assertActorCanReadInventoryRecordInScope(actor, product.unitId)
 
   return product
 }
@@ -84,9 +107,7 @@ async function getInventoryMovementOrThrow(actor: AuthenticatedUserData, movemen
     throw new AppError('NOT_FOUND', 404, 'Inventory movement not found.')
   }
 
-  if (actor.unitId && actor.unitId !== movement.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this inventory movement.')
-  }
+  assertActorCanReadInventoryRecordInScope(actor, movement.unitId)
 
   return movement
 }
@@ -143,9 +164,10 @@ export async function ensureInventoryStockRecord(
 }
 
 export async function listProducts(actor: AuthenticatedUserData, query: ListProductsQuery) {
+  const scopedUnitId = resolveInventoryReadUnitId(actor, query.unitId ?? null)
   const products = await prisma.product.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId: scopedUnitId,
       ...(query.productId ? { id: query.productId } : {}),
       ...(query.active !== undefined ? { active: query.active } : {}),
       ...(query.trackInventory !== undefined ? { trackInventory: query.trackInventory } : {}),
@@ -175,8 +197,27 @@ export async function listProducts(actor: AuthenticatedUserData, query: ListProd
   })
 }
 
-export async function getProductDetails(actor: AuthenticatedUserData, productId: string) {
-  return getProductOrThrow(actor, productId)
+export async function getProductDetails(
+  actor: AuthenticatedUserData,
+  productId: string,
+  query: InventoryScopeQuery = {},
+) {
+  const product = await prisma.product.findUnique({
+    where: {
+      id: productId,
+    },
+    include: productDetailsInclude,
+  })
+
+  if (!product) {
+    throw new AppError('NOT_FOUND', 404, 'Product not found.')
+  }
+
+  assertActorCanReadInventoryRecordInScope(actor, product.unitId, {
+    requestedUnitId: query.unitId ?? null,
+  })
+
+  return product
 }
 
 export async function createProduct(actor: AuthenticatedUserData, input: CreateProductInput) {
@@ -283,9 +324,10 @@ export async function listInventoryStocks(
   actor: AuthenticatedUserData,
   query: ListInventoryStocksQuery,
 ) {
+  const scopedUnitId = resolveInventoryReadUnitId(actor, query.unitId ?? null)
   const inventoryStocks = await prisma.inventoryStock.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId: scopedUnitId,
       ...(query.productId ? { productId: query.productId } : {}),
     },
     include: inventoryStockDetailsInclude,
@@ -311,9 +353,11 @@ export async function listInventoryMovements(
   actor: AuthenticatedUserData,
   query: ListInventoryMovementsQuery,
 ) {
+  const scopedUnitId = resolveInventoryReadUnitId(actor, query.unitId ?? null)
+
   return prisma.inventoryMovement.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId: scopedUnitId,
       ...(query.productId ? { productId: query.productId } : {}),
       ...(query.movementType ? { movementType: query.movementType } : {}),
     },
@@ -327,8 +371,24 @@ export async function listInventoryMovements(
 export async function getInventoryMovementDetails(
   actor: AuthenticatedUserData,
   movementId: string,
+  query: InventoryScopeQuery = {},
 ) {
-  return getInventoryMovementOrThrow(actor, movementId)
+  const movement = await prisma.inventoryMovement.findUnique({
+    where: {
+      id: movementId,
+    },
+    include: inventoryMovementDetailsInclude,
+  })
+
+  if (!movement) {
+    throw new AppError('NOT_FOUND', 404, 'Inventory movement not found.')
+  }
+
+  assertActorCanReadInventoryRecordInScope(actor, movement.unitId, {
+    requestedUnitId: query.unitId ?? null,
+  })
+
+  return movement
 }
 
 export async function recordInventoryMovement(

@@ -1,11 +1,17 @@
 import { Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
+import { writeAuditLog } from '@/server/audit/logging'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  assertActorCanAccessOwnershipBinding,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
 import { getEnv } from '@/server/env'
-import { writeAuditLog } from '@/server/audit/logging'
 import { assertPermission, isTutorUser } from '@/server/authorization/access-control'
 import { AppError } from '@/server/http/errors'
 import { deleteBinaryObject, readBinaryObject, storeBinaryObject } from '@/server/storage/service'
+import { buildClientOwnershipBinding } from '@/features/clients/ownership'
 import {
   asMetadataObject,
   assertAllowedFileSize,
@@ -103,6 +109,27 @@ type MediaAssetDetails = Prisma.MediaAssetGetPayload<{
   include: typeof mediaAssetDetailsInclude
 }>
 
+type DocumentScopeQuery = {
+  unitId?: string | null
+}
+
+export function resolveDocumentReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId)
+}
+
+export function assertActorCanReadDocumentInScope(
+  actor: AuthenticatedUserData,
+  recordUnitId: string,
+  options?: DocumentScopeQuery,
+) {
+  assertActorCanAccessLocalUnitRecord(actor, recordUnitId, {
+    requestedUnitId: options?.unitId,
+  })
+}
+
 function toInputJsonObject(value: unknown): Prisma.InputJsonObject {
   return JSON.parse(JSON.stringify(asMetadataObject(value))) as Prisma.InputJsonObject
 }
@@ -199,22 +226,6 @@ async function resolveAssetBindings(
     throw new AppError('NOT_FOUND', 404, 'Appointment not found for document or media binding.')
   }
 
-  if (actor.unitId) {
-    const scopedUnitIds = [
-      client?.user.unitId,
-      pet?.client.user.unitId,
-      appointment?.unitId,
-    ].filter((value): value is string => Boolean(value))
-
-    if (scopedUnitIds.some((unitId) => unitId !== actor.unitId)) {
-      throw new AppError(
-        'FORBIDDEN',
-        403,
-        'User is not allowed to bind documents or media outside the active unit.',
-      )
-    }
-  }
-
   if (client && pet && pet.clientId !== client.userId) {
     throw new AppError('CONFLICT', 409, 'Selected pet does not belong to the selected client.')
   }
@@ -241,7 +252,20 @@ async function resolveAssetBindings(
     petClientId: pet?.clientId,
   })
 
-  const unitId = actor.unitId ?? appointment?.unitId ?? client?.user.unitId ?? pet?.client.user.unitId
+  const ownershipUnitId =
+    appointment?.unitId ?? client?.user.unitId ?? pet?.client.user.unitId ?? null
+
+  if (ownershipUnitId) {
+    assertActorCanAccessOwnershipBinding(
+      actor,
+      buildClientOwnershipBinding(ownershipUnitId),
+      {
+        requestedUnitId: ownershipUnitId,
+      },
+    )
+  }
+
+  const unitId = resolveScopedUnitId(actor, ownershipUnitId)
 
   if (!unitId) {
     throw new AppError(
@@ -306,9 +330,7 @@ async function loadDocumentForInternalRead(actor: AuthenticatedUserData, documen
     throw new AppError('NOT_FOUND', 404, 'Document not found.')
   }
 
-  if (actor.unitId && document.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this document.')
-  }
+  assertActorCanReadDocumentInScope(actor, document.unitId)
 
   return document
 }
@@ -325,9 +347,7 @@ async function loadMediaForInternalRead(actor: AuthenticatedUserData, mediaAsset
     throw new AppError('NOT_FOUND', 404, 'Media asset not found.')
   }
 
-  if (actor.unitId && mediaAsset.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this media asset.')
-  }
+  assertActorCanReadDocumentInScope(actor, mediaAsset.unitId)
 
   return mediaAsset
 }
@@ -357,9 +377,11 @@ function assertTutorCanReadMedia(tutor: AuthenticatedUserData, mediaAsset: Media
 }
 
 export async function listDocuments(actor: AuthenticatedUserData, query: ListDocumentsQuery) {
+  const unitId = resolveDocumentReadUnitId(actor, query.unitId ?? null)
+
   return prisma.document.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId,
       ...(query.clientId ? { clientId: query.clientId } : {}),
       ...(query.petId ? { petId: query.petId } : {}),
       ...(query.appointmentId ? { appointmentId: query.appointmentId } : {}),
@@ -595,9 +617,11 @@ export async function signDocument(
 }
 
 export async function listMediaAssets(actor: AuthenticatedUserData, query: ListMediaAssetsQuery) {
+  const unitId = resolveDocumentReadUnitId(actor, query.unitId ?? null)
+
   return prisma.mediaAsset.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId,
       ...(query.clientId ? { clientId: query.clientId } : {}),
       ...(query.petId ? { petId: query.petId } : {}),
       ...(query.appointmentId ? { appointmentId: query.appointmentId } : {}),

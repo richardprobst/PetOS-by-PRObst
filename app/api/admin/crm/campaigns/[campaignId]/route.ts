@@ -1,11 +1,10 @@
-import { readValidatedJson } from '@/server/http/request'
+import { readValidatedJson, readValidatedSearchParams } from '@/server/http/request'
 import { ok, routeErrorResponse } from '@/server/http/responses'
 import { requireInternalApiUser } from '@/server/authorization/api-access'
-import { prisma } from '@/server/db/prisma'
-import { AppError } from '@/server/http/errors'
 import { enforceMutationRateLimit } from '@/server/security/operations'
 import { updateCrmCampaignInputSchema } from '@/features/crm/schemas'
-import { updateCrmCampaign } from '@/features/crm/services'
+import { multiUnitReadScopeQuerySchema } from '@/features/multiunit/schemas'
+import { getCrmCampaignDetails, updateCrmCampaign } from '@/features/crm/services'
 
 interface RouteContext {
   params: Promise<{
@@ -17,32 +16,9 @@ export async function GET(request: Request, context: RouteContext) {
   try {
     const actor = await requireInternalApiUser('crm.campanha.visualizar')
     const { campaignId } = await context.params
-    const campaign = await prisma.crmCampaign.findUnique({
-      where: {
-        id: campaignId,
-      },
-      include: {
-        createdBy: true,
-        template: true,
-        unit: true,
-        _count: {
-          select: {
-            executions: true,
-            recipients: true,
-          },
-        },
-      },
-    })
+    const query = readValidatedSearchParams(request, multiUnitReadScopeQuerySchema)
 
-    if (!campaign) {
-      throw new AppError('NOT_FOUND', 404, 'CRM campaign not found.')
-    }
-
-    if (actor.unitId && actor.unitId !== campaign.unitId) {
-      throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this CRM campaign.')
-    }
-
-    return ok(campaign)
+    return ok(await getCrmCampaignDetails(actor, campaignId, query))
   } catch (error) {
     return routeErrorResponse(error, { request })
   }

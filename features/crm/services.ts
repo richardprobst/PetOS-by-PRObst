@@ -8,7 +8,10 @@ import {
 } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { writeAuditLog } from '@/server/audit/logging'
-import { resolveScopedUnitId } from '@/server/authorization/scope'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
 import { AppError } from '@/server/http/errors'
 import { operationalStatusIds } from '@/features/appointments/constants'
@@ -192,6 +195,10 @@ interface BuiltClientProfile {
   profile: CrmClientProfile
 }
 
+type CrmScopeQuery = {
+  unitId?: string | null
+}
+
 function toNumber(value: Prisma.Decimal | number | null | undefined) {
   if (value === null || value === undefined) {
     return 0
@@ -298,10 +305,31 @@ function buildCampaignCriteriaSnapshot(criteria: Prisma.JsonValue | null | undef
   }
 }
 
+export function resolveCrmReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId)
+}
+
+export function assertActorCanReadCrmResourceInScope(
+  actor: AuthenticatedUserData,
+  recordUnitId: string,
+  options?: CrmScopeQuery,
+) {
+  assertActorCanAccessLocalUnitRecord(actor, recordUnitId, {
+    requestedUnitId: options?.unitId,
+  })
+}
+
 function assertActorCanUseClient(actor: AuthenticatedUserData, unitId: string | null | undefined) {
-  if (actor.unitId && unitId && actor.unitId !== unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this CRM resource.')
+  if (!unitId) {
+    return
   }
+
+  assertActorCanReadCrmResourceInScope(actor, unitId, {
+    unitId,
+  })
 }
 
 async function getCrmCampaignOrThrow(actor: AuthenticatedUserData, campaignId: string) {
@@ -317,6 +345,29 @@ async function getCrmCampaignOrThrow(actor: AuthenticatedUserData, campaignId: s
   }
 
   assertActorCanUseClient(actor, campaign.unitId)
+  return campaign
+}
+
+export async function getCrmCampaignDetails(
+  actor: AuthenticatedUserData,
+  campaignId: string,
+  query: CrmScopeQuery = {},
+) {
+  const campaign = await prisma.crmCampaign.findUnique({
+    where: {
+      id: campaignId,
+    },
+    include: crmCampaignDetailsInclude,
+  })
+
+  if (!campaign) {
+    throw new AppError('NOT_FOUND', 404, 'CRM campaign not found.')
+  }
+
+  assertActorCanReadCrmResourceInScope(actor, campaign.unitId, {
+    unitId: query.unitId,
+  })
+
   return campaign
 }
 
@@ -492,8 +543,10 @@ async function assertActorCanUseTemplate(
     )
   }
 
-  if (actor.unitId && template.unitId && actor.unitId !== template.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to use this message template.')
+  if (template.unitId) {
+    assertActorCanReadCrmResourceInScope(actor, template.unitId, {
+      unitId: template.unitId,
+    })
   }
 
   if (template.unitId && template.unitId !== input.unitId) {
@@ -838,16 +891,16 @@ function buildRecipientLaunchContext(recipient: CrmRecipientLaunchRecord) {
 }
 
 export async function listClientCommunicationPreferences(actor: AuthenticatedUserData) {
+  const unitId = resolveCrmReadUnitId(actor)
+
   return prisma.clientCommunicationPreference.findMany({
-    where: actor.unitId
-      ? {
-          client: {
-            user: {
-              unitId: actor.unitId,
-            },
-          },
-        }
-      : undefined,
+    where: {
+      client: {
+        user: {
+          unitId,
+        },
+      },
+    },
     include: communicationPreferenceDetailsInclude,
     orderBy: {
       client: {
@@ -931,9 +984,11 @@ export async function listCrmCampaigns(
   actor: AuthenticatedUserData,
   query: ListCrmCampaignsQuery,
 ) {
+  const unitId = resolveCrmReadUnitId(actor, query.unitId ?? null)
+
   return prisma.crmCampaign.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId,
       ...(query.status ? { status: query.status } : {}),
       ...(query.type ? { campaignType: query.type } : {}),
     },
@@ -948,7 +1003,7 @@ export async function createCrmCampaign(
   actor: AuthenticatedUserData,
   input: CreateCrmCampaignInput,
 ) {
-  const unitId = resolveScopedUnitId(actor, actor.unitId)
+  const unitId = resolveScopedUnitId(actor, null)
   await assertActorCanUseTemplate(actor, {
     channel: input.channel,
     templateId: input.templateId,
@@ -1043,10 +1098,12 @@ export async function listCrmExecutions(
   actor: AuthenticatedUserData,
   query: ListCrmExecutionsQuery,
 ) {
+  const unitId = resolveCrmReadUnitId(actor, query.unitId ?? null)
+
   return prisma.crmCampaignExecution.findMany({
     where: {
       campaign: {
-        ...(actor.unitId ? { unitId: actor.unitId } : {}),
+        unitId,
         ...(query.campaignId ? { id: query.campaignId } : {}),
       },
       ...(query.recipientStatus

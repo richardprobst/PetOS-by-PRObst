@@ -2,8 +2,13 @@ import { Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { prisma } from '@/server/db/prisma'
 import { AppError } from '@/server/http/errors'
-import { resolveScopedUnitId } from '@/server/authorization/scope'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  assertActorCanAccessOwnershipBinding,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { writeAuditLog } from '@/server/audit/logging'
+import { buildClientOwnershipBinding } from '@/features/clients/ownership'
 import {
   buildManualMessageLaunchUrl,
   renderMessageTemplate,
@@ -42,6 +47,39 @@ const messageLogDetailsInclude = Prisma.validator<Prisma.MessageLogInclude>()({
   sender: true,
 })
 
+export function resolveMessageReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId ?? null)
+}
+
+export function assertActorCanReadMessageRecordInScope(
+  actor: AuthenticatedUserData,
+  recordUnitId: string,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  assertActorCanAccessLocalUnitRecord(actor, recordUnitId, options)
+}
+
+export function assertActorCanReadMessageTemplateInScope(
+  actor: AuthenticatedUserData,
+  templateUnitId: string | null,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  if (!templateUnitId) {
+    return
+  }
+
+  assertActorCanReadMessageRecordInScope(actor, templateUnitId, options)
+}
+
 async function getMessageTemplateOrThrow(actor: AuthenticatedUserData, templateId: string) {
   const template = await prisma.messageTemplate.findUnique({
     where: {
@@ -54,9 +92,9 @@ async function getMessageTemplateOrThrow(actor: AuthenticatedUserData, templateI
     throw new AppError('NOT_FOUND', 404, 'Message template not found.')
   }
 
-  if (actor.unitId && template.unitId && actor.unitId !== template.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this message template.')
-  }
+  assertActorCanReadMessageTemplateInScope(actor, template.unitId, {
+    requestedUnitId: template.unitId,
+  })
 
   return template
 }
@@ -110,20 +148,24 @@ async function assertMessageLogContext(actor: AuthenticatedUserData, input: Crea
     throw new AppError('NOT_FOUND', 404, 'Message template not found for message log.')
   }
 
-  if (actor.unitId && appointment && appointment.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to use this appointment in communication.')
+  if (appointment) {
+    assertActorCanReadMessageRecordInScope(actor, appointment.unitId)
   }
 
-  if (actor.unitId && client?.user.unitId && client.user.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to use this client in communication.')
-  }
-
-  if (actor.unitId && template?.unitId && template.unitId !== actor.unitId) {
-    throw new AppError(
-      'FORBIDDEN',
-      403,
-      'User is not allowed to use this message template in communication.',
+  if (client?.user.unitId) {
+    assertActorCanAccessOwnershipBinding(
+      actor,
+      buildClientOwnershipBinding(client.user.unitId),
+      {
+        requestedUnitId: client.user.unitId,
+      },
     )
+  }
+
+  if (template) {
+    assertActorCanReadMessageTemplateInScope(actor, template.unitId, {
+      requestedUnitId: template.unitId,
+    })
   }
 
   if (appointment && client && appointment.clientId !== client.userId) {
@@ -212,9 +254,11 @@ export async function listMessageTemplates(
   actor: AuthenticatedUserData,
   query: ListMessageTemplatesQuery,
 ) {
+  const scopedUnitId = resolveMessageReadUnitId(actor, query.unitId ?? null)
+
   return prisma.messageTemplate.findMany({
     where: {
-      ...(actor.unitId ? { OR: [{ unitId: actor.unitId }, { unitId: null }] } : {}),
+      OR: [{ unitId: scopedUnitId }, { unitId: null }],
       ...(query.search
         ? {
             name: {
@@ -274,7 +318,10 @@ export async function updateMessageTemplate(
   input: UpdateMessageTemplateInput,
 ) {
   const existingTemplate = await getMessageTemplateOrThrow(actor, templateId)
-  const unitId = resolveScopedUnitId(actor, input.unitId ?? existingTemplate.unitId ?? null)
+  const unitId =
+    input.unitId === undefined && existingTemplate.unitId === null
+      ? null
+      : resolveScopedUnitId(actor, input.unitId ?? existingTemplate.unitId ?? null)
 
   return prisma.$transaction(async (tx) => {
     const template = await tx.messageTemplate.update({
@@ -311,30 +358,28 @@ export async function updateMessageTemplate(
 }
 
 export async function listMessageLogs(actor: AuthenticatedUserData, query: ListMessageLogsQuery) {
+  const scopedUnitId = resolveMessageReadUnitId(actor, query.unitId ?? null)
+
   return prisma.messageLog.findMany({
     where: {
       ...(query.appointmentId ? { appointmentId: query.appointmentId } : {}),
       ...(query.clientId ? { clientId: query.clientId } : {}),
       ...(query.channel ? { channel: query.channel } : {}),
       ...(query.deliveryStatus ? { deliveryStatus: query.deliveryStatus } : {}),
-      ...(actor.unitId
-        ? {
-            OR: [
-              {
-                appointment: {
-                  unitId: actor.unitId,
-                },
-              },
-              {
-                client: {
-                  user: {
-                    unitId: actor.unitId,
-                  },
-                },
-              },
-            ],
-          }
-        : {}),
+      OR: [
+        {
+          appointment: {
+            unitId: scopedUnitId,
+          },
+        },
+        {
+          client: {
+            user: {
+              unitId: scopedUnitId,
+            },
+          },
+        },
+      ],
     },
     include: messageLogDetailsInclude,
     orderBy: {
@@ -345,7 +390,13 @@ export async function listMessageLogs(actor: AuthenticatedUserData, query: ListM
 
 export async function createMessageLog(actor: AuthenticatedUserData, input: CreateMessageLogInput) {
   const context = await assertMessageLogContext(actor, input)
-  const unitId = context.appointment?.unitId ?? context.client?.user.unitId ?? actor.unitId ?? null
+  const unitId = resolveScopedUnitId(
+    actor,
+    context.appointment?.unitId ??
+      context.client?.user.unitId ??
+      context.template?.unitId ??
+      null,
+  )
 
   return prisma.$transaction(async (tx) => {
     const log = await tx.messageLog.create({
@@ -387,7 +438,13 @@ export async function launchManualMessage(
     ...input,
     messageContent: input.messageContent ?? 'template-only',
   })
-  const unitId = context.appointment?.unitId ?? context.client?.user.unitId ?? actor.unitId ?? null
+  const unitId = resolveScopedUnitId(
+    actor,
+    context.appointment?.unitId ??
+      context.client?.user.unitId ??
+      context.template?.unitId ??
+      null,
+  )
   const messageContent = resolveManualMessageContent(context, input)
   const subject = resolveManualMessageSubject(context, input.channel)
   const destination = resolveManualMessageDestination(context, input.channel)

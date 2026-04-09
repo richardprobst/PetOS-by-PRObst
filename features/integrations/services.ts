@@ -1,10 +1,11 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
+import { writeAuditLog } from '@/server/audit/logging'
+import { assertActorCanAccessLocalUnitRecord, resolveScopedUnitId } from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
 import { getEnv } from '@/server/env'
 import { AppError } from '@/server/http/errors'
-import { writeAuditLog } from '@/server/audit/logging'
 import { syncAppointmentFinancialStatus } from '@/features/appointments/financial'
 import { derivePaymentStatusFromDepositState } from '@/features/finance/domain'
 import type {
@@ -18,6 +19,13 @@ const integrationEventDetailsInclude = Prisma.validator<Prisma.IntegrationEventI
 })
 
 type ProviderName = 'FISCAL' | 'MERCADO_PAGO' | 'STRIPE'
+
+export function resolveIntegrationEventReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId)
+}
 
 function sanitizeIntegrationHeaders(headers: Headers) {
   return {
@@ -300,9 +308,11 @@ export async function listIntegrationEvents(
   actor: AuthenticatedUserData,
   query: ListIntegrationEventsQuery,
 ) {
+  const unitId = resolveIntegrationEventReadUnitId(actor, query.unitId ?? null)
+
   return prisma.integrationEvent.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId,
       ...(query.provider ? { provider: query.provider } : {}),
       ...(query.direction ? { direction: query.direction } : {}),
       ...(query.status ? { status: query.status } : {}),
@@ -435,8 +445,10 @@ export async function reprocessIntegrationEvent(
     throw new AppError('NOT_FOUND', 404, 'Integration event not found.')
   }
 
-  if (actor.unitId && existingEvent.unitId && actor.unitId !== existingEvent.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to reprocess this integration event.')
+  if (existingEvent.unitId) {
+    assertActorCanAccessLocalUnitRecord(actor, existingEvent.unitId, {
+      requestedUnitId: existingEvent.unitId,
+    })
   }
 
   const payload = existingEvent.payload as NormalizedIntegrationEventInput['data'] | null

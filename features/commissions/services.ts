@@ -1,16 +1,26 @@
 import type { AuthenticatedUserData } from '@/server/auth/types'
+import { resolveScopedUnitId } from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
 import type { ListCommissionsQuery } from '@/features/commissions/schemas'
+
+export function resolveCommissionReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId)
+}
 
 export async function listCommissionSummaries(
   actor: AuthenticatedUserData,
   query: ListCommissionsQuery,
 ) {
+  const unitId = resolveCommissionReadUnitId(actor, query.unitId ?? null)
+
   const items = await prisma.appointmentService.findMany({
     where: {
       ...(query.employeeUserId ? { employeeUserId: query.employeeUserId } : {}),
       appointment: {
-        ...(actor.unitId ? { unitId: actor.unitId } : {}),
+        unitId,
       },
     },
     include: {

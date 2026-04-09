@@ -49,6 +49,7 @@ export const updateMessageTemplateInputSchema = z
   })
 
 export const listMessageTemplatesQuerySchema = z.object({
+  unitId: optionalString,
   search: optionalString,
   channel: z.nativeEnum(MessageChannel).optional(),
   active: optionalBoolean,
@@ -83,6 +84,7 @@ export const createManualMessageLaunchInputSchema = z
   })
 
 export const listMessageLogsQuerySchema = z.object({
+  unitId: optionalString,
   appointmentId: optionalString,
   clientId: optionalString,
   channel: z.nativeEnum(MessageChannel).optional(),

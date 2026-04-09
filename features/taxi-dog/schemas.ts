@@ -40,6 +40,7 @@ export const changeTaxiDogRideStatusInputSchema = z.object({
 })
 
 export const listTaxiDogRidesQuerySchema = z.object({
+  unitId: optionalString,
   appointmentId: optionalString,
   assignedDriverUserId: optionalString,
   status: z.enum(taxiDogStatusIds).optional(),

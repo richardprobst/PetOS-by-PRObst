@@ -8,10 +8,15 @@ import {
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { prisma } from '@/server/db/prisma'
 import { AppError } from '@/server/http/errors'
-import { resolveScopedUnitId } from '@/server/authorization/scope'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  assertActorCanAccessOwnershipBinding,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { writeAuditLog } from '@/server/audit/logging'
 import { syncAppointmentFinancialStatus } from '@/features/appointments/financial'
 import { operationalStatusIds } from '@/features/appointments/constants'
+import { buildClientOwnershipBinding } from '@/features/clients/ownership'
 import {
   assertDepositStatusTransition,
   assertPrepaymentRequiresAppointment,
@@ -144,6 +149,24 @@ type ClientReference = {
   unitId: string | null
 }
 
+export function resolveFinanceReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId ?? null)
+}
+
+export function assertActorCanReadFinanceRecordInScope(
+  actor: AuthenticatedUserData,
+  recordUnitId: string,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  assertActorCanAccessLocalUnitRecord(actor, recordUnitId, options)
+}
+
 function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
 }
@@ -201,9 +224,7 @@ async function getAppointmentReference(
     throw new AppError('NOT_FOUND', 404, 'Appointment not found for financial operation.')
   }
 
-  if (actor.unitId && appointment.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to use this appointment.')
-  }
+  assertActorCanReadFinanceRecordInScope(actor, appointment.unitId)
 
   return {
     clientId: appointment.clientId,
@@ -240,8 +261,14 @@ async function getClientReference(
     throw new AppError('NOT_FOUND', 404, 'Client not found for financial operation.')
   }
 
-  if (actor.unitId && clientRecord.user.unitId && actor.unitId !== clientRecord.user.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to use this client.')
+  if (clientRecord.user.unitId) {
+    assertActorCanAccessOwnershipBinding(
+      actor,
+      buildClientOwnershipBinding(clientRecord.user.unitId),
+      {
+        requestedUnitId: clientRecord.user.unitId,
+      },
+    )
   }
 
   return {
@@ -265,9 +292,7 @@ async function getFinancialTransactionOrThrow(
     throw new AppError('NOT_FOUND', 404, 'Financial transaction not found.')
   }
 
-  if (actor.unitId && transaction.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this transaction.')
-  }
+  assertActorCanReadFinanceRecordInScope(actor, transaction.unitId)
 
   return transaction
 }
@@ -284,9 +309,7 @@ async function getDepositOrThrow(actor: AuthenticatedUserData, depositId: string
     throw new AppError('NOT_FOUND', 404, 'Deposit not found.')
   }
 
-  if (actor.unitId && deposit.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this deposit.')
-  }
+  assertActorCanReadFinanceRecordInScope(actor, deposit.unitId)
 
   return deposit
 }
@@ -303,9 +326,7 @@ async function getClientCreditOrThrow(actor: AuthenticatedUserData, creditId: st
     throw new AppError('NOT_FOUND', 404, 'Client credit not found.')
   }
 
-  if (actor.unitId && credit.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this client credit.')
-  }
+  assertActorCanReadFinanceRecordInScope(actor, credit.unitId)
 
   return credit
 }
@@ -361,9 +382,11 @@ export async function listFinancialTransactions(
   actor: AuthenticatedUserData,
   query: ListFinancialTransactionsQuery,
 ) {
+  const scopedUnitId = resolveFinanceReadUnitId(actor, query.unitId ?? null)
+
   return prisma.financialTransaction.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId: scopedUnitId,
       ...(query.appointmentId ? { appointmentId: query.appointmentId } : {}),
       ...(query.transactionType ? { transactionType: query.transactionType } : {}),
       ...(query.paymentStatus ? { paymentStatus: query.paymentStatus } : {}),
@@ -479,9 +502,11 @@ export async function updateFinancialTransaction(
 }
 
 export async function listDeposits(actor: AuthenticatedUserData, query: ListDepositsQuery) {
+  const scopedUnitId = resolveFinanceReadUnitId(actor, query.unitId ?? null)
+
   return prisma.deposit.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId: scopedUnitId,
       ...(query.appointmentId ? { appointmentId: query.appointmentId } : {}),
       ...(query.clientId ? { clientId: query.clientId } : {}),
       ...(query.purpose ? { purpose: query.purpose } : {}),
@@ -665,9 +690,11 @@ export async function updateDepositStatus(
 }
 
 export async function listRefunds(actor: AuthenticatedUserData, query: ListRefundsQuery) {
+  const scopedUnitId = resolveFinanceReadUnitId(actor, query.unitId ?? null)
+
   return prisma.refund.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId: scopedUnitId,
       ...(query.appointmentId ? { appointmentId: query.appointmentId } : {}),
       ...(query.clientId ? { clientId: query.clientId } : {}),
       ...(query.status ? { status: query.status } : {}),
@@ -901,10 +928,11 @@ export async function listClientCredits(
   query: ListClientCreditsQuery,
 ) {
   const now = new Date()
+  const scopedUnitId = resolveFinanceReadUnitId(actor, query.unitId ?? null)
 
   return prisma.clientCredit.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId: scopedUnitId,
       ...(query.clientId ? { clientId: query.clientId } : {}),
       ...(query.includeExpired
         ? {}

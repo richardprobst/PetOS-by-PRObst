@@ -53,6 +53,7 @@ export const updateEmployeeInputSchema = z
   })
 
 export const listEmployeesQuerySchema = z.object({
+  unitId: optionalString,
   search: optionalString,
   active: optionalBoolean,
 })

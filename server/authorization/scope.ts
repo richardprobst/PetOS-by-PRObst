@@ -88,6 +88,26 @@ export function assertActorCanAccessOwnershipBinding(
   }
 }
 
+export function createLocalUnitOwnershipBinding(unitId: string): MultiUnitOwnershipBinding {
+  return {
+    kind: 'LOCAL_RECORD',
+    primaryUnitId: unitId,
+    linkedUnitIds: [],
+    reassignmentAuditRequired: true,
+  }
+}
+
+export function assertActorCanAccessLocalUnitRecord(
+  actor: AuthenticatedUserData,
+  unitId: string,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  assertActorCanAccessOwnershipBinding(actor, createLocalUnitOwnershipBinding(unitId), options)
+}
+
 export function assertActorCanStructurallyWriteOwnershipBinding(
   actor: AuthenticatedUserData,
   ownership: MultiUnitOwnershipBinding,

@@ -10,6 +10,7 @@ const optionalString = z.string().trim().min(1).optional()
 const optionalDate = z.coerce.date().optional()
 
 export const listTeamShiftsQuerySchema = z.object({
+  unitId: optionalString,
   employeeUserId: optionalString,
   status: z.nativeEnum(TeamShiftStatus).optional(),
   startFrom: optionalDate,
@@ -40,6 +41,7 @@ export const updateTeamShiftInputSchema = z
   })
 
 export const listTimeClockEntriesQuerySchema = z.object({
+  unitId: optionalString,
   employeeUserId: optionalString,
   status: z.nativeEnum(TimeClockEntryStatus).optional(),
   startFrom: optionalDate,
@@ -74,6 +76,7 @@ export const closeTimeClockEntryInputSchema = z.object({
 })
 
 export const listPayrollRunsQuerySchema = z.object({
+  unitId: optionalString,
   status: z.nativeEnum(PayrollRunStatus).optional(),
   periodStartFrom: optionalDate,
   periodEndTo: optionalDate,

@@ -1,7 +1,10 @@
 import { Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { prisma } from '@/server/db/prisma'
-import { resolveScopedUnitId } from '@/server/authorization/scope'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { writeAuditLog } from '@/server/audit/logging'
 import { AppError } from '@/server/http/errors'
 import {
@@ -48,6 +51,24 @@ const taxiDogRideInclude = Prisma.validator<Prisma.TaxiDogRideInclude>()({
 
 type TaxiDogMutationClient = Prisma.TransactionClient | typeof prisma
 
+export function resolveTaxiDogReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId ?? null)
+}
+
+export function assertActorCanReadTaxiDogRecordInScope(
+  actor: AuthenticatedUserData,
+  rideUnitId: string,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  assertActorCanAccessLocalUnitRecord(actor, rideUnitId, options)
+}
+
 function toNumber(value: Prisma.Decimal | number | null | undefined) {
   if (value === null || value === undefined) {
     return 0
@@ -68,9 +89,7 @@ async function getTaxiDogRideOrThrow(actor: AuthenticatedUserData, rideId: strin
     throw new AppError('NOT_FOUND', 404, 'Taxi Dog ride not found.')
   }
 
-  if (actor.unitId && ride.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this Taxi Dog ride.')
-  }
+  assertActorCanReadTaxiDogRecordInScope(actor, ride.unitId)
 
   return ride
 }
@@ -96,9 +115,7 @@ async function getAppointmentSnapshot(actor: AuthenticatedUserData, appointmentI
     throw new AppError('NOT_FOUND', 404, 'Appointment not found for Taxi Dog.')
   }
 
-  if (actor.unitId && appointment.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this appointment.')
-  }
+  assertActorCanReadTaxiDogRecordInScope(actor, appointment.unitId)
 
   if (
     appointment.operationalStatusId === operationalStatusIds.completed ||
@@ -166,11 +183,11 @@ async function syncAppointmentEstimatedTotalAmount(
 }
 
 export async function listTaxiDogRides(actor: AuthenticatedUserData, query: ListTaxiDogRidesQuery) {
-  const unitId = query.appointmentId ? undefined : resolveScopedUnitId(actor, actor.unitId ?? null)
+  const unitId = resolveTaxiDogReadUnitId(actor, query.unitId ?? null)
 
   return prisma.taxiDogRide.findMany({
     where: {
-      ...(unitId ? { unitId } : actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId,
       ...(query.appointmentId ? { appointmentId: query.appointmentId } : {}),
       ...(query.assignedDriverUserId ? { assignedDriverUserId: query.assignedDriverUserId } : {}),
       ...(query.status ? { status: query.status } : {}),

@@ -6,7 +6,10 @@ import {
 } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { writeAuditLog } from '@/server/audit/logging'
-import { assertActorCanAccessUnit, resolveScopedUnitId } from '@/server/authorization/scope'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
 import { operationalStatusIds } from '@/features/appointments/constants'
 import {
@@ -99,6 +102,28 @@ type PayrollEntryOverrides = {
   notes: string | null
 }
 
+type TeamOperationsScopeQuery = {
+  unitId?: string
+}
+
+export function resolveTeamOperationsReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId ?? null)
+}
+
+export function assertActorCanReadTeamOperationsRecordInScope(
+  actor: AuthenticatedUserData,
+  recordUnitId: string,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  assertActorCanAccessLocalUnitRecord(actor, recordUnitId, options)
+}
+
 function toNumber(value: Prisma.Decimal | number | null | undefined) {
   if (value === null || value === undefined) {
     return 0
@@ -146,7 +171,7 @@ async function getTeamShiftOrThrow(actor: AuthenticatedUserData, shiftId: string
     throw new AppError('NOT_FOUND', 404, 'Team shift not found.')
   }
 
-  assertActorCanAccessUnit(actor, shift.unitId)
+  assertActorCanReadTeamOperationsRecordInScope(actor, shift.unitId)
   return shift
 }
 
@@ -162,7 +187,7 @@ async function getTimeClockEntryOrThrow(actor: AuthenticatedUserData, entryId: s
     throw new AppError('NOT_FOUND', 404, 'Time clock entry not found.')
   }
 
-  assertActorCanAccessUnit(actor, entry.unitId)
+  assertActorCanReadTeamOperationsRecordInScope(actor, entry.unitId)
   return entry
 }
 
@@ -178,7 +203,7 @@ async function getPayrollRunOrThrow(actor: AuthenticatedUserData, runId: string)
     throw new AppError('NOT_FOUND', 404, 'Payroll run not found.')
   }
 
-  assertActorCanAccessUnit(actor, run.unitId)
+  assertActorCanReadTeamOperationsRecordInScope(actor, run.unitId)
   return run
 }
 
@@ -585,9 +610,11 @@ export async function getTeamOperationsDefaults(
 }
 
 export async function listTeamShifts(actor: AuthenticatedUserData, query: ListTeamShiftsQuery) {
+  const scopedUnitId = resolveTeamOperationsReadUnitId(actor, query.unitId ?? null)
+
   return prisma.teamShift.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId: scopedUnitId,
       ...(query.employeeUserId ? { employeeUserId: query.employeeUserId } : {}),
       ...(query.status ? { status: query.status } : {}),
       ...((query.startFrom || query.startTo)
@@ -620,8 +647,27 @@ export async function listTeamShifts(actor: AuthenticatedUserData, query: ListTe
   })
 }
 
-export async function getTeamShiftDetails(actor: AuthenticatedUserData, shiftId: string) {
-  return getTeamShiftOrThrow(actor, shiftId)
+export async function getTeamShiftDetails(
+  actor: AuthenticatedUserData,
+  shiftId: string,
+  query: TeamOperationsScopeQuery = {},
+) {
+  const shift = await prisma.teamShift.findUnique({
+    where: {
+      id: shiftId,
+    },
+    include: teamShiftDetailsInclude,
+  })
+
+  if (!shift) {
+    throw new AppError('NOT_FOUND', 404, 'Team shift not found.')
+  }
+
+  assertActorCanReadTeamOperationsRecordInScope(actor, shift.unitId, {
+    requestedUnitId: query.unitId ?? null,
+  })
+
+  return shift
 }
 
 export async function createTeamShift(actor: AuthenticatedUserData, input: CreateTeamShiftInput) {
@@ -727,9 +773,11 @@ export async function listTimeClockEntries(
   actor: AuthenticatedUserData,
   query: ListTimeClockEntriesQuery,
 ) {
+  const scopedUnitId = resolveTeamOperationsReadUnitId(actor, query.unitId ?? null)
+
   return prisma.timeClockEntry.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId: scopedUnitId,
       ...(query.employeeUserId ? { employeeUserId: query.employeeUserId } : {}),
       ...(query.status ? { status: query.status } : {}),
       ...((query.startFrom || query.startTo)
@@ -776,8 +824,27 @@ export async function listTimeClockEntries(
   })
 }
 
-export async function getTimeClockEntryDetails(actor: AuthenticatedUserData, entryId: string) {
-  return getTimeClockEntryOrThrow(actor, entryId)
+export async function getTimeClockEntryDetails(
+  actor: AuthenticatedUserData,
+  entryId: string,
+  query: TeamOperationsScopeQuery = {},
+) {
+  const entry = await prisma.timeClockEntry.findUnique({
+    where: {
+      id: entryId,
+    },
+    include: timeClockEntryDetailsInclude,
+  })
+
+  if (!entry) {
+    throw new AppError('NOT_FOUND', 404, 'Time clock entry not found.')
+  }
+
+  assertActorCanReadTeamOperationsRecordInScope(actor, entry.unitId, {
+    requestedUnitId: query.unitId ?? null,
+  })
+
+  return entry
 }
 
 export async function openTimeClockEntry(
@@ -957,9 +1024,11 @@ export async function closeTimeClockEntry(
 }
 
 export async function listPayrollRuns(actor: AuthenticatedUserData, query: ListPayrollRunsQuery) {
+  const scopedUnitId = resolveTeamOperationsReadUnitId(actor, query.unitId ?? null)
+
   return prisma.payrollRun.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId: scopedUnitId,
       ...(query.status ? { status: query.status } : {}),
       ...((query.periodStartFrom || query.periodEndTo)
         ? {
@@ -991,8 +1060,27 @@ export async function listPayrollRuns(actor: AuthenticatedUserData, query: ListP
   })
 }
 
-export async function getPayrollRunDetails(actor: AuthenticatedUserData, runId: string) {
-  return getPayrollRunOrThrow(actor, runId)
+export async function getPayrollRunDetails(
+  actor: AuthenticatedUserData,
+  runId: string,
+  query: TeamOperationsScopeQuery = {},
+) {
+  const run = await prisma.payrollRun.findUnique({
+    where: {
+      id: runId,
+    },
+    include: payrollRunDetailsInclude,
+  })
+
+  if (!run) {
+    throw new AppError('NOT_FOUND', 404, 'Payroll run not found.')
+  }
+
+  assertActorCanReadTeamOperationsRecordInScope(actor, run.unitId, {
+    requestedUnitId: query.unitId ?? null,
+  })
+
+  return run
 }
 
 export async function createPayrollRun(

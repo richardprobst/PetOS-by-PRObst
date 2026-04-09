@@ -1,10 +1,10 @@
 import { Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
+import { writeAuditLog } from '@/server/audit/logging'
+import { assertActorCanAccessLocalUnitRecord, resolveScopedUnitId } from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
 import { getEnv } from '@/server/env'
 import { AppError } from '@/server/http/errors'
-import { resolveScopedUnitId } from '@/server/authorization/scope'
-import { writeAuditLog } from '@/server/audit/logging'
 import type {
   CreateFiscalDocumentInput,
   ListFiscalDocumentsQuery,
@@ -27,6 +27,27 @@ const fiscalDocumentDetailsInclude = Prisma.validator<Prisma.FiscalDocumentInclu
   unit: true,
 })
 
+type FiscalScopeQuery = {
+  unitId?: string | null
+}
+
+export function resolveFiscalReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId)
+}
+
+export function assertActorCanReadFiscalDocumentInScope(
+  actor: AuthenticatedUserData,
+  recordUnitId: string,
+  options?: FiscalScopeQuery,
+) {
+  assertActorCanAccessLocalUnitRecord(actor, recordUnitId, {
+    requestedUnitId: options?.unitId,
+  })
+}
+
 async function getFiscalDocumentOrThrow(actor: AuthenticatedUserData, documentId: string) {
   const document = await prisma.fiscalDocument.findUnique({
     where: {
@@ -39,9 +60,7 @@ async function getFiscalDocumentOrThrow(actor: AuthenticatedUserData, documentId
     throw new AppError('NOT_FOUND', 404, 'Fiscal document not found.')
   }
 
-  if (actor.unitId && actor.unitId !== document.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this fiscal document.')
-  }
+  assertActorCanReadFiscalDocumentInScope(actor, document.unitId)
 
   return document
 }
@@ -99,9 +118,11 @@ export async function listFiscalDocuments(
   actor: AuthenticatedUserData,
   query: ListFiscalDocumentsQuery,
 ) {
+  const unitId = resolveFiscalReadUnitId(actor, query.unitId ?? null)
+
   return prisma.fiscalDocument.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId,
       ...(query.appointmentId ? { appointmentId: query.appointmentId } : {}),
       ...(query.financialTransactionId
         ? { financialTransactionId: query.financialTransactionId }

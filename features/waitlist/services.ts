@@ -1,7 +1,10 @@
 import { Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { prisma } from '@/server/db/prisma'
-import { resolveScopedUnitId } from '@/server/authorization/scope'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { writeAuditLog } from '@/server/audit/logging'
 import { AppError } from '@/server/http/errors'
 import { assertWaitlistWindow } from '@/features/appointments/domain'
@@ -35,6 +38,24 @@ const waitlistEntryInclude = Prisma.validator<Prisma.WaitlistEntryInclude>()({
   canceledBy: true,
 })
 
+export function resolveWaitlistReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId ?? null)
+}
+
+export function assertActorCanReadWaitlistEntryInScope(
+  actor: AuthenticatedUserData,
+  entryUnitId: string,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  assertActorCanAccessLocalUnitRecord(actor, entryUnitId, options)
+}
+
 async function getWaitlistEntryOrThrow(actor: AuthenticatedUserData, waitlistEntryId: string) {
   const entry = await prisma.waitlistEntry.findUnique({
     where: {
@@ -47,9 +68,7 @@ async function getWaitlistEntryOrThrow(actor: AuthenticatedUserData, waitlistEnt
     throw new AppError('NOT_FOUND', 404, 'Waitlist entry not found.')
   }
 
-  if (actor.unitId && entry.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this waitlist entry.')
-  }
+  assertActorCanReadWaitlistEntryInScope(actor, entry.unitId)
 
   return entry
 }
@@ -130,11 +149,11 @@ export async function listWaitlistEntries(
   actor: AuthenticatedUserData,
   query: ListWaitlistEntriesQuery,
 ) {
-  const unitId = query.unitId ? resolveScopedUnitId(actor, query.unitId) : actor.unitId
+  const unitId = resolveWaitlistReadUnitId(actor, query.unitId ?? null)
 
   return prisma.waitlistEntry.findMany({
     where: {
-      ...(unitId ? { unitId } : {}),
+      unitId,
       ...(query.clientId ? { clientId: query.clientId } : {}),
       ...(query.petId ? { petId: query.petId } : {}),
       ...(query.desiredServiceId ? { desiredServiceId: query.desiredServiceId } : {}),

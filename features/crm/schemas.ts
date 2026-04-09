@@ -90,11 +90,13 @@ export const prepareCrmCampaignExecutionInputSchema = z.object({
 export const listCrmCampaignsQuerySchema = z.object({
   status: z.nativeEnum(CrmCampaignStatus).optional(),
   type: z.nativeEnum(CrmCampaignType).optional(),
+  unitId: optionalString,
 })
 
 export const listCrmExecutionsQuerySchema = z.object({
   campaignId: optionalString,
   recipientStatus: z.nativeEnum(CrmCampaignRecipientStatus).optional(),
+  unitId: optionalString,
 })
 
 export type CrmCampaignCriteriaInput = z.infer<typeof crmCampaignCriteriaSchema>

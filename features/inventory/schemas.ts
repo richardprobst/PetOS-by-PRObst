@@ -17,6 +17,7 @@ const optionalBoolean = z.preprocess((value) => {
 }, z.boolean().optional())
 
 export const listProductsQuerySchema = z.object({
+  unitId: optionalString,
   active: optionalBoolean,
   lowStockOnly: optionalBoolean.default(false),
   productId: optionalString,
@@ -55,11 +56,13 @@ export const updateProductInputSchema = z
   })
 
 export const listInventoryStocksQuerySchema = z.object({
+  unitId: optionalString,
   lowStockOnly: optionalBoolean.default(false),
   productId: optionalString,
 })
 
 export const listInventoryMovementsQuerySchema = z.object({
+  unitId: optionalString,
   movementType: z.nativeEnum(InventoryMovementType).optional(),
   productId: optionalString,
 })
@@ -79,4 +82,3 @@ export type ListInventoryStocksQuery = z.infer<typeof listInventoryStocksQuerySc
 export type ListProductsQuery = z.infer<typeof listProductsQuerySchema>
 export type RecordInventoryMovementInput = z.infer<typeof recordInventoryMovementInputSchema>
 export type UpdateProductInput = z.infer<typeof updateProductInputSchema>
-

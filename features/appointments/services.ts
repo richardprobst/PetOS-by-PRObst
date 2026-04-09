@@ -9,6 +9,7 @@ import {
 import { writeAuditLog } from '@/server/audit/logging'
 import { recalculateAppointmentServiceCommissions } from '@/features/appointments/financial'
 import { operationalStatusIds } from '@/features/appointments/constants'
+import { buildClientOwnershipBinding } from '@/features/clients/ownership'
 import {
   assertCapacityAvailability,
   assertAppointmentDurationIsCompatible,
@@ -350,8 +351,14 @@ async function loadAppointmentDependencies(
     throw new AppError('NOT_FOUND', 404, 'Client not found for appointment.')
   }
 
-  if (actor.unitId && clientRecord.user.unitId && actor.unitId !== clientRecord.user.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to operate on this client.')
+  if (clientRecord.user.unitId) {
+    assertActorCanAccessOwnershipBinding(
+      actor,
+      buildClientOwnershipBinding(clientRecord.user.unitId),
+      {
+        requestedUnitId: clientRecord.user.unitId,
+      },
+    )
   }
 
   if (clientRecord.user.unitId && clientRecord.user.unitId !== unitId) {
@@ -514,9 +521,7 @@ async function getAppointmentOrThrow(actor: AuthenticatedUserData, appointmentId
     throw new AppError('NOT_FOUND', 404, 'Appointment not found.')
   }
 
-  if (actor.unitId && appointment.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this appointment.')
-  }
+  assertActorCanReadAppointmentInScope(actor, appointment.unitId)
 
   return appointment
 }

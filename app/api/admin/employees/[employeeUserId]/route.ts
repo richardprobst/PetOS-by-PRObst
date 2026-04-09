@@ -1,7 +1,8 @@
-import { readValidatedJson } from '@/server/http/request'
+import { readValidatedJson, readValidatedSearchParams } from '@/server/http/request'
 import { ok, routeErrorResponse } from '@/server/http/responses'
 import { requireInternalApiUser } from '@/server/authorization/api-access'
 import { enforceMutationRateLimit } from '@/server/security/operations'
+import { multiUnitReadScopeQuerySchema } from '@/features/multiunit/schemas'
 import { updateEmployeeInputSchema } from '@/features/employees/schemas'
 import { getEmployeeById, updateEmployee } from '@/features/employees/services'
 
@@ -15,8 +16,9 @@ export async function GET(request: Request, context: RouteContext) {
   try {
     const actor = await requireInternalApiUser('funcionario.visualizar')
     const { employeeUserId } = await context.params
+    const query = readValidatedSearchParams(request, multiUnitReadScopeQuerySchema)
 
-    return ok(await getEmployeeById(actor, employeeUserId))
+    return ok(await getEmployeeById(actor, employeeUserId, query))
   } catch (error) {
     return routeErrorResponse(error, { request })
   }

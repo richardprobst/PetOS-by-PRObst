@@ -4,7 +4,11 @@ import {
 } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { writeAuditLog } from '@/server/audit/logging'
-import { resolveScopedUnitId } from '@/server/authorization/scope'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  assertActorCanAccessOwnershipBinding,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
 import { getEnv } from '@/server/env'
 import { AppError } from '@/server/http/errors'
@@ -21,12 +25,13 @@ import {
   calculatePosSaleTotals,
   shouldIssueFiscalDocumentForPosSale,
 } from '@/features/pos/domain'
+import { buildClientOwnershipBinding } from '@/features/clients/ownership'
 import type {
   CancelPosSaleInput,
   CompletePosSaleInput,
   CreatePosSaleInput,
-  PosSaleItemInput,
   ListPosSalesQuery,
+  PosSaleItemInput,
 } from '@/features/pos/schemas'
 
 const posSettingKeys = {
@@ -81,6 +86,10 @@ type PosDefaults = {
   autoFiscalDocument: boolean
 }
 
+type PosScopeQuery = {
+  unitId?: string | null
+}
+
 async function getOptionalClientReference(
   actor: AuthenticatedUserData,
   clientId: string | undefined,
@@ -106,14 +115,37 @@ async function getOptionalClientReference(
     throw new AppError('NOT_FOUND', 404, 'Client not found for POS sale.')
   }
 
-  if (actor.unitId && client.user.unitId && client.user.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to use this client.')
+  if (client.user.unitId) {
+    assertActorCanAccessOwnershipBinding(
+      actor,
+      buildClientOwnershipBinding(client.user.unitId),
+      {
+        requestedUnitId: client.user.unitId,
+      },
+    )
   }
 
   return {
     id: client.userId,
     unitId: client.user.unitId,
   } satisfies ClientReference
+}
+
+export function resolvePosReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId)
+}
+
+export function assertActorCanReadPosSaleInScope(
+  actor: AuthenticatedUserData,
+  recordUnitId: string,
+  options?: PosScopeQuery,
+) {
+  assertActorCanAccessLocalUnitRecord(actor, recordUnitId, {
+    requestedUnitId: options?.unitId,
+  })
 }
 
 async function getPosSaleOrThrow(actor: AuthenticatedUserData, saleId: string) {
@@ -128,9 +160,7 @@ async function getPosSaleOrThrow(actor: AuthenticatedUserData, saleId: string) {
     throw new AppError('NOT_FOUND', 404, 'POS sale not found.')
   }
 
-  if (actor.unitId && actor.unitId !== sale.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this POS sale.')
-  }
+  assertActorCanReadPosSaleInScope(actor, sale.unitId)
 
   return sale
 }
@@ -425,9 +455,11 @@ async function finalizePosSaleWithinTransaction(args: {
 }
 
 export async function listPosSales(actor: AuthenticatedUserData, query: ListPosSalesQuery) {
+  const unitId = resolvePosReadUnitId(actor, query.unitId ?? null)
+
   return prisma.posSale.findMany({
     where: {
-      ...(actor.unitId ? { unitId: actor.unitId } : {}),
+      unitId,
       ...(query.clientId ? { clientId: query.clientId } : {}),
       ...(query.status ? { status: query.status } : {}),
     },
@@ -438,8 +470,27 @@ export async function listPosSales(actor: AuthenticatedUserData, query: ListPosS
   })
 }
 
-export async function getPosSaleDetails(actor: AuthenticatedUserData, saleId: string) {
-  return getPosSaleOrThrow(actor, saleId)
+export async function getPosSaleDetails(
+  actor: AuthenticatedUserData,
+  saleId: string,
+  query: PosScopeQuery = {},
+) {
+  const sale = await prisma.posSale.findUnique({
+    where: {
+      id: saleId,
+    },
+    include: posSaleDetailsInclude,
+  })
+
+  if (!sale) {
+    throw new AppError('NOT_FOUND', 404, 'POS sale not found.')
+  }
+
+  assertActorCanReadPosSaleInScope(actor, sale.unitId, {
+    unitId: query.unitId,
+  })
+
+  return sale
 }
 
 export async function createPosSale(actor: AuthenticatedUserData, input: CreatePosSaleInput) {

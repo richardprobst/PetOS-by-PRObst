@@ -24,6 +24,7 @@ export const updateReportCardInputSchema = z
 export const listReportCardsQuerySchema = z.object({
   appointmentId: optionalString,
   clientId: optionalString,
+  unitId: optionalString,
 })
 
 export type CreateReportCardInput = z.infer<typeof createReportCardInputSchema>

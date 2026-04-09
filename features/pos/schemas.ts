@@ -31,6 +31,7 @@ const posSaleItemInputSchema = z.object({
 export const listPosSalesQuerySchema = z.object({
   clientId: optionalString,
   status: z.nativeEnum(PosSaleStatus).optional(),
+  unitId: optionalString,
 })
 
 export const createPosSaleInputSchema = z

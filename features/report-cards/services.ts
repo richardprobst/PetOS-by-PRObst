@@ -1,8 +1,12 @@
 import { Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
+import { writeAuditLog } from '@/server/audit/logging'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
 import { AppError } from '@/server/http/errors'
-import { writeAuditLog } from '@/server/audit/logging'
 import { operationalStatusIds } from '@/features/appointments/constants'
 import type {
   CreateReportCardInput,
@@ -25,6 +29,27 @@ const reportCardDetailsInclude = Prisma.validator<Prisma.ReportCardInclude>()({
   createdBy: true,
 })
 
+type ReportCardScopeQuery = {
+  unitId?: string | null
+}
+
+export function resolveReportCardReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId)
+}
+
+export function assertActorCanReadReportCardInScope(
+  actor: AuthenticatedUserData,
+  appointmentUnitId: string,
+  options?: ReportCardScopeQuery,
+) {
+  assertActorCanAccessLocalUnitRecord(actor, appointmentUnitId, {
+    requestedUnitId: options?.unitId,
+  })
+}
+
 async function getReportCardOrThrow(actor: AuthenticatedUserData, reportCardId: string) {
   const reportCard = await prisma.reportCard.findUnique({
     where: {
@@ -37,9 +62,7 @@ async function getReportCardOrThrow(actor: AuthenticatedUserData, reportCardId: 
     throw new AppError('NOT_FOUND', 404, 'Report card not found.')
   }
 
-  if (actor.unitId && reportCard.appointment.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to access this report card.')
-  }
+  assertActorCanReadReportCardInScope(actor, reportCard.appointment.unitId)
 
   return reportCard
 }
@@ -58,9 +81,9 @@ async function getAppointmentForReportCard(actor: AuthenticatedUserData, appoint
     throw new AppError('NOT_FOUND', 404, 'Appointment not found for report card.')
   }
 
-  if (actor.unitId && appointment.unitId !== actor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'User is not allowed to use this appointment.')
-  }
+  assertActorCanReadReportCardInScope(actor, appointment.unitId, {
+    unitId: appointment.unitId,
+  })
 
   if (
     appointment.operationalStatusId !== operationalStatusIds.readyForPickup &&
@@ -77,11 +100,18 @@ async function getAppointmentForReportCard(actor: AuthenticatedUserData, appoint
 }
 
 export async function listReportCards(actor: AuthenticatedUserData, query: ListReportCardsQuery) {
+  const appointmentFilters: Prisma.AppointmentWhereInput = {}
+
+  if (query.clientId) {
+    appointmentFilters.clientId = query.clientId
+  }
+
+  appointmentFilters.unitId = resolveReportCardReadUnitId(actor, query.unitId ?? null)
+
   return prisma.reportCard.findMany({
     where: {
       ...(query.appointmentId ? { appointmentId: query.appointmentId } : {}),
-      ...(query.clientId ? { appointment: { clientId: query.clientId } } : {}),
-      ...(actor.unitId ? { appointment: { unitId: actor.unitId } } : {}),
+      appointment: appointmentFilters,
     },
     include: reportCardDetailsInclude,
     orderBy: {

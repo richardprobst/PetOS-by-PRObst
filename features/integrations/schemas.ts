@@ -17,6 +17,7 @@ export const listIntegrationEventsQuerySchema = z.object({
   eventType: optionalString,
   provider: z.nativeEnum(IntegrationProvider).optional(),
   status: z.nativeEnum(IntegrationEventStatus).optional(),
+  unitId: optionalString,
 })
 
 const normalizedIntegrationPayloadSchema = z.object({
