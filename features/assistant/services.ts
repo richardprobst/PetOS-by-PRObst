@@ -20,6 +20,7 @@ import {
   buildTutorAssistantScheduleDraft,
   interpretTutorAssistantTranscript,
 } from './domain'
+import { getTutorAssistantUsageSnapshot } from './usage'
 import {
   tutorAssistantApiResponseSchema,
   type TutorAssistantApiResponse,
@@ -28,6 +29,8 @@ import {
   type TutorAssistantConfirmRequest,
   type TutorAssistantInterpretRequest,
   type TutorAssistantIntent,
+  type TutorAssistantResponseStatus,
+  type TutorAssistantUsageSnapshot,
 } from './schemas'
 
 type AssistantEnvironment = {
@@ -87,6 +90,8 @@ function buildInferenceKey(intent: TutorAssistantIntent, mode: 'interpret' | 'co
       return `voice.tutor.query.waitlist.${mode}.v1`
     case 'QUERY_PENDING_DOCUMENTS':
       return `voice.tutor.query.documents.${mode}.v1`
+    case 'QUERY_REPORT_CARDS':
+      return `voice.tutor.query.report-cards.${mode}.v1`
     case 'HELP':
       return `voice.tutor.help.${mode}.v1`
     case 'UNKNOWN':
@@ -110,6 +115,7 @@ async function completeAssistantEnvelope(input: {
   mode: 'interpret' | 'confirm'
   references?: Array<{ kind: string; value: string }>
   reply: string
+  responseStatus?: TutorAssistantResponseStatus
   transcript: string
 }) {
   const request = createAiInferenceRequest({
@@ -165,6 +171,15 @@ async function completeAssistantEnvelope(input: {
             label: 'Intencao',
             value: input.intent,
           },
+          ...(input.responseStatus
+            ? [
+                {
+                  key: 'assistant_response_status',
+                  label: 'Status da resposta',
+                  value: input.responseStatus,
+                },
+              ]
+            : []),
         ],
         summary: input.reply,
       },
@@ -182,6 +197,7 @@ async function completeAssistantEnvelope(input: {
 function buildBlockedResponse(
   intent: TutorAssistantIntent,
   envelope: Awaited<ReturnType<typeof completeAssistantEnvelope>>,
+  usageSnapshot: TutorAssistantUsageSnapshot,
 ) {
   const reply =
     envelope.outcome?.status === 'COMPLETED'
@@ -197,6 +213,7 @@ function buildBlockedResponse(
     intent,
     reply,
     status: 'BLOCKED',
+    usageSnapshot,
   })
 }
 
@@ -206,6 +223,7 @@ function buildInterpretResponse(input: {
   intent: TutorAssistantIntent
   reply: string
   status: TutorAssistantApiResponse['status']
+  usageSnapshot: TutorAssistantUsageSnapshot
 }) {
   return tutorAssistantApiResponseSchema.parse({
     appointmentId: null,
@@ -215,6 +233,7 @@ function buildInterpretResponse(input: {
     intent: input.intent,
     reply: input.reply,
     status: input.status,
+    usageSnapshot: input.usageSnapshot,
   })
 }
 
@@ -273,6 +292,20 @@ function buildPendingDocumentsReply(
   return `Existem ${pendingSignatureCount} documento(s) aguardando sua assinatura no portal.`
 }
 
+function buildReportCardsReply(
+  reportCards: Awaited<ReturnType<typeof getTutorPortalOverview>>['reportCards'],
+) {
+  if (reportCards.length === 0) {
+    return 'Nao ha report cards disponiveis no seu portal neste momento.'
+  }
+
+  const summary = reportCards.slice(0, 2).map((reportCard) => {
+    return `${reportCard.appointment.pet.name} em ${formatDateTime(reportCard.generatedAt)}.`
+  })
+
+  return `Seus report cards mais recentes: ${summary.join(' ')}`
+}
+
 function buildScheduleReply(draft: TutorAssistantAppointmentDraft) {
   if (draft.missingSlots.length === 0) {
     return `Montei um rascunho de agendamento: ${draft.assistantSummary} Revise os campos e confirme a criacao quando quiser.`
@@ -304,18 +337,21 @@ export async function interpretTutorAssistantRequest(
   const intent = interpretTutorAssistantTranscript(input.transcript)
 
   if (intent === 'HELP') {
+    const responseStatus: TutorAssistantResponseStatus = 'ANSWERED'
     const reply = buildTutorAssistantHelpReply()
     const envelope = await completeAssistantEnvelope({
       actor: tutor,
       channel: input.channel,
       intent,
+      responseStatus,
       reply,
       transcript: input.transcript,
       mode: 'interpret',
     })
+    const usageSnapshot = await getTutorAssistantUsageSnapshot(tutor)
 
     if (envelope.status !== 'COMPLETED') {
-      return buildBlockedResponse(intent, envelope)
+      return buildBlockedResponse(intent, envelope, usageSnapshot)
     }
 
     return buildInterpretResponse({
@@ -323,23 +359,27 @@ export async function interpretTutorAssistantRequest(
       envelope,
       intent,
       reply,
-      status: 'ANSWERED',
+      status: responseStatus,
+      usageSnapshot,
     })
   }
 
   if (intent === 'UNKNOWN') {
+    const responseStatus: TutorAssistantResponseStatus = 'NEEDS_CLARIFICATION'
     const reply = buildUnknownReply()
     const envelope = await completeAssistantEnvelope({
       actor: tutor,
       channel: input.channel,
       intent,
+      responseStatus,
       reply,
       transcript: input.transcript,
       mode: 'interpret',
     })
+    const usageSnapshot = await getTutorAssistantUsageSnapshot(tutor)
 
     if (envelope.status !== 'COMPLETED') {
-      return buildBlockedResponse(intent, envelope)
+      return buildBlockedResponse(intent, envelope, usageSnapshot)
     }
 
     return buildInterpretResponse({
@@ -347,7 +387,8 @@ export async function interpretTutorAssistantRequest(
       envelope,
       intent,
       reply,
-      status: 'NEEDS_CLARIFICATION',
+      status: responseStatus,
+      usageSnapshot,
     })
   }
 
@@ -370,6 +411,10 @@ export async function interpretTutorAssistantRequest(
       transcript: input.transcript,
     })
     const reply = buildScheduleReply(draft)
+    const responseStatus: TutorAssistantResponseStatus =
+      draft.missingSlots.length === 0
+        ? 'NEEDS_CONFIRMATION'
+        : 'NEEDS_CLARIFICATION'
     const references = [
       ...(draft.petId ? [{ kind: 'pet', value: draft.petId }] : []),
       ...draft.serviceIds.map((serviceId) => ({ kind: 'service', value: serviceId })),
@@ -380,12 +425,14 @@ export async function interpretTutorAssistantRequest(
       intent,
       references,
       reply,
+      responseStatus,
       transcript: input.transcript,
       mode: 'interpret',
     })
+    const usageSnapshot = await getTutorAssistantUsageSnapshot(tutor)
 
     if (envelope.status !== 'COMPLETED') {
-      return buildBlockedResponse(intent, envelope)
+      return buildBlockedResponse(intent, envelope, usageSnapshot)
     }
 
     return buildInterpretResponse({
@@ -393,15 +440,14 @@ export async function interpretTutorAssistantRequest(
       envelope,
       intent,
       reply,
-      status:
-        draft.missingSlots.length === 0
-          ? 'NEEDS_CONFIRMATION'
-          : 'NEEDS_CLARIFICATION',
+      status: responseStatus,
+      usageSnapshot,
     })
   }
 
   const portal = await getTutorPortalOverview(tutor)
   let reply = ''
+  let responseStatus: TutorAssistantResponseStatus = 'ANSWERED'
 
   switch (intent) {
     case 'QUERY_UPCOMING_APPOINTMENTS':
@@ -420,6 +466,10 @@ export async function interpretTutorAssistantRequest(
       assertPermission(tutor, 'documento.visualizar_proprio')
       reply = buildPendingDocumentsReply(portal, tutor)
       break
+    case 'QUERY_REPORT_CARDS':
+      assertPermission(tutor, 'report_card.visualizar_proprio')
+      reply = buildReportCardsReply(portal.reportCards)
+      break
     default:
       throw new AppError('BAD_REQUEST', 400, 'Unsupported tutor assistant intent.')
   }
@@ -429,12 +479,14 @@ export async function interpretTutorAssistantRequest(
     channel: input.channel,
     intent,
     reply,
+    responseStatus,
     transcript: input.transcript,
     mode: 'interpret',
   })
+  const usageSnapshot = await getTutorAssistantUsageSnapshot(tutor)
 
   if (envelope.status !== 'COMPLETED') {
-    return buildBlockedResponse(intent, envelope)
+    return buildBlockedResponse(intent, envelope, usageSnapshot)
   }
 
   return buildInterpretResponse({
@@ -442,7 +494,8 @@ export async function interpretTutorAssistantRequest(
     envelope,
     intent,
     reply,
-    status: 'ANSWERED',
+    status: responseStatus,
+    usageSnapshot,
   })
 }
 
@@ -463,6 +516,7 @@ export async function confirmTutorAssistantDraft(
   })
 
   const reply = `Agendamento criado para ${appointment.pet.name} em ${formatDateTime(appointment.startAt)}.`
+  const responseStatus: TutorAssistantResponseStatus = 'ANSWERED'
   const envelope = await completeAssistantEnvelope({
     actor: tutor,
     channel: 'TEXT',
@@ -476,12 +530,14 @@ export async function confirmTutorAssistantDraft(
       })),
     ],
     reply,
+    responseStatus,
     transcript: input.draft.sourceTranscript,
     mode: 'confirm',
   })
+  const usageSnapshot = await getTutorAssistantUsageSnapshot(tutor)
 
   if (envelope.status !== 'COMPLETED') {
-    return buildBlockedResponse('SCHEDULE_APPOINTMENT', envelope)
+    return buildBlockedResponse('SCHEDULE_APPOINTMENT', envelope, usageSnapshot)
   }
 
   return tutorAssistantApiResponseSchema.parse({
@@ -491,6 +547,7 @@ export async function confirmTutorAssistantDraft(
     envelopeStatus: envelope.status,
     intent: 'SCHEDULE_APPOINTMENT',
     reply,
-    status: 'ANSWERED',
+    status: responseStatus,
+    usageSnapshot,
   })
 }

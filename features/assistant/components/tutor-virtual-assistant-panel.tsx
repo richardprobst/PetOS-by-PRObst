@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type {
   TutorAssistantApiResponse,
   TutorAssistantAppointmentDraft,
+  TutorAssistantUsageSnapshot,
 } from '@/features/assistant/schemas'
 import { FeedbackMessage } from '@/components/ui/feedback-message'
 import { FormField } from '@/components/ui/form-field'
@@ -19,6 +20,7 @@ interface TutorVirtualAssistantPanelProps {
     id: string
     name: string
   }>
+  usageSnapshot: TutorAssistantUsageSnapshot
 }
 
 interface SpeechRecognitionResultLike {
@@ -77,15 +79,51 @@ function setMissingSlot(
   return slots.includes(slot) ? slots : [...slots, slot]
 }
 
+function getInteractionStatusTone(
+  status: TutorAssistantApiResponse['status'] | null | undefined,
+) {
+  if (status === 'ANSWERED') {
+    return 'success' as const
+  }
+
+  if (status === 'BLOCKED') {
+    return 'danger' as const
+  }
+
+  if (status === 'NEEDS_CONFIRMATION') {
+    return 'info' as const
+  }
+
+  return 'warning' as const
+}
+
+function getIntentLabel(intent: string) {
+  const labels: Record<string, string> = {
+    HELP: 'Ajuda',
+    QUERY_FINANCE_SUMMARY: 'Financeiro',
+    QUERY_PENDING_DOCUMENTS: 'Documentos',
+    QUERY_REPORT_CARDS: 'Report cards',
+    QUERY_UPCOMING_APPOINTMENTS: 'Agenda',
+    QUERY_WAITLIST_STATUS: 'Waitlist',
+    SCHEDULE_APPOINTMENT: 'Agendamento',
+    UNKNOWN: 'Nao identificado',
+  }
+
+  return labels[intent] ?? intent
+}
+
 export function TutorVirtualAssistantPanel({
   pets,
   services,
+  usageSnapshot,
 }: TutorVirtualAssistantPanelProps) {
   const router = useRouter()
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null)
   const [transcript, setTranscript] = useState('')
   const [response, setResponse] = useState<TutorAssistantApiResponse | null>(null)
   const [draft, setDraft] = useState<TutorAssistantAppointmentDraft | null>(null)
+  const [assistantUsageSnapshot, setAssistantUsageSnapshot] =
+    useState<TutorAssistantUsageSnapshot>(usageSnapshot)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
   const [isListening, setIsListening] = useState(false)
@@ -102,6 +140,10 @@ export function TutorVirtualAssistantPanel({
       }
     }
   }, [])
+
+  useEffect(() => {
+    setAssistantUsageSnapshot(usageSnapshot)
+  }, [usageSnapshot])
 
   useEffect(() => {
     if (
@@ -168,6 +210,9 @@ export function TutorVirtualAssistantPanel({
 
       setResponse(payload as TutorAssistantApiResponse)
       updateDraft((payload as TutorAssistantApiResponse).draft)
+      setAssistantUsageSnapshot(
+        (payload as TutorAssistantApiResponse).usageSnapshot ?? usageSnapshot,
+      )
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Falha ao consultar o assistente.')
     } finally {
@@ -205,6 +250,9 @@ export function TutorVirtualAssistantPanel({
 
       setResponse(payload as TutorAssistantApiResponse)
       updateDraft((payload as TutorAssistantApiResponse).draft)
+      setAssistantUsageSnapshot(
+        (payload as TutorAssistantApiResponse).usageSnapshot ?? usageSnapshot,
+      )
       startTransition(() => {
         router.refresh()
       })
@@ -339,13 +387,7 @@ export function TutorVirtualAssistantPanel({
               {response?.intent ?? 'AGUARDANDO_PEDIDO'}
             </StatusBadge>
             <StatusBadge
-              tone={
-                response?.status === 'ANSWERED'
-                  ? 'success'
-                  : response?.status === 'BLOCKED'
-                    ? 'danger'
-                    : 'warning'
-              }
+              tone={getInteractionStatusTone(response?.status)}
             >
               {response?.status ?? 'PRONTO'}
             </StatusBadge>
@@ -361,6 +403,72 @@ export function TutorVirtualAssistantPanel({
               Atendimento confirmado: {response.appointmentId}
             </p>
           ) : null}
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/60 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                Ultimos 7 dias
+              </p>
+              <p className="mt-3 text-2xl font-semibold text-[color:var(--foreground)]">
+                {assistantUsageSnapshot.summary.totalLast7Days}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-[color:var(--foreground-soft)]">
+                {assistantUsageSnapshot.summary.totalLast30Days} interacao(oes) nos ultimos 30 dias
+              </p>
+            </article>
+
+            <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/60 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                Confirmacoes e bloqueios
+              </p>
+              <p className="mt-3 text-sm leading-6 text-[color:var(--foreground)]">
+                {assistantUsageSnapshot.summary.confirmationsLast30Days} rascunho(s) prontos para confirmar
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                {assistantUsageSnapshot.summary.blockedLast30Days} bloqueio(s) e {assistantUsageSnapshot.summary.needsClarificationLast30Days} pedido(s) para esclarecer
+              </p>
+            </article>
+          </div>
+
+          <div className="mt-5 rounded-[1.25rem] border border-[color:var(--line)] bg-white/60 p-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+              Historico minimo
+            </p>
+            {assistantUsageSnapshot.recentInteractions.length > 0 ? (
+              <div className="mt-3 space-y-3">
+                {assistantUsageSnapshot.recentInteractions.map((interaction) => (
+                  <article
+                    className="rounded-[1rem] border border-[color:var(--line)] bg-white/70 p-3"
+                    key={`${interaction.inferenceKey}:${interaction.occurredAt.toISOString()}`}
+                  >
+                    <div className="flex flex-wrap gap-2">
+                      <StatusBadge tone={getInteractionStatusTone(interaction.status)}>
+                        {interaction.status}
+                      </StatusBadge>
+                      <StatusBadge tone="info">{getIntentLabel(interaction.intent)}</StatusBadge>
+                      {interaction.channel ? (
+                        <StatusBadge tone="neutral">{interaction.channel}</StatusBadge>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-[color:var(--foreground-soft)]">
+                      {new Intl.DateTimeFormat('pt-BR', {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                      }).format(interaction.occurredAt)}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                      {interaction.replyPreview ??
+                        'Interacao registrada sem resumo adicional no recorte atual.'}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                Ainda nao ha interacoes registradas para este portal.
+              </p>
+            )}
+          </div>
         </div>
       </div>
 

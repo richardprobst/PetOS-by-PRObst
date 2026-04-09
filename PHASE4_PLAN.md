@@ -48,10 +48,13 @@ Entregar o primeiro corte controlado do assistente virtual do PetOS, reutilizand
   - resumo financeiro proprio;
   - status de waitlist;
   - documentos pendentes;
+  - report cards proprios;
   - rascunho assistido de agendamento;
   - ajuda;
 - rota do tutor protegida para interpretar e confirmar pedidos;
 - painel minimo no portal do tutor;
+- historico minimo e telemetria de uso derivados da auditoria existente, sem audio bruto;
+- leitura administrativa minima do uso do assistente em `/admin/sistema`;
 - suite reconhecivel da fase;
 - checklist formal de saida e baseline documental da fase.
 
@@ -73,6 +76,7 @@ Entregar o primeiro corte controlado do assistente virtual do PetOS, reutilizand
 - `AI_VIRTUAL_ASSISTANT_BASE_QUOTA` continua obrigatorio;
 - ausencia, valor invalido ou quota exaurida bloqueiam por `fail-closed`;
 - o servidor nao recebe nem persiste audio bruto;
+- o historico minimo do assistente deriva da auditoria existente e nao vira memoria conversacional livre;
 - o assistente nao cria atendimento sem confirmacao explicita;
 - ownership e permissao do tutor continuam validados no servidor;
 - a fase nao reabre a Fase 3 nem muda a baseline multiunidade.
@@ -82,6 +86,7 @@ Entregar o primeiro corte controlado do assistente virtual do PetOS, reutilizand
 - `features/assistant/` como dominio do assistente virtual do tutor;
 - rota `POST /api/tutor/virtual-assistant`;
 - painel `TutorVirtualAssistantPanel` em `/tutor`;
+- snapshot minimo de uso do assistente no portal do tutor e em `/admin/sistema`;
 - suite `npm run test:phase4`;
 - [docs/phase4-test-suite.md](./docs/phase4-test-suite.md);
 - [docs/phase4-exit-checklist.md](./docs/phase4-exit-checklist.md);
@@ -102,6 +107,7 @@ A fase so pode ser considerada concluida quando:
 
 - o assistente virtual responder consultas proprias do tutor sem provider real;
 - o rascunho assistido de agendamento exigir confirmacao explicita;
+- o historico minimo e a telemetria permanecerem auditaveis sem audio bruto;
 - flags, quota e auditoria continuarem coerentes com a fundacao de IA;
 - a rota e a UI permanecerem protegidas e conservadoras;
 - a documentacao deixar claro o que esta e o que nao esta entregue.

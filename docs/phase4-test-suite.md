@@ -27,10 +27,13 @@ Ele existe para deixar explicito:
 ### Assistente virtual do tutor
 
 - interpretacao deterministica das intents iniciais do tutor;
+- cobertura de `report cards` proprios como intent adicional do recorte;
 - montagem de rascunho assistido de agendamento;
+- parsing de referencias naturais de dia da semana e periodo do dia;
 - manutencao explicita de campos pendentes;
 - resposta de ajuda dentro do recorte aprovado;
-- bloqueio rapido quando o modulo estiver desligado por flag.
+- bloqueio rapido quando o modulo estiver desligado por flag;
+- historico minimo e telemetria de uso derivados de `AuditLog`.
 
 ### Fundacao de IA reutilizada
 
@@ -45,6 +48,7 @@ Ele existe para deixar explicito:
 - a API aceita apenas transcricao no limite HTTP do tutor;
 - confirmacao de agendamento continua separada da interpretacao;
 - o primeiro corte permanece restrito a consultas proprias e agendamento assistido;
+- o portal agora consegue exibir historico minimo do assistente sem memoria conversacional persistida;
 - os testes do tutor continuam protegendo o ownership do portal.
 
 ## Invariantes protegidos
@@ -53,6 +57,7 @@ Ele existe para deixar explicito:
 - nenhuma criacao ocorre sem confirmacao explicita;
 - audio bruto nao entra no contrato HTTP do servidor;
 - ausencia de flag ou quota valida bloqueia execucao;
+- a telemetria do assistente deriva da auditoria existente e nao exige tabela propria;
 - o assistente nao vira acesso amplo a dados administrativos.
 
 ## O que a suite ainda NAO cobre

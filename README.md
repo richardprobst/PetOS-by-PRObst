@@ -34,9 +34,11 @@ Depois desse fechamento, o repositorio abriu e concluiu uma **Fase 4** conservad
 
 - portal do tutor;
 - consultas proprias do tutor;
+- report cards proprios;
 - agendamento assistido com confirmacao explicita;
 - operacao transcript-only no servidor;
-- provider-neutral e `fail-closed`.
+- provider-neutral e `fail-closed`;
+- historico minimo e telemetria de uso derivados da auditoria existente.
 
 As evidencias documentais centrais da Fase 3 ate aqui sao:
 
@@ -53,6 +55,12 @@ As evidencias documentais centrais da Fase 3 ate aqui sao:
 - [docs/phase3-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-baseline.md)
 
 Com isso, a **baseline tecnica da Fase 3** fica fechada e a **Fase 4** fica concluida de forma conservadora no repositorio, sem tratar provider real, billing real, painel final, audio persistido ou multiunidade irrestrita como itens ja entregues.
+
+Nesta rodada, a Fase 4 tambem ficou endurecida para validacao operacional:
+
+- o portal do tutor agora mostra historico minimo do assistente sem memoria conversacional persistida;
+- o parser deterministico passou a entender `report cards` e referencias simples de dia da semana/periodo do dia;
+- `/admin/sistema` ganhou leitura minima do uso do assistente por escopo administrativo atual.
 
 A documentacao de desenvolvimento agora tambem esta sincronizada com esse estado atual, incluindo:
 

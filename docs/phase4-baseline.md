@@ -11,7 +11,9 @@ No estado atual do repositorio, isso significa:
 - assistente virtual limitado ao portal do tutor;
 - entrada por texto ou voz no navegador, com envio de transcricao ao servidor;
 - consultas sobre dados proprios do tutor;
+- consultas sobre report cards proprios;
 - rascunho assistido de agendamento com confirmacao explicita;
+- historico minimo e telemetria de uso derivados da auditoria existente;
 - integracao integral com a fundacao de IA fail-closed ja existente.
 
 ## O que ja esta consolidado
@@ -23,6 +25,7 @@ Esta baseline inclui:
 - contrato provider-neutral do assistente;
 - rota protegida do tutor para interpretar e confirmar pedidos;
 - painel minimo no portal do tutor;
+- leitura administrativa minima do uso do assistente em `/admin/sistema`;
 - suite reconhecivel da fase e checklist formal de saida.
 
 ## O que permanece fora do escopo
@@ -44,6 +47,7 @@ Continuam fora desta baseline:
 - ownership do tutor continua validado no servidor;
 - flags e quotas invalidas continuam bloqueando por `fail-closed`;
 - a API continua operando sobre transcricao, e nao sobre binario de audio.
+- o historico do assistente continua resumido e auditavel, sem guardar audio bruto nem conversa livre.
 
 ## Evidencias centrais
 
@@ -58,6 +62,6 @@ Depois desta baseline, o repositorio volta a exigir gate explicito antes de qual
 
 Os proximos movimentos sensatos passam a ser:
 
-1. validar se o recorte assistivo do tutor realmente entrega valor operacional;
+1. validar em uso real se o historico minimo, os report cards e a leitura administrativa ja reduzem ambiguidade operacional;
 2. medir se o modelo deterministico atual e suficiente antes de discutir provider real;
 3. abrir qualquer ampliacao futura como nova fase ou novo item aprovado, sem tratar o assistente atual como copiloto autonomo ja resolvido.

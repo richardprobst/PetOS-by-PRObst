@@ -24,8 +24,9 @@ Ler em conjunto com:
 
 - [x] o assistente ficou restrito ao portal do tutor
 - [x] a entrada aceita texto e voz no navegador, mas o servidor opera sobre transcricao
-- [x] consultas proprias de agenda, financeiro, waitlist e documentos estao cobertas
+- [x] consultas proprias de agenda, financeiro, waitlist, documentos e report cards estao cobertas
 - [x] agendamento opera em modo assistido com rascunho e confirmacao explicita
+- [x] historico minimo e telemetria de uso estao disponiveis sem audio bruto
 
 ### Integracao com a fundacao existente
 
@@ -34,11 +35,13 @@ Ler em conjunto com:
 - [x] `AI_VIRTUAL_ASSISTANT_ENABLED` e quota propria por modulo continuam obrigatorios
 - [x] `fail-closed` continua bloqueando ausencia ou invalidade de configuracao
 - [x] auditoria minima continua coerente com o envelope
+- [x] o historico do assistente deriva da auditoria existente sem criar memoria conversacional livre
 
 ### Superficies entregues
 
 - [x] `POST /api/tutor/virtual-assistant` existe e continua protegido por auth do tutor
 - [x] `/tutor` exibe o painel minimo do assistente virtual
+- [x] `/admin/sistema` exibe leitura administrativa minima do uso do assistente
 - [x] o contrato da API nao exige nem persiste audio bruto
 - [x] o backend continua validando ownership e criacao do atendimento
 
@@ -78,6 +81,7 @@ O fechamento desta fase nao significa:
 - [app/tutor/page.tsx](../app/tutor/page.tsx)
 - [features/assistant/domain.ts](../features/assistant/domain.ts)
 - [features/assistant/services.ts](../features/assistant/services.ts)
+- [features/assistant/usage.ts](../features/assistant/usage.ts)
 - [features/assistant/components/tutor-virtual-assistant-panel.tsx](../features/assistant/components/tutor-virtual-assistant-panel.tsx)
 - [features/ai/provider-routing.ts](../features/ai/provider-routing.ts)
 - changelog do repositorio
@@ -91,7 +95,8 @@ O fechamento desta fase nao significa:
 
 - o roadmap futuro ganhou um primeiro corte implementado sem reabrir a fundacao da Fase 3;
 - o assistente ficou contido, auditavel e protegido por `fail-closed`;
-- o tutor consegue consultar dados proprios e montar um rascunho assistido de agendamento;
+- o tutor consegue consultar dados proprios, report cards e montar um rascunho assistido de agendamento;
+- a operacao minima agora ganha historico resumido e leitura administrativa de uso sem audio bruto;
 - a criacao continua dependente de confirmacao explicita e validacao server-side.
 
 ### Ressalvas que nao reabrem a Fase 4

@@ -8,6 +8,7 @@ import {
   canReadAiFoundationDiagnostics,
   getAiFoundationDiagnostics,
 } from '@/features/ai/admin-diagnostics'
+import { getTutorAssistantAdminDiagnostics } from '@/features/assistant/usage'
 import { getMultiUnitFoundationDiagnostics } from '@/features/multiunit/admin-diagnostics'
 import { getPhase3GovernanceSnapshot } from '@/features/phase3/governance'
 import {
@@ -146,6 +147,37 @@ function getPhase3GovernanceAlertTone(
   }
 }
 
+function getAssistantInteractionTone(status: string) {
+  if (status === 'ANSWERED') {
+    return 'success' as const
+  }
+
+  if (status === 'BLOCKED') {
+    return 'danger' as const
+  }
+
+  if (status === 'NEEDS_CONFIRMATION') {
+    return 'info' as const
+  }
+
+  return 'warning' as const
+}
+
+function getAssistantIntentLabel(intent: string) {
+  const labels: Record<string, string> = {
+    HELP: 'Ajuda',
+    QUERY_FINANCE_SUMMARY: 'Financeiro',
+    QUERY_PENDING_DOCUMENTS: 'Documentos',
+    QUERY_REPORT_CARDS: 'Report cards',
+    QUERY_UPCOMING_APPOINTMENTS: 'Agenda',
+    QUERY_WAITLIST_STATUS: 'Waitlist',
+    SCHEDULE_APPOINTMENT: 'Agendamento',
+    UNKNOWN: 'Nao identificado',
+  }
+
+  return labels[intent] ?? intent
+}
+
 export default async function SystemAdminPage({ searchParams }: SystemPageProps) {
   const actor = await requireInternalAreaUser('/admin/sistema')
   const params = await searchParams
@@ -160,6 +192,7 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
     aiDiagnostics,
     multiUnitDiagnostics,
     phase3Governance,
+    assistantDiagnostics,
   ] =
     await Promise.all([
       getSystemOperationsOverview(actor),
@@ -173,6 +206,9 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
         : Promise.resolve(null),
       canReadFoundationDiagnostics
         ? getPhase3GovernanceSnapshot(actor)
+        : Promise.resolve(null),
+      canReadFoundationDiagnostics
+        ? getTutorAssistantAdminDiagnostics(actor)
         : Promise.resolve(null),
     ])
   const openIncidents = overview.recoveryIncidents.filter((incident) => incident.status === 'OPEN')
@@ -713,6 +749,145 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
             O diagnostico minimo da fundacao exige uma permissao alta de sistema:
             <code> sistema.manutencao.operar</code>, <code> sistema.reparo.operar</code> ou{' '}
             <code>sistema.update.operar</code>.
+          </p>
+        )}
+      </section>
+
+      <section className="surface-panel rounded-[1.75rem] p-6">
+        <p className="section-label">Assistente virtual do tutor</p>
+        {canReadFoundationDiagnostics && assistantDiagnostics ? (
+          <div className="mt-4 space-y-6">
+            <FeedbackMessage
+              description="Esta leitura permanece minima e administrativa. Ela reutiliza a trilha auditavel do assistente, sem reter audio bruto nem abrir um painel operacional proprio."
+              title="Uso validavel sem ampliar escopo"
+              tone="info"
+            />
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/50 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Escopo ativo
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <StatusBadge tone={getAiDiagnosticTone(assistantDiagnostics.scope.status)}>
+                    {assistantDiagnostics.scope.status}
+                  </StatusBadge>
+                  <StatusBadge tone="info">
+                    {assistantDiagnostics.scope.contextType ?? 'SEM_CONTEXTO'}
+                  </StatusBadge>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  unidade diagnostica {assistantDiagnostics.scope.diagnosticUnitId ?? 'nao resolvida'}
+                </p>
+              </article>
+
+              <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/50 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Interacoes 30 dias
+                </p>
+                <p className="mt-3 text-3xl font-semibold text-[color:var(--foreground)]">
+                  {assistantDiagnostics.summary.totalLast30Days}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  {assistantDiagnostics.summary.totalLast7Days} nos ultimos 7 dias
+                </p>
+              </article>
+
+              <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/50 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Canais
+                </p>
+                <p className="mt-3 text-sm leading-6 text-[color:var(--foreground)]">
+                  texto {assistantDiagnostics.summary.textInteractionsLast30Days}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  voz {assistantDiagnostics.summary.voiceInteractionsLast30Days}
+                </p>
+              </article>
+
+              <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/50 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Resultado
+                </p>
+                <p className="mt-3 text-sm leading-6 text-[color:var(--foreground)]">
+                  respondidas {assistantDiagnostics.summary.answeredLast30Days}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  bloqueios {assistantDiagnostics.summary.blockedLast30Days} / confirmacoes {assistantDiagnostics.summary.confirmationsLast30Days}
+                </p>
+              </article>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[0.72fr_1.28fr]">
+              <article className="rounded-[1.5rem] border border-[color:var(--line)] bg-white/55 p-5">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Intencoes mais frequentes
+                </p>
+                {assistantDiagnostics.topIntents.length > 0 ? (
+                  <div className="mt-4 space-y-3">
+                    {assistantDiagnostics.topIntents.map((item) => (
+                      <div
+                        className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/60 p-4"
+                        key={item.intent}
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <StatusBadge tone="info">{getAssistantIntentLabel(item.intent)}</StatusBadge>
+                          <span className="text-sm font-semibold text-[color:var(--foreground)]">
+                            {item.count}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                    Ainda nao ha interacoes suficientes para ranquear intencoes neste escopo.
+                  </p>
+                )}
+              </article>
+
+              <article className="rounded-[1.5rem] border border-[color:var(--line)] bg-white/55 p-5">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Historico minimo recente
+                </p>
+                {assistantDiagnostics.recentInteractions.length > 0 ? (
+                  <div className="mt-4 space-y-3">
+                    {assistantDiagnostics.recentInteractions.map((interaction) => (
+                      <div
+                        className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/60 p-4"
+                        key={`${interaction.inferenceKey}:${interaction.occurredAt.toISOString()}`}
+                      >
+                        <div className="flex flex-wrap gap-2">
+                          <StatusBadge tone={getAssistantInteractionTone(interaction.status)}>
+                            {interaction.status}
+                          </StatusBadge>
+                          <StatusBadge tone="info">
+                            {getAssistantIntentLabel(interaction.intent)}
+                          </StatusBadge>
+                          {interaction.channel ? (
+                            <StatusBadge tone="neutral">{interaction.channel}</StatusBadge>
+                          ) : null}
+                        </div>
+                        <p className="mt-2 text-xs leading-5 text-[color:var(--foreground-soft)]">
+                          {interaction.occurredAt.toLocaleString('pt-BR')}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                          {interaction.replyPreview ?? 'Sem resumo adicional registrado no recorte atual.'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                    Ainda nao ha historico recente do assistente virtual neste escopo.
+                  </p>
+                )}
+              </article>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-4 text-sm leading-6 text-[color:var(--foreground-soft)]">
+            A leitura administrativa minima do assistente virtual exige a mesma permissao alta do diagnostico da fundacao.
           </p>
         )}
       </section>

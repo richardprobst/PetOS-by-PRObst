@@ -26,6 +26,10 @@ test('interpretTutorAssistantTranscript detects the bounded tutor intents', () =
     'QUERY_FINANCE_SUMMARY',
   )
   assert.equal(
+    interpretTutorAssistantTranscript('Mostre meus report cards mais recentes'),
+    'QUERY_REPORT_CARDS',
+  )
+  assert.equal(
     interpretTutorAssistantTranscript('Quero agendar banho para Thor amanha as 14h'),
     'SCHEDULE_APPOINTMENT',
   )
@@ -54,6 +58,24 @@ test('buildTutorAssistantScheduleDraft resolves a complete assisted appointment 
   assert.deepEqual(draft.missingSlots, [])
 })
 
+test('buildTutorAssistantScheduleDraft resolves weekday and time-of-day references conservatively', () => {
+  const draft = buildTutorAssistantScheduleDraft({
+    now: new Date('2026-04-09T09:00:00.000Z'),
+    pets,
+    services,
+    transcript: 'Quero agendar banho para Thor segunda de manha',
+  })
+
+  assert.equal(draft.petId, 'pet_thor')
+  assert.deepEqual(draft.serviceIds, ['service_banho'])
+  assert.equal(draft.startAt?.getFullYear(), 2026)
+  assert.equal(draft.startAt?.getMonth(), 3)
+  assert.equal(draft.startAt?.getDate(), 13)
+  assert.equal(draft.startAt?.getHours(), 9)
+  assert.equal(draft.startAt?.getMinutes(), 0)
+  assert.deepEqual(draft.missingSlots, [])
+})
+
 test('buildTutorAssistantScheduleDraft keeps missing slots explicit when the tutor request is incomplete', () => {
   const draft = buildTutorAssistantScheduleDraft({
     now: new Date('2026-04-09T09:00:00.000Z'),
@@ -73,5 +95,6 @@ test('buildTutorAssistantHelpReply keeps the scope restricted to portal queries 
 
   assert.match(reply, /consultas/i)
   assert.match(reply, /agendamento assistido/i)
+  assert.match(reply, /report cards/i)
   assert.doesNotMatch(reply, /automa/i)
 })

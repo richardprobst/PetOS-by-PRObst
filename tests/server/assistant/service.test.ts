@@ -121,11 +121,26 @@ afterEach(() => {
 
 test('interpretTutorAssistantRequest answers HELP through the AI envelope without external provider dependency', async () => {
   const auditActions: string[] = []
+  const auditEntries: Array<{ action: string; details?: unknown; id: string; occurredAt: Date }> = []
 
   replaceMethod(prisma as object, 'auditLog', {
-    create: async ({ data }: { data: { action: string } }) => {
+    create: async ({ data }: { data: { action: string; details?: unknown } }) => {
       auditActions.push(data.action)
-      return data
+      const entry = {
+        action: data.action,
+        details: data.details,
+        id: `audit_${auditActions.length}`,
+        occurredAt: new Date('2026-04-09T12:00:00.000Z'),
+      }
+      auditEntries.push(entry)
+      return entry
+    },
+    findMany: async (args?: { where?: { action?: { in?: string[] } } }) => {
+      const allowedActions = args?.where?.action?.in
+
+      return allowedActions
+        ? auditEntries.filter((entry) => allowedActions.includes(entry.action))
+        : auditEntries
     },
   })
 
@@ -140,16 +155,32 @@ test('interpretTutorAssistantRequest answers HELP through the AI envelope withou
   assert.equal(response.intent, 'HELP')
   assert.equal(response.envelopeStatus, 'COMPLETED')
   assert.match(response.reply, /consultas|agendamento assistido/i)
+  assert.equal(response.usageSnapshot?.summary.totalLast30Days, 1)
   assert.deepEqual(auditActions, ['ai.execution.completed'])
 })
 
 test('interpretTutorAssistantRequest blocks fast when the virtual assistant module is disabled by flag', async () => {
   const auditActions: string[] = []
+  const auditEntries: Array<{ action: string; details?: unknown; id: string; occurredAt: Date }> = []
 
   replaceMethod(prisma as object, 'auditLog', {
-    create: async ({ data }: { data: { action: string } }) => {
+    create: async ({ data }: { data: { action: string; details?: unknown } }) => {
       auditActions.push(data.action)
-      return data
+      const entry = {
+        action: data.action,
+        details: data.details,
+        id: `audit_${auditActions.length}`,
+        occurredAt: new Date('2026-04-09T12:00:00.000Z'),
+      }
+      auditEntries.push(entry)
+      return entry
+    },
+    findMany: async (args?: { where?: { action?: { in?: string[] } } }) => {
+      const allowedActions = args?.where?.action?.in
+
+      return allowedActions
+        ? auditEntries.filter((entry) => allowedActions.includes(entry.action))
+        : auditEntries
     },
   })
 
@@ -168,6 +199,7 @@ test('interpretTutorAssistantRequest blocks fast when the virtual assistant modu
   assert.equal(response.intent, 'HELP')
   assert.equal(response.envelopeStatus, 'BLOCKED')
   assert.match(response.reply, /desabilitad|indisponivel|disabled/i)
+  assert.equal(response.usageSnapshot?.summary.blockedLast30Days, 1)
   assert.deepEqual(auditActions, [
     'ai.execution.blocked',
     'ai.fallback.evaluated',

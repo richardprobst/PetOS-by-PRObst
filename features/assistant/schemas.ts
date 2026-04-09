@@ -8,6 +8,7 @@ export const tutorAssistantIntentSchema = z.enum([
   'QUERY_FINANCE_SUMMARY',
   'QUERY_WAITLIST_STATUS',
   'QUERY_PENDING_DOCUMENTS',
+  'QUERY_REPORT_CARDS',
   'HELP',
   'UNKNOWN',
 ])
@@ -54,6 +55,43 @@ export const tutorAssistantAppointmentDraftSchema = z.object({
 
 export type TutorAssistantAppointmentDraft = z.infer<
   typeof tutorAssistantAppointmentDraftSchema
+>
+
+export const tutorAssistantInteractionSummarySchema = z.object({
+  channel: tutorAssistantChannelSchema.nullable().default(null),
+  inferenceKey: z.string().trim().min(1),
+  intent: tutorAssistantIntentSchema,
+  occurredAt: z.coerce.date(),
+  replyPreview: optionalString,
+  status: tutorAssistantResponseStatusSchema,
+})
+
+export type TutorAssistantInteractionSummary = z.infer<
+  typeof tutorAssistantInteractionSummarySchema
+>
+
+export const tutorAssistantUsageSummarySchema = z.object({
+  blockedLast30Days: z.number().int().nonnegative(),
+  confirmationsLast30Days: z.number().int().nonnegative(),
+  lastInteractionAt: z.coerce.date().nullable().default(null),
+  needsClarificationLast30Days: z.number().int().nonnegative(),
+  textInteractionsLast30Days: z.number().int().nonnegative(),
+  totalLast7Days: z.number().int().nonnegative(),
+  totalLast30Days: z.number().int().nonnegative(),
+  voiceInteractionsLast30Days: z.number().int().nonnegative(),
+})
+
+export type TutorAssistantUsageSummary = z.infer<
+  typeof tutorAssistantUsageSummarySchema
+>
+
+export const tutorAssistantUsageSnapshotSchema = z.object({
+  recentInteractions: z.array(tutorAssistantInteractionSummarySchema).default([]),
+  summary: tutorAssistantUsageSummarySchema,
+})
+
+export type TutorAssistantUsageSnapshot = z.infer<
+  typeof tutorAssistantUsageSnapshotSchema
 >
 
 export const tutorAssistantInterpretRequestSchema = z.object({
@@ -107,6 +145,7 @@ export const tutorAssistantApiResponseSchema = z.object({
   intent: tutorAssistantIntentSchema,
   reply: z.string().trim().min(1),
   status: tutorAssistantResponseStatusSchema,
+  usageSnapshot: tutorAssistantUsageSnapshotSchema.nullable().default(null),
 })
 
 export type TutorAssistantApiResponse = z.infer<

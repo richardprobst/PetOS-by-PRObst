@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { signTutorDocumentAction } from '@/features/documents/actions'
 import { isDocumentSignaturePendingForTutor } from '@/features/documents/services'
 import { TutorVirtualAssistantPanel } from '@/features/assistant/components/tutor-virtual-assistant-panel'
+import { getTutorAssistantUsageSnapshot } from '@/features/assistant/usage'
 import {
   cancelTutorWaitlistEntryAction,
   createTutorAppointmentAction,
@@ -178,9 +179,10 @@ function getJsonString(value: unknown, key: string) {
 export default async function TutorPage({ searchParams }: TutorPageProps) {
   const tutor = await requireTutorAreaUser('/tutor')
   const params = await searchParams
-  const [portal, services] = await Promise.all([
+  const [portal, services, assistantUsageSnapshot] = await Promise.all([
     getTutorPortalOverview(tutor),
     listServices(tutor, { active: true }),
+    getTutorAssistantUsageSnapshot(tutor),
   ])
 
   return (
@@ -202,6 +204,7 @@ export default async function TutorPage({ searchParams }: TutorPageProps) {
           id: service.id,
           name: service.name,
         }))}
+        usageSnapshot={assistantUsageSnapshot}
       />
 
       <section className="grid gap-6 xl:grid-cols-[0.75fr_1.25fr]" id="alertas">

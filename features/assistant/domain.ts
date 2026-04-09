@@ -27,6 +27,23 @@ const UPCOMING_KEYWORDS = ['proximo', 'agenda', 'agendamentos', 'horarios']
 const FINANCE_KEYWORDS = ['financeiro', 'credito', 'deposito', 'reembolso']
 const WAITLIST_KEYWORDS = ['waitlist', 'lista de espera']
 const DOCUMENT_KEYWORDS = ['documento', 'documentos', 'assinatura', 'assinar', 'termo']
+const REPORT_CARD_KEYWORDS = [
+  'report card',
+  'report cards',
+  'relatorio',
+  'relatorios',
+  'resumo do atendimento',
+]
+
+const WEEKDAY_REFERENCES = [
+  { keywords: ['domingo'], weekday: 0 },
+  { keywords: ['segunda feira', 'segunda'], weekday: 1 },
+  { keywords: ['terca feira', 'terca'], weekday: 2 },
+  { keywords: ['quarta feira', 'quarta'], weekday: 3 },
+  { keywords: ['quinta feira', 'quinta'], weekday: 4 },
+  { keywords: ['sexta feira', 'sexta'], weekday: 5 },
+  { keywords: ['sabado'], weekday: 6 },
+] as const
 
 function normalizeText(value: string) {
   return value
@@ -49,6 +66,22 @@ function addDays(value: Date, days: number) {
   return next
 }
 
+function createWeekdayDate(
+  now: Date,
+  weekday: number,
+  forceNextWeek: boolean,
+) {
+  const baseDate = addDays(now, 0)
+  const currentWeekday = baseDate.getDay()
+  let distance = (weekday - currentWeekday + 7) % 7
+
+  if (forceNextWeek && distance === 0) {
+    distance = 7
+  }
+
+  return addDays(now, distance)
+}
+
 function resolveIntent(normalizedTranscript: string): TutorAssistantIntent {
   if (normalizedTranscript.length === 0 || includesAny(normalizedTranscript, HELP_KEYWORDS)) {
     return 'HELP'
@@ -68,6 +101,10 @@ function resolveIntent(normalizedTranscript: string): TutorAssistantIntent {
 
   if (includesAny(normalizedTranscript, DOCUMENT_KEYWORDS)) {
     return 'QUERY_PENDING_DOCUMENTS'
+  }
+
+  if (includesAny(normalizedTranscript, REPORT_CARD_KEYWORDS)) {
+    return 'QUERY_REPORT_CARDS'
   }
 
   if (includesAny(normalizedTranscript, UPCOMING_KEYWORDS)) {
@@ -117,6 +154,18 @@ function parseDateReference(normalizedTranscript: string, now: Date) {
     return addDays(now, 0)
   }
 
+  const weekdayReference = WEEKDAY_REFERENCES.find((reference) =>
+    reference.keywords.some((keyword) => normalizedTranscript.includes(keyword)),
+  )
+
+  if (weekdayReference) {
+    const forceNextWeek = weekdayReference.keywords.some((keyword) =>
+      normalizedTranscript.includes(`proxima ${keyword}`),
+    )
+
+    return createWeekdayDate(now, weekdayReference.weekday, forceNextWeek)
+  }
+
   const explicitDateMatch = normalizedTranscript.match(
     /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/,
   )
@@ -163,9 +212,9 @@ function parseDateReference(normalizedTranscript: string, now: Date) {
 
 function parseTimeReference(normalizedTranscript: string) {
   const explicitTimePatterns = [
-    /(?:as|para as|pelas)\s*(\d{1,2})(?::(\d{2}))?\s*(?:h|hora|horas)?\b/u,
-    /\b(\d{1,2})h(?:(\d{2}))?\b/u,
-    /\b(\d{1,2}):(\d{2})\b/u,
+    /(?:as|para as|pelas)\s*(\d{1,2})(?::(\d{2}))?\s*(?:h|hora|horas)?\s*(da manha|de manha|da tarde|a tarde|de tarde|da noite|a noite|de noite)?\b/u,
+    /\b(\d{1,2})h(?:(\d{2}))?\s*(da manha|de manha|da tarde|a tarde|de tarde|da noite|a noite|de noite)?\b/u,
+    /\b(\d{1,2}):(\d{2})\s*(da manha|de manha|da tarde|a tarde|de tarde|da noite|a noite|de noite)?\b/u,
   ]
 
   for (const pattern of explicitTimePatterns) {
@@ -182,12 +231,42 @@ function parseTimeReference(normalizedTranscript: string) {
       Number.isInteger(hours) &&
       Number.isInteger(minutes) &&
       hours >= 0 &&
-      hours <= 23 &&
       minutes >= 0 &&
       minutes <= 59
     ) {
-      return { hours, minutes }
+      const periodLabel = match[3] ?? null
+      let normalizedHours = hours
+
+      if (periodLabel) {
+        const isAfternoonOrNight =
+          periodLabel.includes('tarde') || periodLabel.includes('noite')
+        const isMorning = periodLabel.includes('manha')
+
+        if (isAfternoonOrNight && normalizedHours < 12) {
+          normalizedHours += 12
+        }
+
+        if (isMorning && normalizedHours === 12) {
+          normalizedHours = 0
+        }
+      }
+
+      if (normalizedHours >= 0 && normalizedHours <= 23) {
+        return { hours: normalizedHours, minutes }
+      }
     }
+  }
+
+  if (/\b(?:de|pela|na)\s+manha\b/u.test(normalizedTranscript)) {
+    return { hours: 9, minutes: 0 }
+  }
+
+  if (/\b(?:da|a|de)\s+tarde\b/u.test(normalizedTranscript)) {
+    return { hours: 14, minutes: 0 }
+  }
+
+  if (/\b(?:da|a|de)\s+noite\b/u.test(normalizedTranscript)) {
+    return { hours: 19, minutes: 0 }
   }
 
   return null
@@ -262,7 +341,7 @@ function resolveMissingSlots(input: {
 export function buildTutorAssistantHelpReply() {
   return [
     'Posso ajudar com consultas e com o agendamento assistido do portal.',
-    'Exemplos: "quais sao meus proximos agendamentos", "como esta meu financeiro", "como esta minha waitlist" ou "quero agendar banho para Thor amanha as 14h".',
+    'Exemplos: "quais sao meus proximos agendamentos", "como esta meu financeiro", "mostre meus report cards" ou "quero agendar banho para Thor segunda de manha".',
   ].join(' ')
 }
 
