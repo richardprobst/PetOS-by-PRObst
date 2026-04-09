@@ -46,6 +46,9 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O Bloco 5 da Fase 3 agora fecha a fase com um snapshot consolidado de governanca em `features/phase3/governance.ts`, uma rota interna administrativa dedicada, leitura minima em `/admin/sistema` e alertas operacionais sobre fail-closed, backlog humano, utilidade preditiva, fallback conceitual e contexto multiunidade.
+- O repositorio agora possui uma regressao reconhecivel para toda a Fase 3 com `npm run test:phase3:block5` e `npm run test:phase3`, consolidando os smokes dos blocos 1 a 5 sem reabrir provider real, billing real ou painel final.
+- A Fase 3 agora possui baseline documental propria e checklist formal de saida do Bloco 5, marcando o fechamento conservador da fase sem confundir essa baseline com multiunidade irrestrita, provider real ou automacao operacional.
 - O Bloco 4 da Fase 3 agora fecha o primeiro corte de analise preditiva e insights, com snapshots persistidos de previsao de demanda de agenda por unidade, rotas internas administrativas para geracao/listagem/feedback, secao minima em `/admin/agenda` e saida explicitamente mantida como recomendacao auditavel, sem automacao, provider real ou billing real.
 - O repositorio agora possui a suite minima reconhecivel e o checklist formal de saida do Bloco 4, com `npm run test:phase3:block4`, smoke tecnico proprio e gate conservador para abertura do Bloco 5 sem reavaliacao ampla dos blocos anteriores.
 - O Bloco 3 da Fase 3 agora fecha o primeiro corte assistivo de analise de imagem, com persistencia de `ImageAnalysis`, metadados de captura em `media assets`, rotas internas administrativas e UI minima em `documentos`, `report-cards` e `pets`, mantendo resultado assistivo, revisao humana obrigatoria, consentimento por finalidade e descarte por padrao do payload bruto.
@@ -105,6 +108,9 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `docs/phase3-block5-test-suite.md`, `docs/phase3-block5-exit-checklist.md` e `docs/phase3-baseline.md` como suite minima, gate formal de saida e baseline documental da Fase 3.
+- `features/phase3/governance.ts` e `GET /api/admin/system/phase3-governance` como snapshot consolidado e protegido da governanca minima da Fase 3.
+- `tests/server/phase3-governance.test.ts` e `tests/server/phase3-block5-smoke.test.ts` como recorte de regressao do fechamento da fase.
 - `docs/phase3-block4-test-suite.md` e `docs/phase3-block4-exit-checklist.md` como suite minima e checklist formal de saida do Bloco 4 para o Bloco 5.
 - `tests/server/phase3-block2-smoke.test.ts` como smoke reconhecivel do Bloco 2, cobrindo leituras operacionais multiunidade, bloqueio de escrita estrutural cross-unit e guardrails do portal do tutor.
 - `docs/phase3-block2-test-suite.md` e `docs/phase3-block2-exit-checklist.md` como suite minima e checklist formal de saida do Bloco 2 para o Bloco 3.

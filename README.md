@@ -28,7 +28,7 @@ Neste ponto, o repositorio preserva a baseline tecnica do MVP validado e conclui
 - PDV e estoque;
 - escalas, ponto e base de payroll.
 
-Dentro da Fase 3, o **Bloco 1** ficou fechado como fundacao tecnica e documental, o **Bloco 2** foi fechado como rollout operacional multiunidade server-side controlado, o **Bloco 3** foi fechado como primeiro corte assistivo de analise de imagem e o **Bloco 4** foi fechado como primeiro corte de analise preditiva e insights.
+Dentro da Fase 3, o **Bloco 1** ficou fechado como fundacao tecnica e documental, o **Bloco 2** foi fechado como rollout operacional multiunidade server-side controlado, o **Bloco 3** foi fechado como primeiro corte assistivo de analise de imagem, o **Bloco 4** foi fechado como primeiro corte de analise preditiva e insights, e o **Bloco 5** consolidou governanca, observabilidade minima e regressao reconhecivel da fase.
 
 As evidencias documentais centrais da Fase 3 ate aqui sao:
 
@@ -40,8 +40,11 @@ As evidencias documentais centrais da Fase 3 ate aqui sao:
 - [docs/phase3-block3-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block3-exit-checklist.md)
 - [docs/phase3-block4-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block4-test-suite.md)
 - [docs/phase3-block4-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block4-exit-checklist.md)
+- [docs/phase3-block5-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block5-test-suite.md)
+- [docs/phase3-block5-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block5-exit-checklist.md)
+- [docs/phase3-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-baseline.md)
 
-O proximo bloco da Fase 3 passa a ser o **Bloco 5 - Fechamento, observabilidade e governanca**, sobre a base de multiunidade, imagem assistiva e insight preditivo ja estabilizadas.
+Com isso, a **baseline tecnica da Fase 3** fica fechada de forma conservadora no repositorio, sem tratar provider real, billing real, painel final ou multiunidade irrestrita como itens ja entregues.
 
 O repositorio tambem fechou a frente interna de **installer/updater assistido**, com:
 
@@ -51,8 +54,8 @@ O repositorio tambem fechou a frente interna de **installer/updater assistido**,
 - preflight e manifest de release do updater;
 - engine controlada de update com recovery minimo e retry seguro.
 
-No estado atual do host real, o proximo passo recomendado ja nao e rollout tecnico.
-O sistema entra em **homologacao operacional**, usando a baseline publicada para capturar gaps reais de uso antes de qualquer novo desenvolvimento.
+No estado atual do repositorio, o proximo passo recomendado ja nao e abrir nova frente ampla sem gate.
+O sistema entra em **validacao operacional guiada**, usando as baselines publicadas para capturar gaps reais de uso antes de qualquer expansao posterior.
 
 ## Stack
 
@@ -124,6 +127,8 @@ Guia completo:
 - `npm run test:phase3:block2`
 - `npm run test:phase3:block3`
 - `npm run test:phase3:block4`
+- `npm run test:phase3:block5`
+- `npm run test:phase3`
 - `npm run check:all`
 - `npm run db:up`
 - `npm run db:down`
@@ -161,6 +166,9 @@ Guia completo:
 - [docs/phase3-block3-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block3-exit-checklist.md)
 - [docs/phase3-block4-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block4-test-suite.md)
 - [docs/phase3-block4-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block4-exit-checklist.md)
+- [docs/phase3-block5-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block5-test-suite.md)
+- [docs/phase3-block5-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block5-exit-checklist.md)
+- [docs/phase3-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-baseline.md)
 - [docs/phase3-block1-sprint1-plan.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-sprint1-plan.md)
 - [docs/phase3-block1-sprint1-exit-gate.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-sprint1-exit-gate.md)
 - [docs/architecture.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/architecture.md)

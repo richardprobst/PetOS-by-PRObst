@@ -9,6 +9,7 @@ import {
   getAiFoundationDiagnostics,
 } from '@/features/ai/admin-diagnostics'
 import { getMultiUnitFoundationDiagnostics } from '@/features/multiunit/admin-diagnostics'
+import { getPhase3GovernanceSnapshot } from '@/features/phase3/governance'
 import {
   enterMaintenanceModeAction,
   leaveMaintenanceModeAction,
@@ -97,12 +98,14 @@ function getAiDiagnosticTone(value: string | null | undefined) {
     case 'LOCAL':
     case 'RESOLVED':
     case 'AVAILABLE':
+    case 'READY':
       return 'success' as const
     case 'DECLARED':
     case 'ESTIMATED':
     case 'GLOBAL_AUTHORIZED':
     case 'NOT_APPLICABLE':
     case 'QUEUED':
+    case 'READY_WITH_GUARDRAILS':
     case 'RUNNING':
       return 'info' as const
     case 'CRITICAL':
@@ -122,8 +125,24 @@ function getAiDiagnosticTone(value: string | null | undefined) {
     case 'NOT_EVALUATED':
     case 'WARNING':
       return 'warning' as const
+    case 'ATTENTION_REQUIRED':
+      return 'danger' as const
     default:
       return 'neutral' as const
+  }
+}
+
+function getPhase3GovernanceAlertTone(
+  value: 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL',
+) {
+  switch (value) {
+    case 'CRITICAL':
+    case 'ERROR':
+      return 'error' as const
+    case 'WARNING':
+      return 'warning' as const
+    case 'INFO':
+      return 'info' as const
   }
 }
 
@@ -134,7 +153,14 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
   const canOperateRepair = hasPermission(actor, 'sistema.reparo.operar')
   const canOperateUpdate = hasPermission(actor, 'sistema.update.operar')
   const canReadFoundationDiagnostics = canReadAiFoundationDiagnostics(actor)
-  const [overview, updatePreflight, updateExecutions, aiDiagnostics, multiUnitDiagnostics] =
+  const [
+    overview,
+    updatePreflight,
+    updateExecutions,
+    aiDiagnostics,
+    multiUnitDiagnostics,
+    phase3Governance,
+  ] =
     await Promise.all([
       getSystemOperationsOverview(actor),
       canOperateUpdate ? getUpdatePreflight(actor) : Promise.resolve(null),
@@ -144,6 +170,9 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
         : Promise.resolve(null),
       canReadFoundationDiagnostics
         ? Promise.resolve(getMultiUnitFoundationDiagnostics(actor))
+        : Promise.resolve(null),
+      canReadFoundationDiagnostics
+        ? getPhase3GovernanceSnapshot(actor)
         : Promise.resolve(null),
     ])
   const openIncidents = overview.recoveryIncidents.filter((incident) => incident.status === 'OPEN')
@@ -212,6 +241,204 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
             />
           </div>
         </div>
+      </section>
+
+      <section className="surface-panel rounded-[1.75rem] p-6">
+        <p className="section-label">Governanca consolidada da Fase 3</p>
+        {canReadFoundationDiagnostics && phase3Governance ? (
+          <div className="mt-4 space-y-6">
+            <FeedbackMessage
+              description="Este resumo consolida os blocos 1 a 4 em uma leitura unica de baseline, observabilidade minima e guardrails economicos da Fase 3. Nao e painel final de IA e nao substitui a auditoria detalhada."
+              title="Baseline observavel e controlada"
+              tone="info"
+            />
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/50 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Status da baseline
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <StatusBadge tone={getAiDiagnosticTone(phase3Governance.phase.status)}>
+                    {phase3Governance.phase.status}
+                  </StatusBadge>
+                  <StatusBadge tone="info">Bloco atual {phase3Governance.phase.currentBlock}</StatusBadge>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  blocos concluidos {phase3Governance.phase.completedBlocks.join(', ')}
+                </p>
+              </article>
+
+              <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/50 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Alertas abertos
+                </p>
+                <p className="mt-3 text-3xl font-semibold text-[color:var(--foreground)]">
+                  {phase3Governance.phase.openAlertCount}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  {phase3Governance.phase.criticalAlertCount} criticos/erro e {phase3Governance.phase.warningAlertCount} avisos
+                </p>
+              </article>
+
+              <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/50 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Revisao humana de imagem
+                </p>
+                <p className="mt-3 text-3xl font-semibold text-[color:var(--foreground)]">
+                  {phase3Governance.imageAnalysis.pendingHumanReview}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  {phase3Governance.imageAnalysis.totalSnapshots} snapshots / {phase3Governance.imageAnalysis.failedExecutions} falhas / {phase3Governance.imageAnalysis.blockedExecutions} bloqueios
+                </p>
+              </article>
+
+              <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/50 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Utilidade preditiva
+                </p>
+                <p className="mt-3 text-3xl font-semibold text-[color:var(--foreground)]">
+                  {phase3Governance.predictiveInsights.actionPlannedFeedback}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  acoes planejadas / {phase3Governance.predictiveInsights.notUsefulFeedback} nao uteis / {phase3Governance.predictiveInsights.pendingFeedback} pendentes
+                </p>
+              </article>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
+              <article className="rounded-[1.5rem] border border-[color:var(--line)] bg-white/55 p-5">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Guardrails atuais
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <StatusBadge tone={getAiDiagnosticTone(phase3Governance.currentState.globalFlagStatus)}>
+                    IA global {phase3Governance.currentState.globalFlagStatus ?? 'SEM_STATUS'}
+                  </StatusBadge>
+                  <StatusBadge tone={getAiDiagnosticTone(phase3Governance.currentState.imageFlagStatus)}>
+                    imagem {phase3Governance.currentState.imageFlagStatus ?? 'SEM_STATUS'}
+                  </StatusBadge>
+                  <StatusBadge tone={getAiDiagnosticTone(phase3Governance.currentState.predictiveFlagStatus)}>
+                    preditivo {phase3Governance.currentState.predictiveFlagStatus ?? 'SEM_STATUS'}
+                  </StatusBadge>
+                  <StatusBadge tone={getAiDiagnosticTone(phase3Governance.currentState.multiUnitSessionStatus)}>
+                    multiunidade {phase3Governance.currentState.multiUnitSessionStatus}
+                  </StatusBadge>
+                </div>
+
+                <div className="mt-4 space-y-3 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  <p>
+                    fail-closed da baseline{' '}
+                    <strong className="text-[color:var(--foreground)]">
+                      {phase3Governance.currentState.failClosed ? 'ativo' : 'invalido'}
+                    </strong>
+                  </p>
+                  <p>
+                    contexto multiunidade{' '}
+                    <strong className="text-[color:var(--foreground)]">
+                      {phase3Governance.currentState.multiUnitFailClosed ? 'em fail-closed' : 'resolvido'}
+                    </strong>
+                  </p>
+                </div>
+
+                <div className="mt-4 grid gap-3">
+                  {phase3Governance.currentState.modules.map((module) => (
+                    <div
+                      className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/60 p-4"
+                      key={module.module}
+                    >
+                      <div className="flex flex-wrap gap-2">
+                        <StatusBadge tone="info">{module.module}</StatusBadge>
+                        <StatusBadge tone={getAiDiagnosticTone(module.currentStatus)}>
+                          {module.currentStatus}
+                        </StatusBadge>
+                        <StatusBadge tone={getAiDiagnosticTone(module.quotaStatus)}>
+                          quota {module.quotaStatus ?? 'na'}
+                        </StatusBadge>
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                        policy {module.policyReasonCode ?? 'na'} / gating {module.gateReasonCode ?? 'na'} / fallback {module.fallbackStatus}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="rounded-[1.5rem] border border-[color:var(--line)] bg-white/55 p-5">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Auditoria e trilha minima
+                </p>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/60 p-4">
+                    <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                      Eventos de execucao
+                    </p>
+                    <p className="mt-3 text-3xl font-semibold text-[color:var(--foreground)]">
+                      {phase3Governance.audit.aiExecutionEventsLast30Days}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                      fallback {phase3Governance.audit.fallbackEventsLast30Days} / decisao humana {phase3Governance.audit.humanDecisionEventsLast30Days}
+                    </p>
+                  </article>
+
+                  <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/60 p-4">
+                    <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                      Auditoria de blocos
+                    </p>
+                    <p className="mt-3 text-3xl font-semibold text-[color:var(--foreground)]">
+                      {phase3Governance.audit.imageAuditEventsLast30Days + phase3Governance.audit.predictiveAuditEventsLast30Days}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                      imagem {phase3Governance.audit.imageAuditEventsLast30Days} / preditivo {phase3Governance.audit.predictiveAuditEventsLast30Days}
+                    </p>
+                  </article>
+                </div>
+
+                <div className="mt-4 space-y-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  <p>
+                    ultimo evento IA{' '}
+                    <strong className="text-[color:var(--foreground)]">
+                      {phase3Governance.audit.lastAiAuditAt
+                        ? phase3Governance.audit.lastAiAuditAt.toLocaleString('pt-BR')
+                        : 'nao registrado'}
+                    </strong>
+                  </p>
+                  <p>
+                    ultima auditoria de imagem{' '}
+                    <strong className="text-[color:var(--foreground)]">
+                      {phase3Governance.audit.lastImageAuditAt
+                        ? phase3Governance.audit.lastImageAuditAt.toLocaleString('pt-BR')
+                        : 'nao registrada'}
+                    </strong>
+                  </p>
+                  <p>
+                    ultima auditoria preditiva{' '}
+                    <strong className="text-[color:var(--foreground)]">
+                      {phase3Governance.audit.lastPredictiveAuditAt
+                        ? phase3Governance.audit.lastPredictiveAuditAt.toLocaleString('pt-BR')
+                        : 'nao registrada'}
+                    </strong>
+                  </p>
+                </div>
+              </article>
+            </div>
+
+            <div className="space-y-3">
+              {phase3Governance.alerts.map((alert) => (
+                <FeedbackMessage
+                  description={`${alert.summary} Proximo passo: ${alert.nextStep}`}
+                  key={alert.key}
+                  title={`${alert.title} (${alert.source})`}
+                  tone={getPhase3GovernanceAlertTone(alert.severity)}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="mt-4 text-sm leading-6 text-[color:var(--foreground-soft)]">
+            O resumo consolidado da Fase 3 exige uma permissao alta da area de sistema.
+          </p>
+        )}
       </section>
 
       <section className="surface-panel rounded-[1.75rem] p-6">

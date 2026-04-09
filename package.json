@@ -23,6 +23,8 @@
     "test:phase3:block2": "node --import tsx --test --test-isolation=none tests/server/multiunit/*.test.ts tests/server/appointments/multiunit-read.test.ts tests/server/documents/*.test.ts tests/server/tutor/*.test.ts tests/server/phase3-block2-smoke.test.ts",
     "test:phase3:block3": "node --import tsx --test --test-isolation=none tests/server/ai/*.test.ts tests/server/documents/*.test.ts tests/server/phase3-block3-smoke.test.ts",
     "test:phase3:block4": "node --import tsx --test --test-isolation=none tests/server/ai/*.test.ts tests/server/appointments/*.test.ts tests/server/phase3-block4-smoke.test.ts",
+    "test:phase3:block5": "node --import tsx --test --test-isolation=none tests/server/ai/*.test.ts tests/server/multiunit/*.test.ts tests/server/appointments/*.test.ts tests/server/documents/*.test.ts tests/server/tutor/*.test.ts tests/server/phase3-governance.test.ts tests/server/phase3-block*.test.ts",
+    "test:phase3": "npm run test:phase3:block5",
     "test:watch": "node --import tsx --test --test-isolation=none --watch tests/**/*.test.ts",
     "typecheck": "node -e \"require('node:fs').rmSync('.next/types',{ recursive: true, force: true })\" && next typegen && tsc --noEmit",
     "check:all": "npm run ops:preflight && npm run prisma:check && npm run typecheck && npm run lint && npm test && npm run build",
