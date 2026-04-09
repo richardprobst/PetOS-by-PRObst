@@ -1,153 +1,113 @@
-# Decisões Arquiteturais do PetOS
+# Decisoes Arquiteturais do PetOS
 
 ## 1. Objetivo desta pasta
 
-Esta pasta reúne os **ADRs (Architecture Decision Records)** do projeto **PetOS**.
+Esta pasta reune os ADRs do PetOS.
 
-Os ADRs existem para registrar decisões importantes de arquitetura, execução e estrutura técnica, preservando:
+Os ADRs existem para registrar decisoes importantes de arquitetura, execucao e estrutura tecnica, preservando:
 
 - contexto;
 - alternativas consideradas;
-- decisão adotada;
+- decisao adotada;
 - justificativa;
-- consequências práticas.
+- consequencias praticas.
 
-Esses registros ajudam a evitar decisões implícitas, perda de contexto e divergência entre produto, código e documentação.
-
----
+Se houver conflito entre um ADR e o PRD, o PRD vence, a menos que o PRD tenha sido atualizado formalmente para refletir a decisao.
 
 ## 2. Como interpretar os ADRs
 
-Cada ADR deve responder, no mínimo:
+Cada ADR deve responder, no minimo:
 
 - qual problema precisava ser resolvido;
 - quais alternativas foram consideradas;
-- qual decisão foi tomada;
+- qual decisao foi tomada;
 - por que ela foi tomada;
-- quais consequências essa decisão traz.
+- quais consequencias essa decisao traz.
 
-### Regra importante
-Se houver conflito entre um ADR e o **PRD**, o **PRD vence**, a menos que o próprio PRD tenha sido atualizado formalmente para refletir a nova decisão.
+## 3. Relacao com outros documentos
 
----
-
-## 3. Relação com outros documentos
-
-Os ADRs desta pasta foram pensados para conversar com:
+Os ADRs desta pasta devem conversar com:
 
 - `PetOS_PRD.md`
 - `AGENTS.md`
 - `README.md`
 - `docs/architecture.md`
 - `docs/domain-rules.md`
-- `SECURITY.md`
-- `CONTRIBUTING.md`
+- `docs/data-model.md`
+- `docs/phase3-maintenance-guide.md`
 
----
+## 4. Indice dos ADRs
 
-## 4. Índice dos ADRs atuais
+### ADR 001 - WordPress nao sera a base do nucleo do PetOS
+Arquivo: `001-no-wordpress-core.md`
 
-### ADR 001 — WordPress não será a base do núcleo do PetOS
-Arquivo: `001-no-wordpress-core.md`  
-Decisão: o núcleo do PetOS será construído como sistema próprio, e não sobre WordPress.
+### ADR 002 - Next.js App Router com Route Handlers sera a base fullstack do PetOS
+Arquivo: `002-nextjs-app-router-route-handlers.md`
 
-### ADR 002 — Next.js App Router com Route Handlers será a base fullstack do PetOS
-Arquivo: `002-nextjs-app-router-route-handlers.md`  
-Decisão: a base fullstack oficial do projeto será Next.js com App Router e Route Handlers.
+### ADR 003 - Regras criticas de negocio e autorizacao devem ser garantidas no servidor
+Arquivo: `003-server-side-business-rules.md`
 
-### ADR 003 — Regras críticas de negócio e autorização devem ser garantidas no servidor
-Arquivo: `003-server-side-business-rules.md`  
-Decisão: UI melhora experiência, mas regras críticas, validações sensíveis e autorização pertencem ao servidor.
+### ADR 004 - Prisma sera a camada oficial de acesso ao banco de dados
+Arquivo: `004-prisma-as-single-db-access-layer.md`
 
-### ADR 004 — Prisma será a camada oficial de acesso ao banco de dados
-Arquivo: `004-prisma-as-single-db-access-layer.md`  
-Decisão: Prisma será o padrão oficial para acesso ao banco, schema e migrations.
+### ADR 005 - next-auth com RBAC aplicado no servidor sera a estrategia oficial de autenticacao e autorizacao
+Arquivo: `005-authjs-rbac-server-enforced.md`
 
-### ADR 005 — Auth.js com RBAC aplicado no servidor será a estratégia oficial de autenticação e autorização
-Arquivo: `005-authjs-rbac-server-enforced.md`  
-Decisão: Auth.js / NextAuth.js será a base de autenticação, com RBAC e autorização real no servidor.
+### ADR 006 - Separacao conceitual entre status operacional e status financeiro
+Arquivo: `006-status-operational-vs-financial-separation.md`
 
-### ADR 006 — Separação conceitual entre status operacional e status financeiro
-Arquivo: `006-status-operational-vs-financial-separation.md`  
-Decisão: status de atendimento e status financeiro devem ser tratados como conceitos distintos.
+### ADR 007 - Documentos e midias terao armazenamento externo, com banco guardando referencias e metadados
+Arquivo: `007-storage-for-documents-and-media-outside-db.md`
 
-### ADR 007 — Documentos e mídias terão armazenamento externo, com banco guardando referências e metadados
-Arquivo: `007-storage-for-documents-and-media-outside-db.md`  
-Decisão: o banco não armazenará o binário principal; apenas referências e metadados.
+### ADR 008 - Webhooks devem ser idempotentes, validados, rastreaveis e auditaveis
+Arquivo: `008-webhooks-must-be-idempotent-and-auditable.md`
 
-### ADR 008 — Webhooks devem ser idempotentes, validados, rastreáveis e auditáveis
-Arquivo: `008-webhooks-must-be-idempotent-and-auditable.md`  
-Decisão: eventos externos críticos devem ser tratados com validação, idempotência, rastreabilidade e auditoria.
+### ADR 009 - Zod sera a camada oficial de contratos e validacao do PetOS
+Arquivo: `009-zod-as-validation-contract-layer.md`
 
-### ADR 009 — Zod será a camada oficial de contratos e validação do PetOS
-Arquivo: `009-zod-as-validation-contract-layer.md`  
-Decisão: Zod será a base de contratos e validação entre frontend, backend e domínio.
+### ADR 010 - Prioridade absoluta para o MVP, sem antecipacao indevida de Fase 2 e Fase 3
+Arquivo: `010-mvp-first-no-premature-phase-2-3-implementation.md`
 
-### ADR 010 — Prioridade absoluta para o MVP, sem antecipação indevida de Fase 2 e Fase 3
-Arquivo: `010-mvp-first-no-premature-phase-2-3-implementation.md`  
-Decisão: o projeto deve priorizar rigorosamente o MVP e evitar escopo prematuro.
+### ADR 011 - Installer e updater integrados usam runtime state persistido e operacao controlada
+Arquivo: `011-installer-updater-runtime-foundation.md`
 
----
+### ADR 012 - Multiunidade usa contexto server-side com escopo fail-closed
+Arquivo: `012-multiunit-server-side-scope-and-fail-closed-context.md`
+
+### ADR 013 - A fundacao de IA da Fase 3 e provider-neutral, auditavel e fail-closed
+Arquivo: `013-ai-foundation-fail-closed-provider-neutral.md`
+
+### ADR 014 - A Fase 3 fecha com governanca consolidada e regressao reconhecivel
+Arquivo: `014-phase3-governance-and-regression-baseline.md`
 
 ## 5. Como criar novos ADRs
 
-Ao registrar uma nova decisão, seguir estas regras:
+Ao registrar uma nova decisao:
 
-1. usar numeração sequencial;
-2. usar nome curto, claro e descritivo;
-3. registrar contexto, problema, alternativas, decisão e consequências;
+1. usar numeracao sequencial;
+2. usar nome curto e descritivo;
+3. registrar contexto, alternativas, decisao e consequencias;
 4. relacionar o ADR aos documentos impactados;
 5. atualizar este `README.md`.
 
-### Exemplo de nome
-`011-nome-curto-da-decisao.md`
-
----
-
 ## 6. Quando criar um novo ADR
 
-Criar ADR sempre que a decisão impactar significativamente:
+Criar ADR quando a decisao impactar significativamente:
 
 - arquitetura;
 - stack;
-- segurança;
-- autenticação/autorização;
-- dados e modelagem;
+- seguranca;
+- autenticacao e autorizacao;
+- modelagem de dados;
 - storage;
-- integrações;
-- estratégia de execução;
-- convenções estruturais importantes.
+- integracoes;
+- estrategia de execucao;
+- governanca de fase.
 
-### Evitar ADR para
-- detalhe pequeno de implementação;
-- escolha local sem impacto sistêmico;
-- preferência pessoal sem consequência relevante.
+## 7. Regra de manutencao
 
----
-
-## 7. Regra de manutenção
-
-Sempre que um ADR for:
-
-- criado,
-- atualizado,
-- substituído,
-- revogado,
-
-este índice deve ser revisado.
-
-Se uma decisão antiga deixar de valer, isso deve ficar explícito por meio de:
-- novo ADR substituindo o anterior; ou
-- atualização formal do status do ADR antigo.
-
----
+Sempre que um ADR for criado, atualizado, substituido ou revogado, este indice deve ser revisado.
 
 ## 8. Resumo
 
-Esta pasta existe para preservar a memória arquitetural do PetOS.
-
-Objetivo:
-- reduzir improviso;
-- manter consistência;
-- facilitar onboarding;
-- ajudar humanos e agentes de IA a entenderem o “porquê” da arquitetura.
+Esta pasta existe para preservar a memoria arquitetural do PetOS e reduzir improviso entre produto, codigo e documentacao.

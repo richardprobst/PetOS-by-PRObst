@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- A baseline de documentacao de desenvolvimento foi consolidada com reescrita de `docs/architecture.md`, `docs/domain-rules.md` e `docs/data-model.md`, sincronizacao dos exemplos de ambiente com as flags e quotas da Fase 3 e abertura dos novos guias `docs/environment-contract.md`, `docs/rbac-permission-matrix.md`, `docs/internal-api-catalog.md` e `docs/phase3-maintenance-guide.md`.
 - O Bloco 5 da Fase 3 agora fecha a fase com um snapshot consolidado de governanca em `features/phase3/governance.ts`, uma rota interna administrativa dedicada, leitura minima em `/admin/sistema` e alertas operacionais sobre fail-closed, backlog humano, utilidade preditiva, fallback conceitual e contexto multiunidade.
 - O repositorio agora possui uma regressao reconhecivel para toda a Fase 3 com `npm run test:phase3:block5` e `npm run test:phase3`, consolidando os smokes dos blocos 1 a 5 sem reabrir provider real, billing real ou painel final.
 - A Fase 3 agora possui baseline documental propria e checklist formal de saida do Bloco 5, marcando o fechamento conservador da fase sem confundir essa baseline com multiunidade irrestrita, provider real ou automacao operacional.
@@ -108,6 +109,7 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `docs/decisions/011-installer-updater-runtime-foundation.md`, `docs/decisions/012-multiunit-server-side-scope-and-fail-closed-context.md`, `docs/decisions/013-ai-foundation-fail-closed-provider-neutral.md` e `docs/decisions/014-phase3-governance-and-regression-baseline.md` como ADRs da baseline atual do repositorio.
 - `docs/phase3-block5-test-suite.md`, `docs/phase3-block5-exit-checklist.md` e `docs/phase3-baseline.md` como suite minima, gate formal de saida e baseline documental da Fase 3.
 - `features/phase3/governance.ts` e `GET /api/admin/system/phase3-governance` como snapshot consolidado e protegido da governanca minima da Fase 3.
 - `tests/server/phase3-governance.test.ts` e `tests/server/phase3-block5-smoke.test.ts` como recorte de regressao do fechamento da fase.

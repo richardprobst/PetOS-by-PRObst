@@ -46,6 +46,17 @@ As evidencias documentais centrais da Fase 3 ate aqui sao:
 
 Com isso, a **baseline tecnica da Fase 3** fica fechada de forma conservadora no repositorio, sem tratar provider real, billing real, painel final ou multiunidade irrestrita como itens ja entregues.
 
+A documentacao de desenvolvimento agora tambem esta sincronizada com esse estado atual, incluindo:
+
+- arquitetura atualizada da baseline completa;
+- regras de dominio consolidadas;
+- modelo de dados refletindo Fase 2, runtime e Fase 3;
+- contrato central de ambiente;
+- matriz de RBAC e permissoes;
+- catalogo de APIs internas;
+- guia de manutencao da Fase 3;
+- ADRs da frente installer/updater, multiunidade, IA fail-closed e governanca da Fase 3.
+
 O repositorio tambem fechou a frente interna de **installer/updater assistido**, com:
 
 - setup protegido por flag, token e sessao temporaria;
@@ -176,6 +187,10 @@ Guia completo:
 - [docs/payments.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/payments.md)
 - [docs/security-notes.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/security-notes.md)
 - [docs/data-model.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/data-model.md)
+- [docs/environment-contract.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/environment-contract.md)
+- [docs/rbac-permission-matrix.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/rbac-permission-matrix.md)
+- [docs/internal-api-catalog.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/internal-api-catalog.md)
+- [docs/phase3-maintenance-guide.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-maintenance-guide.md)
 - [docs/mvp-status.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/mvp-status.md)
 - [docs/decisions/README.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/decisions/README.md)
 

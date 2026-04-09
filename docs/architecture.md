@@ -1,559 +1,321 @@
 # Arquitetura do PetOS
 
-## 1. Objetivo deste documento
+## 1. Objetivo
 
-Este documento descreve a arquitetura inicial do **PetOS** em nível alto e médio, com foco em:
+Este documento descreve a arquitetura vigente do PetOS em nivel alto e medio.
 
-- alinhar o time técnico ao **PRD**;
-- guiar decisões de implementação sem engessar a evolução do sistema;
-- documentar a separação entre camadas, domínios e responsabilidades;
-- reduzir inconsistências entre frontend, backend, dados, segurança e integrações.
+Ele existe para:
 
-Este documento complementa, mas **não substitui**:
+- alinhar implementacao, operacao e manutencao ao `PetOS_PRD.md`;
+- registrar a separacao entre UI, dominio, persistencia, autorizacao e integracoes;
+- refletir o estado real do repositorio apos o fechamento do MVP, da Fase 2 e da baseline tecnica conservadora da Fase 3;
+- reduzir divergencia entre codigo, schema, testes e documentacao.
 
-- `PetOS_PRD.md`
-- `AGENTS.md`
-- `README.md`
-- `CONTRIBUTING.md`
-- `SECURITY.md`
+Em caso de conflito:
 
-Se houver conflito entre este documento e o **PRD**, o **PRD vence**.
+1. `PetOS_PRD.md` vence em produto e escopo;
+2. `AGENTS.md` vence em diretrizes de execucao assistida;
+3. o codigo e o `prisma/schema.prisma` vencem em estado tecnico consolidado;
+4. este documento deve ser atualizado para refletir a implementacao real.
 
----
+## 2. Estado arquitetural atual
 
-## 2. Visão arquitetural
+O repositorio esta organizado como uma aplicacao web fullstack em:
 
-O **PetOS** será construído como uma aplicação **fullstack web** baseada em:
+- Next.js com App Router;
+- React;
+- TypeScript com `strict: true`;
+- Tailwind CSS;
+- Route Handlers e server actions;
+- Prisma ORM sobre MySQL;
+- next-auth v4 para autenticacao;
+- Zod para contratos e validacao.
 
-- **Next.js** com **App Router**
-- **React**
-- **TypeScript**
-- **Tailwind CSS**
-- **Node.js**
-- **MySQL**
-- **Prisma ORM**
-- **Route Handlers**
-- **next-auth v4** (com possibilidade de migração futura para Auth.js/NextAuth v5, fora desta etapa)
-- **Zod**
+No estado atual do repositorio:
 
-A arquitetura foi pensada para suportar:
+- o MVP operacional esta fechado;
+- a Fase 2 esta fechada no recorte aprovado pelo PRD;
+- a Fase 3 esta fechada como baseline tecnica conservadora, sem provider real de IA, billing real, painel final de IA ou multiunidade irrestrita.
 
-- operação de banho e tosa;
-- fluxo administrativo e operacional;
-- portal do tutor;
-- integrações financeiras;
-- auditoria e segurança;
-- futura expansão para IA, multiunidade e integrações adicionais.
+Essa baseline inclui:
 
----
+- fundacao de IA provider-neutral, auditavel e fail-closed;
+- rollout multiunidade server-side controlado;
+- analise de imagem assistiva com revisao humana;
+- insight preditivo assistivo e auditavel;
+- governanca consolidada e regressao reconhecivel da fase.
 
-## 3. Princípios arquiteturais
+## 3. Principios arquiteturais
 
-## 3.1. Fonte única de verdade
-- O **PRD** define produto, escopo, fases e regras de negócio.
-- O **AGENTS.md** define como agentes de IA devem atuar.
-- A arquitetura deve respeitar ambos.
+### 3.1. Regra critica no servidor
 
-## 3.2. Separação de responsabilidades
-- **UI** apresenta informação e coleta interação.
-- **Camada de aplicação** orquestra fluxos.
-- **Camada de domínio** concentra regras de negócio.
-- **Camada de persistência** interage com banco via Prisma.
-- **Integrações externas** devem ser isoladas em adaptadores/serviços.
+Validacao, autorizacao, transicoes de status, calculos financeiros, escopo por unidade e gating de IA pertencem ao servidor.
 
-## 3.3. Regras críticas no servidor
-Nenhuma regra crítica deve depender somente do frontend.  
-Validação, autorização, cálculo financeiro, transições de status e lógica de pagamentos devem ser garantidos no servidor.
+### 3.2. Prisma como camada unica de dados
 
-## 3.4. Evolução por fases
-A arquitetura deve permitir expansão por fases sem reescrita desnecessária:
-- MVP
-- Fase 2
-- Fase 3
-- Roadmap Futuro
+O acesso ao banco deve passar por Prisma, com schema, migrations e relacoes centralizados em `prisma/schema.prisma`.
 
-## 3.5. Simplicidade com extensibilidade
-No MVP, a implementação deve ser simples e clara.  
-Ao mesmo tempo, o desenho estrutural não deve bloquear recursos futuros como:
-- pagamentos mais robustos;
-- IA;
-- multiunidade;
-- documentos;
-- integrações adicionais.
+### 3.3. Evolucao por fases
 
----
+O desenho deve permitir evolucao por fase sem antecipar escopo:
 
-## 4. Visão por camadas
+- MVP;
+- Fase 2;
+- Fase 3;
+- roadmap futuro.
 
-## 4.1. Camada de apresentação
-Responsável por:
-- páginas;
-- layouts;
-- componentes visuais;
-- formulários;
-- tabelas;
-- dashboards;
-- feedback ao usuário.
+### 3.4. Separacao de responsabilidades
 
-Tecnologias:
-- Next.js App Router
-- React
-- Tailwind CSS
-- React Hook Form
+- UI apresenta, coleta input e organiza experiencia.
+- Route Handlers e server actions expõem contratos e entram na aplicacao.
+- Camada de aplicacao orquestra casos de uso.
+- Camada de dominio concentra regras de negocio.
+- Persistencia usa Prisma.
+- Integracoes externas ficam isoladas em adaptadores.
 
-### Regras
-- componentes de UI não devem concentrar regra crítica;
-- validação local é complementar, não substitui validação no servidor;
-- preferir Server Components quando fizer sentido;
-- usar Client Components apenas quando necessário.
+### 3.5. Fail-closed em superficies sensiveis
 
-## 4.2. Camada de aplicação
-Responsável por:
-- orquestrar casos de uso;
-- receber chamadas do frontend ou de Route Handlers;
-- coordenar validação, autorização, domínio e persistência;
-- padronizar fluxos e respostas.
+Quando contexto, permissao, configuracao ou flag critica estiver ausente, o comportamento padrao deve ser bloquear, e nao assumir permissao ou habilitacao implicita.
 
-Exemplos:
-- criar agendamento;
-- alterar status de atendimento;
-- registrar pagamento;
-- gerar report card;
-- enviar template de comunicação.
+## 4. Camadas do sistema
 
-## 4.3. Camada de domínio
-Responsável por:
-- regras de negócio;
-- estados e transições;
-- cálculos;
-- decisões operacionais;
-- políticas do sistema.
+### 4.1. Apresentacao
+
+Principais pontos:
+
+- `app/` concentra paginas, layouts e rotas do App Router;
+- `components/` guarda componentes visuais reutilizaveis;
+- `app/admin/` concentra superficies internas;
+- `app/tutor/` concentra a experiencia do tutor.
+
+Regras:
+
+- UI nao decide permissao real;
+- UI nao implementa regra de negocio critica;
+- validacao local apenas complementa a validacao server-side.
+
+### 4.2. Entrada HTTP e contracts
+
+Principais pontos:
+
+- `app/api/` expõe Route Handlers por dominio;
+- `server/authorization/api-access.ts` protege APIs internas e de tutor;
+- `server/http/` centraliza erros, respostas e utilitarios.
+
+Regras:
+
+- entrada validada com Zod;
+- respostas coerentes com status HTTP;
+- sem stack trace bruto para o cliente;
+- operacoes sensiveis devem considerar idempotencia, transacao e auditoria.
+
+### 4.3. Aplicacao e dominio
+
+Principais pontos:
+
+- `features/` organiza logica por dominio;
+- `server/` concentra orquestracao, auth, autorizacao, runtime e integracoes;
+- cada modulo deve manter regras de negocio perto do proprio dominio.
 
 Exemplos:
-- fluxo de status do atendimento;
-- conflito de agenda;
-- comissão;
-- no-show;
-- cancelamento e reagendamento;
-- política de créditos;
-- regras de Táxi Dog;
-- impacto financeiro da operação.
 
-## 4.4. Camada de persistência
-Responsável por:
-- leitura e escrita no banco;
-- uso do Prisma Client;
-- consultas otimizadas;
-- transações;
-- migrations e evolução de schema.
+- agenda e status do atendimento;
+- financeiro e conciliacao local;
+- documentos, midia e assinatura;
+- CRM e consentimento de comunicacao;
+- IA assistiva;
+- contexto multiunidade.
 
-### Regra obrigatória
-Acesso ao banco deve ocorrer via **Prisma**, não por SQL espalhado sem controle.
+### 4.4. Persistencia
 
-## 4.5. Camada de integração
-Responsável por:
-- gateways de pagamento;
-- webhooks;
-- e-mail;
-- WhatsApp operacional;
-- storage de arquivos;
-- futuros serviços de IA.
+Principais pontos:
 
-Essa camada deve ser desenhada de forma substituível, com contratos claros e sem acoplamento direto à UI.
+- `prisma/schema.prisma` representa o estado tecnico consolidado;
+- migrations devem ser pequenas, claras e reversiveis quando possivel;
+- dados criticos precisam de chaves, indices e integridade referencial adequados.
 
----
+### 4.5. Integracoes e adaptadores
 
-## 5. Organização sugerida do repositório
+Principais pontos:
 
-Estrutura inicial sugerida:
+- pagamentos e fiscal ficam atras de adaptadores e eventos integrados;
+- storage guarda binarios fora do banco;
+- IA fica atras de contratos provider-neutral;
+- bootstrap e updater ficam atras de runtime state e preflight controlado.
+
+## 5. Dominios arquiteturais principais
+
+### 5.1. Nucleo operacional
+
+Inclui:
+
+- clientes e pets;
+- servicos;
+- funcionarios;
+- agenda;
+- check-in;
+- historico de status;
+- report cards.
+
+### 5.2. Fundacao de acesso e auditoria
+
+Inclui:
+
+- usuarios, perfis e permissoes;
+- unidade e configuracao por unidade;
+- logs de auditoria;
+- guards de area e guards de API.
+
+### 5.3. Fase 2 consolidada
+
+Inclui:
+
+- depositos, reembolsos, creditos e eventos de integracao;
+- documentos, assinaturas e midia;
+- waitlist, bloqueios e capacidade de agenda;
+- Taxi Dog;
+- CRM e preferencias de comunicacao;
+- produtos, estoque e PDV;
+- escalas, ponto e base de payroll;
+- installer/updater integrado.
+
+### 5.4. Fase 3 consolidada
+
+Inclui:
+
+- `features/ai/` como fundacao transversal de IA;
+- `features/ai/vision/` para analise de imagem assistiva;
+- `features/insights/` para snapshots preditivos;
+- `features/multiunit/` para contexto multiunidade;
+- `features/phase3/governance.ts` para governanca consolidada da fase.
+
+## 6. Autenticacao, autorizacao e escopo
+
+### 6.1. Autenticacao
+
+O projeto usa next-auth v4. Segredos ficam em ambiente e a sessao autenticada e o ponto de entrada para guards de UI e API.
+
+### 6.2. RBAC server-side
+
+Perfis e permissoes sao semeados no bootstrap e aplicados no servidor.
+
+Principio:
+
+- esconder botao nunca substitui autorizacao real;
+- toda rota critica precisa validar identidade, perfil e permissao;
+- ownership do tutor e escopo por unidade devem ser aplicados no servidor.
+
+### 6.3. Multiunidade
+
+O contexto multiunidade atual e resolvido no servidor com distincao entre:
+
+- `LOCAL`;
+- `GLOBAL_AUTHORIZED`.
+
+Invariantes:
+
+- ausencia de contexto nao libera acesso cross-unit;
+- leitura global depende de papel autorizado;
+- escrita estrutural cross-unit continua conservadora;
+- superficies administrativas internas mostram contexto, mas nao substituem a regra server-side.
+
+## 7. Fundacao de IA da Fase 3
+
+### 7.1. Camadas
+
+O recorte de IA atual foi construido em camadas:
+
+- `features/ai/domain.ts`: contratos centrais e tipos de resultado;
+- `features/ai/gating.ts`: avaliacao de flags e fail-closed;
+- `features/ai/policy.ts`: quotas e politica por modulo;
+- `features/ai/execution.ts`: envelope de execucao;
+- `features/ai/retention.ts` e `features/ai/consent.ts`: governanca transversal;
+- `features/ai/events.ts` e `features/ai/audit.ts`: trilha minima de eventos e auditoria;
+- `features/ai/admin-diagnostics.ts`: superficie minima de diagnostico;
+- `features/ai/vision/`: analise de imagem;
+- `features/insights/`: previsao e recomendacao assistiva.
+
+### 7.2. Invariantes de IA
+
+- IA desligada por padrao;
+- flags invalidas ou ausentes bloqueiam;
+- quota ausente ou invalida bloqueia;
+- nenhum provider real e assumido por padrao;
+- imagem continua assistiva e com revisao humana;
+- insight preditivo continua recomendacao, nao automacao.
+
+## 8. Runtime, installer e updater
+
+O repositorio tambem possui uma fundacao de runtime operacional para setup e update:
+
+- `SystemRuntimeState` representa o ciclo de vida do sistema;
+- `RecoveryIncident` registra incidentes de repair;
+- `UpdateExecution` e `UpdateExecutionStep` registram updates controlados;
+- `/api/setup/preflight` e `/api/admin/system/update-*` expõem diagnostico e operacao interna minima;
+- `/admin/sistema` consolida leitura administrativa do runtime e da Fase 3.
+
+Essa frente continua integrada ao mesmo principio de servidor como autoridade, com preflight, lock, trilha auditavel e comportamento conservador.
+
+## 9. Estrutura do repositorio
+
+Estrutura principal:
 
 ```text
 app/
-  (public)/
-  (auth)/
   admin/
-  tutor/
   api/
+  tutor/
 components/
+docs/
 features/
 lib/
-server/
 prisma/
-types/
+server/
 tests/
-docs/
 ```
 
-## Sugestão por responsabilidade
+Convencoes:
 
-### `app/`
-Rotas, páginas, layouts e Route Handlers.
+- `features/` por dominio ou capacidade;
+- `server/` para auth, runtime, autorizacao e orquestracao;
+- `tests/server/` para cobertura de regras e contratos;
+- `docs/` para referencias de arquitetura, dominio, dados, fase e operacao.
 
-### `components/`
-Componentes visuais reutilizáveis e independentes de domínio ou com baixo acoplamento.
+## 10. Estrategia de extensao
 
-### `features/`
-Agrupamento por domínio/capacidade. Exemplo:
-- `features/agenda`
-- `features/clientes`
-- `features/pets`
-- `features/financeiro`
+Quando evoluir o sistema:
 
-### `server/`
-Serviços do lado do servidor, casos de uso, autorização, integração, orquestração e regras que não devem ficar na UI.
+1. confirmar fase e escopo no PRD;
+2. localizar o dominio certo em `features/` e `server/`;
+3. preservar separacao entre regra de dominio e UI;
+4. atualizar schema e migration quando houver impacto em dados;
+5. revisar auditoria, permissao, ownership e contexto de unidade;
+6. sincronizar testes e documentacao afetados.
 
-### `lib/`
-Helpers, utilitários, clients, formatações, constantes, validações compartilhadas.
+## 11. O que a arquitetura atual nao pressupoe
 
-### `prisma/`
-`schema.prisma`, migrations, seed e utilitários relacionados ao banco.
+Esta arquitetura nao deve ser interpretada como entrega de:
 
-### `types/`
-Tipos compartilhados que não pertencem naturalmente a um único módulo.
+- provider real de IA;
+- billing real de IA;
+- fallback real entre vendors;
+- automacao irrestrita;
+- multiunidade completa em todos os fluxos;
+- dashboards globais finais;
+- UI final de troca de contexto.
 
-### `tests/`
-Testes unitários, integração e, futuramente, e2e.
+Esses itens seguem dependendo de gate explicito de produto e implementacao.
 
-### `docs/`
-Documentação de arquitetura, decisões, regras de domínio e guias de projeto.
+## 12. Documentos complementares
 
----
+Ler em conjunto com:
 
-## 6. Domínios centrais do sistema
-
-O sistema será organizado principalmente em torno destes domínios:
-
-- Agenda e Operação
-- Cliente/Pet
-- Serviços
-- Comunicação
-- Financeiro/Fiscal
-- Portal do Tutor
-- Gestão da Equipe
-- Logística/Táxi Dog
-- IA e Insights
-- Multiunidade
-
-## Estratégia recomendada
-No código, preferir organização por **domínio/capacidade** sempre que isso melhorar clareza e manutenção.
-
-Exemplo:
-- schemas Zod do domínio próximos do domínio;
-- casos de uso do domínio próximos do domínio;
-- componentes específicos do domínio próximos do domínio;
-- abstrações compartilhadas em `lib/` ou `server/`.
-
----
-
-## 7. Fluxo de dados de alto nível
-
-## 7.1. Fluxo típico de uma ação
-1. Usuário interage com a interface
-2. Dados são validados localmente quando necessário
-3. Requisição chega ao servidor via Route Handler ou action apropriada
-4. Entrada é validada com Zod
-5. Autenticação e autorização são verificadas
-6. Caso de uso é executado
-7. Regras de domínio são aplicadas
-8. Banco é consultado/atualizado via Prisma
-9. Eventos auxiliares podem ser gerados:
-   - auditoria
-   - notificação
-   - integração externa
-10. Resposta padronizada retorna ao cliente
-
-## 7.2. Fluxo de operações críticas
-Operações como:
-- alteração de status;
-- pagamentos;
-- reembolsos;
-- créditos;
-- documentos;
-- permissões;
-- webhooks
-
-devem considerar:
-- idempotência quando necessário;
-- transação;
-- logs;
-- auditoria;
-- tratamento explícito de falhas.
-
----
-
-## 8. Status operacional e status financeiro
-
-O PRD usa o fluxo:
-
-`Agendado -> Confirmado -> Check-in -> Em Atendimento -> Pronto para Retirada -> Concluído -> Faturado`
-
-Arquiteturalmente, recomenda-se tratar:
-
-- **status operacional**
-- **status financeiro**
-
-como conceitos distintos quando isso trouxer mais clareza e robustez.
-
-## Exemplo de separação interna
-### Status operacional
-- Agendado
-- Confirmado
-- Check-in
-- Em Atendimento
-- Pronto para Retirada
-- Concluído
-- Cancelado
-- No-Show
-
-### Status financeiro
-- Pendente
-- Parcial
-- Pago
-- Reembolsado
-- Estornado
-- Faturado
-
-Se essa separação for adotada, ela deve ser:
-- documentada;
-- refletida no domínio e nos dados;
-- mapeada de volta ao PRD de forma clara.
-
----
-
-## 9. Banco de dados e modelagem
-
-O banco relacional em MySQL será a base transacional do sistema.
-
-## Diretrizes
-- modelagem orientada ao domínio;
-- integridade referencial forte;
-- uso explícito de FKs;
-- índices adequados;
-- migrations pequenas e claras;
-- evitar duplicação de dados críticos.
-
-## Entidades centrais já previstas
-- `Usuarios`
-- `Clientes`
-- `Pets`
-- `Servicos`
-- `Funcionarios`
-- `Agendamentos`
-- `AgendamentoServicos`
-- `StatusAtendimento`
-- `HistoricoStatusAgendamento`
-- `Documentos`
-- `Assinaturas`
-- `Midia`
-- `TransacoesFinanceiras`
-- `Depositos`
-- `Reembolsos`
-- `Planos`
-- `AssinaturasPlanos`
-- `CreditosCliente`
-- `UsoCredito`
-- `ListaEspera`
-- `ReportCards`
-- `TemplatesMensagem`
-- `LogsMensagens`
-- `PerfisAcesso`
-- `Permissoes`
-- `PerfilPermissao`
-- `UsuarioPerfil`
-- `LogsAuditoria`
-- `Unidades`
-- `ConfiguracoesUnidade`
-- tabelas auxiliares de gateway, transações e webhook
-
-## Observações arquiteturais
-- relações N:N devem ser modeladas de forma relacional;
-- JSON deve ser usado com justificativa;
-- mudanças críticas devem considerar compatibilidade com dados existentes;
-- auditoria deve acompanhar entidades sensíveis.
-
----
-
-## 10. Autenticação, autorização e segurança
-
-## 10.1. Autenticação
-- usar **next-auth v4**;
-- segredos somente em ambiente;
-- sessões e callbacks configurados com cuidado;
-- nunca expor credenciais no cliente.
-
-## 10.2. Autorização
-Autorização deve ser aplicada no servidor com base em:
-- perfil;
-- permissão;
-- vínculo com unidade;
-- vínculo com entidade quando aplicável.
-
-## 10.3. Auditoria
-Operações críticas devem gerar logs auditáveis, como:
-- login sensível;
-- alteração de status;
-- mudanças financeiras;
-- alterações administrativas;
-- mudanças de configuração;
-- operações com documentos.
-
-## 10.4. Proteção de dados
-- HTTPS obrigatório;
-- senhas com hash forte;
-- validação de input;
-- controle rigoroso de uploads;
-- storage seguro para arquivos;
-- retenção e descarte compatíveis com LGPD.
-
-## 10.5. Rate limiting e webhooks
-Rotas sensíveis e integrações externas devem considerar:
-- rate limiting;
-- validação por assinatura/segredo;
-- idempotência;
-- logs de falha;
-- reconciliação.
-
----
-
-## 11. Integrações externas
-
-## 11.1. Pagamentos
-Gateways previstos:
-- Mercado Pago
-- Stripe
-
-### Diretrizes
-- tratar webhooks como verdade operacional relevante;
-- não confiar apenas na resposta síncrona;
-- implementar reconciliação;
-- registrar payloads relevantes de forma segura;
-- prever retentativas e compensação.
-
-## 11.2. Comunicação
-No MVP, a comunicação será focada em:
-- WhatsApp operacional;
-- e-mail;
-- templates de mensagens.
-
-A arquitetura deve permitir crescimento futuro para:
-- automações pós-serviço;
-- campanhas segmentadas;
-- notificações mais sofisticadas.
-
-## 11.3. Storage
-Arquivos e mídias devem ser tratados fora do banco como binário principal, com o banco armazenando referências e metadados.
-
-## 11.4. IA
-No MVP, o foco é baixo risco e alto valor:
-- geração de mensagens;
-- apoio operacional;
-- prompts internos controlados no backend.
-
-Na Fase 3, a arquitetura deve estar preparada para:
-- análise de imagem;
-- análise preditiva;
-- armazenamento de metadados de IA.
-
----
-
-## 12. Estratégia para MVP
-
-A arquitetura do MVP deve priorizar:
-- clareza;
-- segurança;
-- velocidade responsável;
-- baixo acoplamento;
-- evolução futura.
-
-## O que evitar no MVP
-- overengineering;
-- abstrações excessivas sem uso real;
-- engine de workflow complexa sem necessidade;
-- arquitetura distribuída prematura;
-- automações sofisticadas antes do core estar estável.
-
-## Meta do MVP
-Entregar uma base sólida para:
-- agendamento;
-- operação;
-- cliente/pet;
-- serviços;
-- comunicação básica;
-- financeiro básico;
-- portal do tutor básico;
-- comissões;
-- report card simples.
-
----
-
-## 13. Estratégia de testes
-
-## 13.1. Prioridade
-Testar primeiro o que mais afeta:
-- dinheiro;
-- agenda;
-- segurança;
-- permissões;
-- regras críticas de domínio.
-
-## 13.2. Recomendação
-- testes unitários para regras de negócio;
-- testes de integração para rotas, banco e fluxos críticos;
-- testes específicos para webhooks e idempotência;
-- e2e futuramente para fluxos principais do sistema.
-
----
-
-## 14. Observabilidade e operação
-
-Mesmo no início, a arquitetura deve considerar:
-- logs úteis;
-- erros estruturados;
-- diferenciação entre erro de domínio e erro técnico;
-- rastreabilidade mínima de operações críticas.
-
-Futuramente, isso pode evoluir para:
-- monitoramento;
-- tracing;
-- alertas;
-- dashboards operacionais.
-
----
-
-## 15. Decisões arquiteturais já assumidas
-
-- o núcleo do sistema **não será construído em WordPress**;
-- a base será **Next.js + TypeScript + Prisma + MySQL**;
-- APIs internas serão construídas com **Route Handlers**;
-- autenticação será tratada com **next-auth v4**;
-- o sistema será pensado para evolução futura, mas com **foco absoluto no MVP** no início.
-
----
-
-## 16. Próximos documentos recomendados
-
-Para complementar esta arquitetura, recomenda-se manter e evoluir:
-
+- `PetOS_PRD.md`
+- `AGENTS.md`
 - `docs/domain-rules.md`
-- `docs/decisions/`
-- `docs/payments.md`
-- `docs/security-notes.md`
 - `docs/data-model.md`
-
----
-
-## 17. Resumo final
-
-A arquitetura do PetOS deve equilibrar:
-
-- simplicidade no presente;
-- robustez em áreas críticas;
-- clareza de responsabilidades;
-- capacidade de evolução futura.
-
-O objetivo não é criar uma arquitetura “impressionante”, e sim uma arquitetura:
-- compreensível;
-- segura;
-- sustentável;
-- alinhada ao produto;
-- boa para humanos e boa para agentes de IA.
+- `docs/environment-contract.md`
+- `docs/rbac-permission-matrix.md`
+- `docs/internal-api-catalog.md`
+- `docs/phase3-maintenance-guide.md`
+- `docs/decisions/README.md`

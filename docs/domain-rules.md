@@ -1,429 +1,330 @@
-# Regras de Domínio do PetOS
+# Regras de Dominio do PetOS
 
-## 1. Objetivo deste documento
+## 1. Objetivo
 
-Este documento consolida as **regras de negócio críticas** do PetOS em formato operacional e de consulta rápida.
+Este documento consolida as regras de negocio criticas do PetOS em linguagem operacional.
 
 Ele existe para:
-- facilitar implementação consistente;
-- reduzir ambiguidade entre produto, backend e frontend;
-- orientar testes, validações e auditoria;
-- ajudar humanos e agentes de IA a localizar rapidamente regras sensíveis.
 
-Este documento **não substitui** o `PetOS_PRD.md`.  
-Se houver conflito, o **PRD vence**.
+- reduzir ambiguidade entre PRD, backend, frontend, testes e suporte;
+- deixar explicitas as invariantes que nao podem ficar apenas na UI;
+- orientar manutencao da baseline atual do MVP, da Fase 2 e da Fase 3;
+- servir de apoio rapido para quem altera fluxos sensiveis.
 
-## 10.3. CRM e comunicaÃ§Ã£o ampliada da Fase 2
-- consentimento e preferÃªncia de canal devem ficar claros por cliente antes de qualquer campanha ou gatilho;
-- review booster, recuperaÃ§Ã£o de inativos, ofertas por perfil e gatilhos pos-serviÃ§o devem ser preparados no servidor;
-- campanhas devem usar critÃ©rios auditÃ¡veis, template conhecido e histÃ³rico de execuÃ§Ã£o com preparados, descartados e disparados;
-- falta de consentimento ou de destino vÃ¡lido deve descartar o destinatÃ¡rio com motivo explÃ­cito, sem esconder a tentativa;
-- lista de espera, portal do tutor e comunicaÃ§Ã£o operacional nÃ£o devem virar atalho para marketing fora do recorte da fase.
+Em caso de conflito:
 
----
+1. o `PetOS_PRD.md` vence em produto e escopo;
+2. o codigo server-side e o schema vencem em implementacao consolidada;
+3. este documento deve ser atualizado para refletir a decisao real.
 
-## 2. Princípios gerais
+## 2. Invariantes transversais
 
-### 2.1. Regra no servidor
-Toda regra de negócio crítica deve ser garantida no servidor.
+### 2.1. Regra critica no servidor
+
+Autorizacao, ownership, escopo por unidade, transicao de status, calculo financeiro e gating de IA precisam ser garantidos no servidor.
 
 ### 2.2. Rastreabilidade
-Mudanças relevantes devem gerar histórico e/ou auditoria quando aplicável.
 
-### 2.3. Configuração por unidade
-Sempre que o PRD indicar parâmetros configuráveis, a implementação deve evitar valores hardcoded e usar configuração por unidade.
+Mudancas em entidades sensiveis devem preservar historico ou auditoria quando aplicavel.
 
-### 2.4. Simplicidade no MVP
-No MVP, implementar o necessário para garantir operação confiável, sem antecipar complexidades que pertencem à Fase 2 ou Fase 3.
+### 2.3. Configuracao por unidade
 
----
+Sempre que houver janela, tolerancia, retencao, politica de estoque ou regra operacional configuravel, a implementacao deve usar configuracao por unidade em vez de hardcode.
 
-## 3. Agenda e Operação
+### 2.4. Fase atual importa
 
-## 3.1. Agendamento
-Um agendamento representa a reserva de um atendimento para um pet, vinculado a cliente, serviço(s), profissional(is) e horários.
+O sistema nao deve apresentar como entregue algo que ainda e apenas previsao de fase futura. Isso vale para multiunidade ampla, provider real de IA, billing real e automacao operacional.
 
-### Regras obrigatórias
-- não permitir agendamento no passado;
-- não permitir criar agendamento sem pet e cliente válidos;
-- duração do atendimento deve ser compatível com os serviços selecionados;
-- o sistema deve impedir conflito de agenda do mesmo profissional no mesmo horário, salvo regra configurada futura;
-- um agendamento pode conter um ou mais serviços, conforme modelagem com `AgendamentoServicos`.
+## 3. Agenda e atendimento
 
-## 3.2. Check-in
-O check-in marca a entrada formal do pet para atendimento.
+### 3.1. Agendamento
 
-### Regras obrigatórias
-- só pode ocorrer para agendamento existente e válido;
-- deve registrar informações operacionais relevantes;
-- deve respeitar checklist configurado para o contexto do atendimento;
-- deve gerar rastreabilidade mínima de quem executou a ação.
+Um agendamento precisa manter vinculo coerente entre:
 
-## 3.3. Overbooking
-No MVP, overbooking não é permitido para o mesmo profissional no mesmo intervalo.
+- cliente;
+- pet;
+- unidade;
+- servico;
+- profissional;
+- intervalo de tempo.
 
-### Observação
-Regras mais avançadas de capacidade por profissional, porte e raça pertencem à **Fase 2**.
+Regras obrigatorias:
 
----
+- nao permitir agendamento no passado;
+- nao permitir conflito do mesmo profissional no mesmo horario sem regra explicita;
+- nao perder integridade entre servico escolhido e duracao prevista;
+- manter trilha de alteracao relevante.
 
-## 4. Fluxo de status do atendimento
+### 3.2. Check-in
 
-## 4.1. Fluxo principal
-Fluxo definido no PRD:
+O check-in formaliza entrada operacional do pet.
 
-`Agendado -> Confirmado -> Check-in -> Em Atendimento -> Pronto para Retirada -> Concluído -> Faturado`
+Regras obrigatorias:
 
-## 4.2. Regras obrigatórias
-- não permitir salto arbitrário entre estados sem justificativa/permissão;
-- toda mudança de status deve ser registrada em histórico;
-- o sistema deve registrar usuário e data/hora da mudança;
-- mudanças de status podem disparar efeitos em comunicação, financeiro e operação.
+- somente para agendamento valido;
+- gera snapshot operacional suficiente para consulta posterior;
+- registra operador, horario e contexto de execucao;
+- nao substitui o historico de status.
 
-## 4.3. Separação conceitual recomendada
-Sempre que a implementação exigir mais clareza, tratar:
-- **status operacional**
-- **status financeiro**
+### 3.3. Capacidade, bloqueios e waitlist
 
-como conceitos distintos.
+Na baseline atual:
 
-### Exemplo operacional
-- Agendado
-- Confirmado
-- Check-in
-- Em Atendimento
-- Pronto para Retirada
-- Concluído
-- Cancelado
-- No-Show
+- capacidade pode variar por unidade, profissional, porte e raca;
+- bloqueios operacionais precisam ser respeitados no servidor;
+- waitlist pode ser promovida ou cancelada com rastreabilidade;
+- promocao de waitlist nao pode criar inconsistencias entre fila e agenda real.
 
-### Exemplo financeiro
-- Pendente
-- Pago
-- Reembolsado
-- Estornado
-- Faturado
+### 3.4. Taxi Dog
 
-Se adotado, esse mapeamento deve ser documentado.
+Taxi Dog continua sendo extensao operacional do atendimento.
 
----
+Regras obrigatorias:
+
+- quando existir, precisa permanecer vinculado ao agendamento;
+- custo e status nao podem ficar fora da trilha financeira e operacional;
+- nao simular roteirizacao completa onde ela nao existe.
+
+## 4. Status operacional e status financeiro
+
+O PRD usa um fluxo unico de alto nivel, mas a implementacao separa:
+
+- status operacional;
+- status financeiro.
+
+Regras obrigatorias:
+
+- transicoes operacionais invalidas devem ser bloqueadas;
+- historico de status precisa registrar quem mudou, quando e por que;
+- status financeiro nao deve ser inferido pela UI;
+- um atendimento pode estar concluido operacionalmente e ainda pendente financeiramente.
 
 ## 5. Cancelamento, reagendamento e no-show
 
-## 5.1. Cancelamento
-O cancelamento deve respeitar a janela configurável por unidade.
+Regras obrigatorias:
 
-### Regras obrigatórias
-- o sistema não deve hardcodar a janela de cancelamento;
-- cancelamentos fora da janela podem gerar penalidade, perda de depósito ou crédito parcial, conforme configuração;
-- o cancelamento deve registrar histórico.
+- janelas precisam ser configuraveis por unidade;
+- tolerancia de no-show nao pode ser hardcoded;
+- penalidade, deposito, reembolso ou credito devem ser aplicados de forma explicita;
+- no-show nao pode ser apenas marcacao visual sem reflexo coerente em dominio, historico e financeiro.
 
-## 5.2. Reagendamento
-O reagendamento deve respeitar janela configurável por unidade.
+## 6. Cliente, pet e ownership
 
-### Regras obrigatórias
-- não hardcodar o prazo de reagendamento;
-- reagendamento fora da janela pode ser tratado como cancelamento + novo agendamento, conforme regra configurada;
-- manter rastreabilidade da alteração quando aplicável.
+### 6.1. Cliente e pet
 
-## 5.3. No-Show
-No-show ocorre quando o cliente não comparece nem regulariza a situação dentro da tolerância configurada.
+Regras obrigatorias:
 
-### Regras obrigatórias
-- a tolerância deve ser configurável por unidade;
-- a marcação de no-show deve poder impactar cobrança, depósito, comunicação e histórico;
-- a política de no-show não deve ser implementada de forma oculta ou implícita.
+- pet sempre vinculado a cliente valido;
+- historico operacional precisa preservar a trilha de atendimento do pet;
+- dados relevantes para a operacao devem continuar acessiveis de forma segura.
 
----
+### 6.2. Ownership
 
-## 6. Cliente e Pet
+Na baseline atual:
 
-## 6.1. Cliente
-Cliente é a entidade titular do vínculo comercial com o estabelecimento.
+- cliente e pet usam ownership base auditavel por unidade;
+- leitura local e padrao;
+- leitura global depende de papel autorizado;
+- edicao estrutural cross-unit continua conservadora.
 
-### Regras obrigatórias
-- dados mínimos devem ser suficientes para contato e vínculo com pets;
-- histórico de serviços deve permanecer vinculado ao cliente e aos pets correspondentes;
-- alterações importantes em dados sensíveis devem considerar auditoria quando aplicável.
+## 7. Servicos, equipe, ponto e folha
 
-## 6.2. Pet
-Pet é a entidade central do atendimento operacional.
+### 7.1. Servicos
 
-### Regras obrigatórias
-- cada pet deve estar vinculado a um cliente;
-- informações de saúde, alergias e observações importantes devem estar disponíveis para consulta operacional;
-- a aplicação deve evitar perda de contexto histórico do pet ao longo do tempo.
+Regras obrigatorias:
 
----
+- preco base nao substitui o preco efetivamente praticado;
+- duracao e disponibilidade precisam ser coerentes;
+- vinculo com profissional e unidade deve ser preservado quando aplicavel.
 
-## 7. Serviços
+### 7.2. Comissao
 
-## 7.1. Cadastro de serviços
-Serviços devem ter definição clara de:
-- nome;
-- duração;
-- preço base;
-- disponibilidade.
+Regras obrigatorias:
 
-## 7.2. Regras obrigatórias
-- o sistema deve permitir precificação acordada por item no agendamento quando necessário;
-- preço base não substitui preço efetivamente praticado no atendimento;
-- o vínculo entre serviço e profissional executante deve ser preservado quando aplicável.
+- calculo no servidor;
+- baseado em valor faturado apos descontos, conforme PRD e dominio local;
+- materializacao somente quando o atendimento estiver operacionalmente concluido e financeiramente pago;
+- nao pode depender de componente visual.
 
----
+### 7.3. Escalas, ponto e folha
 
-## 8. Financeiro
+Regras obrigatorias:
 
-## 8.1. Registro financeiro
-Toda movimentação relevante deve ser refletida em registros financeiros adequados.
+- nao abrir duas jornadas de ponto simultaneas para o mesmo funcionario;
+- fechamento de ponto exige saida posterior a entrada;
+- escalas sobrepostas precisam ser evitadas;
+- base de payroll atual e operacional, nao modulo trabalhista amplo.
 
-### Tipos comuns
-- receita
-- despesa
-- depósito
-- reembolso
+## 8. Financeiro, depositos, reembolsos e PDV
 
-## 8.2. Regras obrigatórias
-- não misturar valor estimado com valor efetivamente realizado sem distinção;
-- reembolsos devem ter rastreabilidade;
-- créditos do cliente devem ter histórico de uso;
-- impacto financeiro de no-show, Táxi Dog, descontos e pagamentos deve ser consistente.
+### 8.1. Ledger financeiro
 
-## 8.3. Faturamento
-O faturamento deve refletir o estado financeiro real da operação.
+`TransacoesFinanceiras` continua sendo a trilha central.
 
-### Regra obrigatória
-O sistema não deve marcar uma operação como financeiramente concluída apenas por efeito visual de UI sem confirmação adequada da camada de domínio.
+Regras obrigatorias:
 
----
+- nao misturar estimativa com liquidacao real;
+- reconciliacao e efeitos externos precisam de trilha auditavel;
+- deposito, reembolso e credito nao podem gerar ledger paralelo sem integracao coerente.
 
-## 9. Comissão
+### 8.2. Depositos e reembolsos
 
-## 9.1. Base da comissão
-A comissão deve ser calculada sobre o valor **faturado**, após descontos, conforme PRD.
+Regras obrigatorias:
 
-## 9.2. Regras obrigatórias
-- cálculo deve ocorrer na camada de domínio/aplicação;
-- não implementar comissão apenas na interface;
-- a lógica deve ser rastreável;
-- quando houver múltiplos serviços e múltiplos profissionais, a estrutura deve preservar o vínculo correto.
+- deposito precisa ter finalidade, status e historico;
+- reembolso precisa manter vinculo com origem e motivo;
+- conversao para credito precisa permanecer auditavel.
 
----
+### 8.3. PDV e estoque
 
-## 10. Comunicação
+Regras obrigatorias:
 
-## 10.1. Comunicação operacional do MVP
-No MVP, a comunicação prioriza:
-- WhatsApp operacional;
-- e-mail;
-- templates de mensagens.
+- venda concluida deve refletir no financeiro e no estoque na mesma transacao;
+- saldo negativo depende de politica explicita por unidade;
+- emissao fiscal minima nao deve ocorrer para venda nao liquidada.
 
-## 10.2. Regras obrigatórias
-- mensagens devem usar dados válidos e contextualizados;
-- templates devem permitir personalização controlada;
-- envios relevantes devem poder ser registrados em log;
-- não tratar integração manual como automação completa quando não for.
+## 9. Documentos, assinaturas e midia
 
----
+Regras obrigatorias:
 
-## 11. Portal do Tutor
+- binario fica fora do banco; banco guarda referencias e metadados;
+- acesso protegido por permissao, ownership e vinculo da entidade;
+- tipo e tamanho de arquivo devem ser validados;
+- arquivamento logico precisa preservar motivo e autoria;
+- assinatura operacional nao pode fingir autoria do tutor quando foi apenas registro interno.
 
-## 11.1. Escopo do MVP
-No MVP, o portal do tutor cobre:
-- criação de conta e perfil;
-- visualização de pets;
-- histórico de serviços;
-- agendamento online;
-- notificações básicas.
+## 10. Comunicacao e CRM
 
-## 11.2. Regras obrigatórias
-- tutor só pode visualizar dados autorizados e vinculados à sua conta;
-- o portal não substitui validações administrativas críticas;
-- permissões devem ser garantidas no servidor.
+### 10.1. Comunicacao operacional
 
----
+Regras obrigatorias:
 
-## 12. Táxi Dog
+- template conhecido;
+- dados contextualizados;
+- log de envio relevante;
+- comunicacao manual nao deve ser descrita como automacao completa.
 
-## 12.1. Natureza do serviço
-Táxi Dog é uma extensão logística do atendimento.
+### 10.2. Consentimento e CRM
 
-## 12.2. Regras obrigatórias
-- quando contratado, deve se integrar ao agendamento;
-- custo do transporte deve refletir no financeiro;
-- comissão do motorista, se existir, deve ter critério explícito;
-- roteirização avançada não deve ser simulada como se fosse completa no MVP.
+Na baseline atual:
 
----
+- consentimento de contato e preferencia de canal ficam claros por cliente;
+- campanhas e gatilhos usam criterios auditaveis;
+- destinatario sem opt-in ou destino valido deve ser descartado com motivo explicito;
+- lista de espera, portal do tutor e comunicacao operacional nao viram atalho para marketing sem regra.
 
-## 13. Pagamentos, depósitos e reembolsos
+## 11. Portal do tutor
 
-## 13.1. Depósitos
-Depósito pode ser usado como proteção contra no-show ou reserva.
+Regras obrigatorias:
 
-### Regras obrigatórias
-- o sistema deve registrar valor, data e status;
-- regras de perda, devolução ou conversão em crédito devem ser explícitas;
-- depósito não deve ser tratado como pagamento final automaticamente sem regra clara.
+- tutor so acessa dados proprios e de pets vinculados;
+- ownership do tutor precisa ser aplicado no servidor;
+- fluxos ampliados do tutor, como documentos, waitlist, Taxi Dog, pre-check-in e financeiro proprio, nao podem depender apenas da UI;
+- portal nao substitui validacao administrativa critica.
 
-## 13.2. Pagamentos
-Pagamentos podem envolver gateway externo.
+## 12. Webhooks e eventos externos
 
-### Regras obrigatórias
-- a confirmação final deve considerar webhooks e reconciliação quando aplicável;
-- não confiar somente na resposta síncrona;
-- operações devem ser idempotentes quando necessário;
-- falhas externas devem ter tratamento claro.
+Regras obrigatorias:
 
-## 13.3. Reembolsos
-Reembolsos devem:
-- registrar motivo;
-- manter vínculo com transação original;
-- refletir corretamente no financeiro;
-- preservar rastreabilidade.
+- assinatura ou segredo validado;
+- processamento idempotente;
+- registro do recebimento;
+- trilha suficiente para reprocessamento controlado e reconciliacao;
+- evento invalido nao pode gerar efeito de dominio.
 
----
+## 13. Multiunidade
 
-## 14. Webhooks
+### 13.1. Fundacao server-side
 
-## 14.1. Natureza
-Webhooks são eventos externos recebidos de integrações como gateways de pagamento.
+O contexto multiunidade atual parte de decisao server-side.
 
-## 14.2. Regras obrigatórias
-- validar assinatura ou segredo;
-- registrar recebimento;
-- processar de forma idempotente;
-- evitar duplicidade de efeitos financeiros;
-- manter trilha para reconciliação.
+Regras obrigatorias:
 
----
+- ausencia de contexto falha fechado;
+- single-unit continua preservado;
+- leitura global depende de papel autorizado;
+- escrita estrutural cross-unit nao pode ser liberada por acidente;
+- diagnostico administrativo nao pode vazar escopo indevido.
 
-## 15. Documentos, assinaturas e mídia
+### 13.2. Rollout controlado
 
-## 15.1. Escopo por fase
-Documentos e assinaturas digitais pertencem à **Fase 2**, mas a arquitetura pode ser preparada antes.
+O Bloco 2 da Fase 3 abriu recortes seguros em modulos operacionais, mas nao representa multiunidade irrestrita. Toda nova abertura precisa seguir o mapa de impacto e manter o backend como autoridade.
 
-## 15.2. Regras obrigatórias quando implementados
-- controlar acesso por vínculo e permissão;
-- validar tipo e tamanho de arquivo;
-- manter referência segura aos arquivos;
-- registrar upload e ações relevantes;
-- separar armazenamento de binário e metadados.
+## 14. IA e insights
 
----
+### 14.1. Fundacao transversal
 
-## 16. Permissões e segurança
+Regras obrigatorias:
 
-## 16.1. RBAC
-O sistema deve operar com perfis e permissões.
+- IA desligada por padrao;
+- `fail-closed` quando flag, quota ou configuracao estiver ausente ou invalida;
+- nenhuma chamada paga, job ou retry quando o modulo estiver desligado;
+- IA nao substitui regra de negocio, autorizacao ou validacao server-side.
 
-### Regras obrigatórias
-- autorização no servidor;
-- interface visível não define permissão real;
-- operações críticas devem verificar papel, permissão e, quando aplicável, vínculo com unidade.
+### 14.2. Consentimento, retencao e auditoria
 
-## 16.2. Auditoria
-Operações críticas devem ser auditáveis.
+Regras obrigatorias:
 
-### Exemplos
-- login sensível;
-- alterações financeiras;
-- mudança de status;
-- edição de dados críticos;
-- mudanças de configuração;
-- ações administrativas relevantes.
+- finalidade precisa estar clara;
+- retencao por padrao nao deve armazenar payload bruto sem justificativa;
+- eventos minimos de custo, erro e desligamento precisam ser distinguiveis;
+- auditoria precisa permanecer coerente com envelope e eventos.
 
----
+### 14.3. Analise de imagem
 
-## 17. Multiunidade
+Na baseline atual:
 
-## 17.1. Escopo
-A operação multiunidade completa pertence à **Fase 3**, mas o modelo pode nascer preparado.
+- resultado e assistivo;
+- revisao humana continua obrigatoria quando aplicavel;
+- nao ha diagnostico clinico automatico;
+- visibilidade segue recorte interno e auditavel.
 
-## 17.2. Regras obrigatórias
-- evitar hardcode de configuração global quando o PRD já prevê configuração por unidade;
-- dados e regras sensíveis à unidade devem prever esse vínculo na modelagem;
-- o MVP não deve fingir multiunidade completa sem suporte real.
+### 14.4. Insight preditivo
 
----
+Na baseline atual:
 
-## 18. IA no produto
+- o primeiro caso e previsao de demanda de agenda;
+- resultado continua recomendacao auditavel;
+- pouco historico precisa degradar confianca de forma explicita;
+- insight nao executa acao automatica sozinho.
 
-## 18.1. MVP
-No MVP, IA deve ser usada de forma controlada e de baixo risco, como:
-- geração de mensagens;
-- apoio operacional;
-- prompts internos contextuais.
+## 15. Runtime operacional, setup e update
 
-## 18.2. Fase 3
-Na Fase 3, IA pode incluir:
-- análise de imagem;
-- análise preditiva;
-- recomendações mais sofisticadas.
+Regras obrigatorias:
 
-## 18.3. Regras obrigatórias
-- IA não substitui validação de domínio;
-- IA não deve tomar decisão crítica sozinha sem controle;
-- resultados de IA devem ser tratados como apoio, não como verdade absoluta, quando aplicável.
+- setup inicial depende de gating explicito;
+- update controlado exige permissao, preflight, lock e trilha persistida;
+- incidentes de recovery precisam ficar registrados;
+- sistema nao deve esconder falha operacional de setup ou update como se fosse sucesso.
 
----
+## 16. Prioridades de teste
 
-## 19. Regras para testes
+Testar primeiro o que mais pode gerar:
 
-## 19.1. O que testar primeiro
-Priorizar testes para:
+- perda financeira;
+- vazamento cross-unit;
+- quebra de autorizacao;
+- inconsistencia operacional;
+- erro em automacao assistiva;
+- perda de rastreabilidade.
+
+Prioridades permanentes:
+
 - conflito de agenda;
-- transição de status;
-- comissão;
-- no-show;
-- cancelamento e reagendamento;
-- pagamentos;
-- webhooks;
-- permissões;
-- operações financeiras críticas.
+- transicao de status;
+- depositos, reembolsos e ledger;
+- ownership e escopo por unidade;
+- consentimento, retencao e fail-closed da IA;
+- webhooks e idempotencia;
+- diagnosticos administrativos internos.
 
-## 19.2. Regra prática
-Se uma regra puder causar:
-- perda financeira,
-- inconsistência operacional,
-- falha de segurança,
-- erro de autorização,
-- corrupção de fluxo do atendimento,
+## 17. Documentos complementares
 
-ela merece teste prioritário.
+Ler em conjunto com:
 
----
-
-## 19.1. Gestao da equipe na Fase 2
-
-### Escalas
-- o servidor deve impedir sobreposicao de escalas ativas do mesmo funcionario no mesmo intervalo;
-- `DAY_OFF` nao conta como jornada prevista para folha;
-- `CANCELED` retira a escala do calculo operacional e da folha.
-
-### Ponto
-- um funcionario nao pode manter dois registros de ponto abertos ao mesmo tempo;
-- fechamento de ponto exige saida posterior a entrada e intervalo nao negativo;
-- ajustes e invalidacoes devem permanecer auditaveis.
-
-### Folha
-- a rodada de folha deve ser criada por periodo e unidade, sem sobrepor outra rodada ativa no mesmo intervalo;
-- a folha so pode ser finalizada sem ponto aberto dentro do periodo;
-- `PAID + COMPLETED` continua sendo a condicao correta para comissao materializada entrar na base da folha;
-- payroll da Fase 2 e base operacional de apuracao, nao modulo trabalhista amplo.
-
----
-
-## 20. Resumo operacional
-
-As regras mais sensíveis do PetOS giram em torno de:
-
-- agenda sem conflito indevido;
-- status com rastreabilidade;
-- financeiro consistente;
-- pagamentos e webhooks confiáveis;
-- autorização real no servidor;
-- configurações por unidade;
-- foco rigoroso no escopo da fase atual.
-
-Este documento deve ser mantido enxuto, prático e alinhado ao PRD.
+- `PetOS_PRD.md`
+- `docs/architecture.md`
+- `docs/data-model.md`
+- `docs/rbac-permission-matrix.md`
+- `docs/environment-contract.md`
+- `docs/phase3-maintenance-guide.md`
