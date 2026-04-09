@@ -36,6 +36,7 @@ No estado atual do repositorio:
 - o MVP operacional esta fechado;
 - a Fase 2 esta fechada no recorte aprovado pelo PRD;
 - a Fase 3 esta fechada como baseline tecnica conservadora, sem provider real de IA, billing real, painel final de IA ou multiunidade irrestrita.
+- a Fase 4 abriu, de forma controlada, o primeiro item de roadmap futuro: assistente virtual do tutor, ainda sem provider real de voz ou automacao autonoma.
 
 Essa baseline inclui:
 
@@ -44,6 +45,7 @@ Essa baseline inclui:
 - analise de imagem assistiva com revisao humana;
 - insight preditivo assistivo e auditavel;
 - governanca consolidada e regressao reconhecivel da fase.
+- assistente virtual do tutor em modo transcript-only e confirmacao explicita.
 
 ## 3. Principios arquiteturais
 
@@ -62,6 +64,7 @@ O desenho deve permitir evolucao por fase sem antecipar escopo:
 - MVP;
 - Fase 2;
 - Fase 3;
+- Fase 4;
 - roadmap futuro.
 
 ### 3.4. Separacao de responsabilidades
@@ -189,6 +192,15 @@ Inclui:
 - `features/multiunit/` para contexto multiunidade;
 - `features/phase3/governance.ts` para governanca consolidada da fase.
 
+### 5.5. Fase 4 conservadora
+
+Inclui:
+
+- `features/assistant/` para o dominio do assistente virtual do tutor;
+- `app/api/tutor/virtual-assistant/route.ts` como fronteira HTTP protegida;
+- painel minimo embutido em `app/tutor/page.tsx`;
+- contrato transcript-only, sem upload de audio bruto para o servidor.
+
 ## 6. Autenticacao, autorizacao e escopo
 
 ### 6.1. Autenticacao
@@ -219,7 +231,7 @@ Invariantes:
 - escrita estrutural cross-unit continua conservadora;
 - superficies administrativas internas mostram contexto, mas nao substituem a regra server-side.
 
-## 7. Fundacao de IA da Fase 3
+## 7. Fundacao de IA da Fase 3 e expansoes conservadoras posteriores
 
 ### 7.1. Camadas
 
@@ -234,6 +246,7 @@ O recorte de IA atual foi construido em camadas:
 - `features/ai/admin-diagnostics.ts`: superficie minima de diagnostico;
 - `features/ai/vision/`: analise de imagem;
 - `features/insights/`: previsao e recomendacao assistiva.
+- `features/assistant/`: assistente virtual do tutor em modo transcript-only.
 
 ### 7.2. Invariantes de IA
 
@@ -243,6 +256,7 @@ O recorte de IA atual foi construido em camadas:
 - nenhum provider real e assumido por padrao;
 - imagem continua assistiva e com revisao humana;
 - insight preditivo continua recomendacao, nao automacao.
+- assistente virtual continua confirmacao-primeiro, sem audio bruto persistido e sem criacao autonoma de atendimento.
 
 ## 8. Runtime, installer e updater
 

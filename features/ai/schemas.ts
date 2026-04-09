@@ -3,22 +3,30 @@ import { z } from 'zod'
 export const AI_GLOBAL_FLAG_KEY = 'ai.enabled'
 export const AI_IMAGE_ANALYSIS_FLAG_KEY = 'ai.imageAnalysis.enabled'
 export const AI_PREDICTIVE_INSIGHTS_FLAG_KEY = 'ai.predictiveInsights.enabled'
+export const AI_VIRTUAL_ASSISTANT_FLAG_KEY = 'ai.virtualAssistant.enabled'
 export const AI_UNIT_FLAG_KEY = 'ai.enabledByUnit'
 export const AI_GLOBAL_ENV_KEY = 'AI_ENABLED'
 export const AI_IMAGE_ANALYSIS_ENV_KEY = 'AI_IMAGE_ANALYSIS_ENABLED'
 export const AI_PREDICTIVE_INSIGHTS_ENV_KEY = 'AI_PREDICTIVE_INSIGHTS_ENABLED'
+export const AI_VIRTUAL_ASSISTANT_ENV_KEY = 'AI_VIRTUAL_ASSISTANT_ENABLED'
 export const AI_IMAGE_ANALYSIS_BASE_QUOTA_KEY = 'ai.imageAnalysis.baseQuota'
 export const AI_PREDICTIVE_INSIGHTS_BASE_QUOTA_KEY = 'ai.predictiveInsights.baseQuota'
+export const AI_VIRTUAL_ASSISTANT_BASE_QUOTA_KEY = 'ai.virtualAssistant.baseQuota'
 export const AI_IMAGE_ANALYSIS_UNIT_QUOTA_KEY = 'ai.imageAnalysis.unitQuota'
 export const AI_PREDICTIVE_INSIGHTS_UNIT_QUOTA_KEY =
   'ai.predictiveInsights.unitQuota'
+export const AI_VIRTUAL_ASSISTANT_UNIT_QUOTA_KEY =
+  'ai.virtualAssistant.unitQuota'
 export const AI_IMAGE_ANALYSIS_BASE_QUOTA_ENV_KEY = 'AI_IMAGE_ANALYSIS_BASE_QUOTA'
 export const AI_PREDICTIVE_INSIGHTS_BASE_QUOTA_ENV_KEY =
   'AI_PREDICTIVE_INSIGHTS_BASE_QUOTA'
+export const AI_VIRTUAL_ASSISTANT_BASE_QUOTA_ENV_KEY =
+  'AI_VIRTUAL_ASSISTANT_BASE_QUOTA'
 
 export const aiInferenceModuleSchema = z.enum([
   'IMAGE_ANALYSIS',
   'PREDICTIVE_INSIGHTS',
+  'VIRTUAL_ASSISTANT',
 ])
 
 export type AiInferenceModule = z.infer<typeof aiInferenceModuleSchema>
@@ -34,26 +42,31 @@ export type AiInferenceOrigin = z.infer<typeof aiInferenceOriginSchema>
 export const aiModuleFlagKeyMap = {
   IMAGE_ANALYSIS: AI_IMAGE_ANALYSIS_FLAG_KEY,
   PREDICTIVE_INSIGHTS: AI_PREDICTIVE_INSIGHTS_FLAG_KEY,
+  VIRTUAL_ASSISTANT: AI_VIRTUAL_ASSISTANT_FLAG_KEY,
 } as const satisfies Record<AiInferenceModule, string>
 
 export const aiModuleEnvFlagKeyMap = {
   IMAGE_ANALYSIS: AI_IMAGE_ANALYSIS_ENV_KEY,
   PREDICTIVE_INSIGHTS: AI_PREDICTIVE_INSIGHTS_ENV_KEY,
+  VIRTUAL_ASSISTANT: AI_VIRTUAL_ASSISTANT_ENV_KEY,
 } as const satisfies Record<AiInferenceModule, string>
 
 export const aiModuleQuotaKeyMap = {
   IMAGE_ANALYSIS: AI_IMAGE_ANALYSIS_BASE_QUOTA_KEY,
   PREDICTIVE_INSIGHTS: AI_PREDICTIVE_INSIGHTS_BASE_QUOTA_KEY,
+  VIRTUAL_ASSISTANT: AI_VIRTUAL_ASSISTANT_BASE_QUOTA_KEY,
 } as const satisfies Record<AiInferenceModule, string>
 
 export const aiModuleQuotaEnvKeyMap = {
   IMAGE_ANALYSIS: AI_IMAGE_ANALYSIS_BASE_QUOTA_ENV_KEY,
   PREDICTIVE_INSIGHTS: AI_PREDICTIVE_INSIGHTS_BASE_QUOTA_ENV_KEY,
+  VIRTUAL_ASSISTANT: AI_VIRTUAL_ASSISTANT_BASE_QUOTA_ENV_KEY,
 } as const satisfies Record<AiInferenceModule, string>
 
 export const aiUnitQuotaKeyMap = {
   IMAGE_ANALYSIS: AI_IMAGE_ANALYSIS_UNIT_QUOTA_KEY,
   PREDICTIVE_INSIGHTS: AI_PREDICTIVE_INSIGHTS_UNIT_QUOTA_KEY,
+  VIRTUAL_ASSISTANT: AI_VIRTUAL_ASSISTANT_UNIT_QUOTA_KEY,
 } as const satisfies Record<AiInferenceModule, string>
 
 export const aiInferenceFlagKeysSchema = z.object({
@@ -359,6 +372,7 @@ export const aiConsentPurposeSchema = z.enum([
   'IMAGE_OPERATIONAL_ASSISTED',
   'IMAGE_GALLERY_METADATA',
   'PREDICTIVE_INSIGHT',
+  'VOICE_ASSISTANT_TUTOR',
   'INTERNAL_ADMIN_AUDIT',
 ])
 

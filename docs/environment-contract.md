@@ -175,15 +175,17 @@ Regras:
 - sua existencia sozinha nao habilita a Fase 3;
 - flags e quotas continuam sendo o gate real da IA.
 
-### 3.9. Fundacao de IA da Fase 3
+### 3.9. Fundacao de IA da Fase 3 e extensoes conservadoras posteriores
 
 Variaveis:
 
 - `AI_ENABLED`
 - `AI_IMAGE_ANALYSIS_ENABLED`
 - `AI_PREDICTIVE_INSIGHTS_ENABLED`
+- `AI_VIRTUAL_ASSISTANT_ENABLED`
 - `AI_IMAGE_ANALYSIS_BASE_QUOTA`
 - `AI_PREDICTIVE_INSIGHTS_BASE_QUOTA`
+- `AI_VIRTUAL_ASSISTANT_BASE_QUOTA`
 
 Semantica obrigatoria:
 
@@ -196,6 +198,7 @@ Invariantes:
 - `AI_ENABLED` e o gate global;
 - `AI_IMAGE_ANALYSIS_ENABLED` controla imagem;
 - `AI_PREDICTIVE_INSIGHTS_ENABLED` controla insight preditivo;
+- `AI_VIRTUAL_ASSISTANT_ENABLED` controla o assistente virtual do tutor;
 - quotas sao inteiros nao negativos por modulo;
 - flags e quotas nao substituem consentimento, retention, auditoria ou permissao.
 

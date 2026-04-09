@@ -46,6 +46,9 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O repositorio agora fecha uma Fase 4 conservadora para o item de roadmap "assistente virtual por voz", limitada ao portal do tutor, com consultas proprias, agendamento assistido por confirmacao explicita, operacao transcript-only no servidor e reutilizacao integral da fundacao de IA fail-closed.
+- A fundacao de IA passou a reconhecer o novo modulo `VIRTUAL_ASSISTANT`, com flag dedicada, quota propria por modulo, contrato provider-neutral, gating server-side, auditoria coerente com o envelope e sem abrir provider real, billing real ou armazenamento de audio bruto.
+- O portal do tutor agora incorpora um painel minimo de assistente virtual com texto e voz no navegador, mantendo o backend como autoridade para ownership, disponibilidade e criacao do agendamento.
 - A baseline de documentacao de desenvolvimento foi consolidada com reescrita de `docs/architecture.md`, `docs/domain-rules.md` e `docs/data-model.md`, sincronizacao dos exemplos de ambiente com as flags e quotas da Fase 3 e abertura dos novos guias `docs/environment-contract.md`, `docs/rbac-permission-matrix.md`, `docs/internal-api-catalog.md` e `docs/phase3-maintenance-guide.md`.
 - O Bloco 5 da Fase 3 agora fecha a fase com um snapshot consolidado de governanca em `features/phase3/governance.ts`, uma rota interna administrativa dedicada, leitura minima em `/admin/sistema` e alertas operacionais sobre fail-closed, backlog humano, utilidade preditiva, fallback conceitual e contexto multiunidade.
 - O repositorio agora possui uma regressao reconhecivel para toda a Fase 3 com `npm run test:phase3:block5` e `npm run test:phase3`, consolidando os smokes dos blocos 1 a 5 sem reabrir provider real, billing real ou painel final.
@@ -109,6 +112,11 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `PHASE4_PLAN.md`, `docs/phase4-test-suite.md`, `docs/phase4-exit-checklist.md` e `docs/phase4-baseline.md` como plano, suite reconhecivel, gate formal de saida e baseline documental da Fase 4.
+- `docs/decisions/015-virtual-assistant-transcript-only-confirmation-first.md` como ADR do primeiro corte do assistente virtual.
+- `features/assistant/` com contrato, parser deterministico, service integrado ao envelope de IA e painel minimo no portal do tutor.
+- `POST /api/tutor/virtual-assistant` como superficie protegida do tutor para interpretar pedidos e confirmar rascunhos assistidos.
+- `tests/server/assistant/*.test.ts`, `tests/server/ai/virtual-assistant-foundation.test.ts` e `tests/server/phase4-smoke.test.ts` como rede minima de protecao da nova fase.
 - `docs/decisions/011-installer-updater-runtime-foundation.md`, `docs/decisions/012-multiunit-server-side-scope-and-fail-closed-context.md`, `docs/decisions/013-ai-foundation-fail-closed-provider-neutral.md` e `docs/decisions/014-phase3-governance-and-regression-baseline.md` como ADRs da baseline atual do repositorio.
 - `docs/phase3-block5-test-suite.md`, `docs/phase3-block5-exit-checklist.md` e `docs/phase3-baseline.md` como suite minima, gate formal de saida e baseline documental da Fase 3.
 - `features/phase3/governance.ts` e `GET /api/admin/system/phase3-governance` como snapshot consolidado e protegido da governanca minima da Fase 3.

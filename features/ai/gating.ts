@@ -27,6 +27,7 @@ type AiGateEnvironment = Pick<
   | 'AI_ENABLED'
   | 'AI_IMAGE_ANALYSIS_ENABLED'
   | 'AI_PREDICTIVE_INSIGHTS_ENABLED'
+  | 'AI_VIRTUAL_ASSISTANT_ENABLED'
 >
 
 type AiGateResolution =
@@ -116,6 +117,20 @@ function createAiUnitPlaceholderEvaluation(request: AiInferenceRequest) {
   })
 }
 
+function resolveModuleFlagEnvironmentValue(
+  request: AiInferenceRequest,
+  environment: AiGateEnvironment,
+) {
+  switch (request.module) {
+    case 'IMAGE_ANALYSIS':
+      return environment.AI_IMAGE_ANALYSIS_ENABLED
+    case 'PREDICTIVE_INSIGHTS':
+      return environment.AI_PREDICTIVE_INSIGHTS_ENABLED
+    case 'VIRTUAL_ASSISTANT':
+      return environment.AI_VIRTUAL_ASSISTANT_ENABLED
+  }
+}
+
 function resolveAiModuleSupportReason(
   request: AiInferenceRequest,
 ): AiGateDecision | null {
@@ -178,10 +193,7 @@ export function evaluateAiGating(
       createAiEnvironmentEvaluation({
         environmentKey: aiModuleEnvFlagKeyMap[request.module],
         key: request.flagKeys.module,
-        rawValue:
-          request.module === 'IMAGE_ANALYSIS'
-            ? environment.AI_IMAGE_ANALYSIS_ENABLED
-            : environment.AI_PREDICTIVE_INSIGHTS_ENABLED,
+        rawValue: resolveModuleFlagEnvironmentValue(request, environment),
       }),
     )
   }

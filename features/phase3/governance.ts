@@ -126,6 +126,10 @@ function getCurrentAiQuotaEnvironment() {
       process.env.AI_PREDICTIVE_INSIGHTS_BASE_QUOTA,
     AI_PREDICTIVE_INSIGHTS_ENABLED:
       process.env.AI_PREDICTIVE_INSIGHTS_ENABLED,
+    AI_VIRTUAL_ASSISTANT_BASE_QUOTA:
+      process.env.AI_VIRTUAL_ASSISTANT_BASE_QUOTA,
+    AI_VIRTUAL_ASSISTANT_ENABLED:
+      process.env.AI_VIRTUAL_ASSISTANT_ENABLED,
   } as AiQuotaEnvironment
 }
 
@@ -138,17 +142,30 @@ function findFlagStatus(
   )
 }
 
+function isPhase3GovernanceModuleSummary(
+  moduleDiagnostic: AiFoundationDiagnosticsSnapshot['modules'][number],
+): moduleDiagnostic is AiFoundationDiagnosticsSnapshot['modules'][number] & {
+  module: 'IMAGE_ANALYSIS' | 'PREDICTIVE_INSIGHTS'
+} {
+  return (
+    moduleDiagnostic.module === 'IMAGE_ANALYSIS' ||
+    moduleDiagnostic.module === 'PREDICTIVE_INSIGHTS'
+  )
+}
+
 function createModuleSummaries(
   diagnostics: AiFoundationDiagnosticsSnapshot,
 ): Phase3GovernanceModuleSummary[] {
-  return diagnostics.modules.map((moduleDiagnostic) => ({
-    currentStatus: moduleDiagnostic.current.status,
-    fallbackStatus: moduleDiagnostic.current.fallbackStatus,
-    gateReasonCode: moduleDiagnostic.current.gateReasonCode,
-    module: moduleDiagnostic.module,
-    policyReasonCode: moduleDiagnostic.current.policyReasonCode,
-    quotaStatus: moduleDiagnostic.current.moduleQuota?.status ?? null,
-  }))
+  return diagnostics.modules
+    .filter(isPhase3GovernanceModuleSummary)
+    .map((moduleDiagnostic) => ({
+      currentStatus: moduleDiagnostic.current.status,
+      fallbackStatus: moduleDiagnostic.current.fallbackStatus,
+      gateReasonCode: moduleDiagnostic.current.gateReasonCode,
+      module: moduleDiagnostic.module,
+      policyReasonCode: moduleDiagnostic.current.policyReasonCode,
+      quotaStatus: moduleDiagnostic.current.moduleQuota?.status ?? null,
+    }))
 }
 
 function createPhaseSummary(

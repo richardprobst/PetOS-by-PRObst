@@ -22,8 +22,10 @@ export type AiQuotaEnvironment = Pick<
   | 'AI_ENABLED'
   | 'AI_IMAGE_ANALYSIS_ENABLED'
   | 'AI_PREDICTIVE_INSIGHTS_ENABLED'
+  | 'AI_VIRTUAL_ASSISTANT_ENABLED'
   | 'AI_IMAGE_ANALYSIS_BASE_QUOTA'
   | 'AI_PREDICTIVE_INSIGHTS_BASE_QUOTA'
+  | 'AI_VIRTUAL_ASSISTANT_BASE_QUOTA'
 >
 
 export interface AiQuotaSnapshotInput {
@@ -107,9 +109,7 @@ function createModuleQuotaEvaluation(
   snapshot: AiQuotaSnapshotInput,
 ): AiQuotaEvaluation {
   const parsedQuota = parseNonNegativeInteger(
-    module === 'IMAGE_ANALYSIS'
-      ? environment.AI_IMAGE_ANALYSIS_BASE_QUOTA
-      : environment.AI_PREDICTIVE_INSIGHTS_BASE_QUOTA,
+    resolveModuleBaseQuotaValue(module, environment),
   )
   const usedUnits = normalizeQuotaUnits(snapshot.moduleUsedUnits, 0)
   const requestedUnits = normalizeQuotaUnits(snapshot.moduleRequestedUnits, 1)
@@ -158,6 +158,20 @@ function createModuleQuotaEvaluation(
     status,
     used: usedUnits,
   })
+}
+
+function resolveModuleBaseQuotaValue(
+  module: AiInferenceModule,
+  environment: AiQuotaEnvironment,
+) {
+  switch (module) {
+    case 'IMAGE_ANALYSIS':
+      return environment.AI_IMAGE_ANALYSIS_BASE_QUOTA
+    case 'PREDICTIVE_INSIGHTS':
+      return environment.AI_PREDICTIVE_INSIGHTS_BASE_QUOTA
+    case 'VIRTUAL_ASSISTANT':
+      return environment.AI_VIRTUAL_ASSISTANT_BASE_QUOTA
+  }
 }
 
 function createUnitQuotaPlaceholder(module: AiInferenceModule) {

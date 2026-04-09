@@ -35,6 +35,7 @@ Os ADRs desta pasta devem conversar com:
 - `docs/domain-rules.md`
 - `docs/data-model.md`
 - `docs/phase3-maintenance-guide.md`
+- `PHASE4_PLAN.md`
 
 ## 4. Indice dos ADRs
 
@@ -79,6 +80,9 @@ Arquivo: `013-ai-foundation-fail-closed-provider-neutral.md`
 
 ### ADR 014 - A Fase 3 fecha com governanca consolidada e regressao reconhecivel
 Arquivo: `014-phase3-governance-and-regression-baseline.md`
+
+### ADR 015 - O assistente virtual usa transcript-only, provider-neutral e confirmacao explicita
+Arquivo: `015-virtual-assistant-transcript-only-confirmation-first.md`
 
 ## 5. Como criar novos ADRs
 

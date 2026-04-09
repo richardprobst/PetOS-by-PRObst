@@ -30,6 +30,14 @@ Neste ponto, o repositorio preserva a baseline tecnica do MVP validado e conclui
 
 Dentro da Fase 3, o **Bloco 1** ficou fechado como fundacao tecnica e documental, o **Bloco 2** foi fechado como rollout operacional multiunidade server-side controlado, o **Bloco 3** foi fechado como primeiro corte assistivo de analise de imagem, o **Bloco 4** foi fechado como primeiro corte de analise preditiva e insights, e o **Bloco 5** consolidou governanca, observabilidade minima e regressao reconhecivel da fase.
 
+Depois desse fechamento, o repositorio abriu e concluiu uma **Fase 4** conservadora para o item de roadmap **assistente virtual por voz**, no recorte controlado de:
+
+- portal do tutor;
+- consultas proprias do tutor;
+- agendamento assistido com confirmacao explicita;
+- operacao transcript-only no servidor;
+- provider-neutral e `fail-closed`.
+
 As evidencias documentais centrais da Fase 3 ate aqui sao:
 
 - [docs/phase3-block1-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-test-suite.md)
@@ -44,7 +52,7 @@ As evidencias documentais centrais da Fase 3 ate aqui sao:
 - [docs/phase3-block5-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block5-exit-checklist.md)
 - [docs/phase3-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-baseline.md)
 
-Com isso, a **baseline tecnica da Fase 3** fica fechada de forma conservadora no repositorio, sem tratar provider real, billing real, painel final ou multiunidade irrestrita como itens ja entregues.
+Com isso, a **baseline tecnica da Fase 3** fica fechada e a **Fase 4** fica concluida de forma conservadora no repositorio, sem tratar provider real, billing real, painel final, audio persistido ou multiunidade irrestrita como itens ja entregues.
 
 A documentacao de desenvolvimento agora tambem esta sincronizada com esse estado atual, incluindo:
 
@@ -65,8 +73,8 @@ O repositorio tambem fechou a frente interna de **installer/updater assistido**,
 - preflight e manifest de release do updater;
 - engine controlada de update com recovery minimo e retry seguro.
 
-No estado atual do repositorio, o proximo passo recomendado ja nao e abrir nova frente ampla sem gate.
-O sistema entra em **validacao operacional guiada**, usando as baselines publicadas para capturar gaps reais de uso antes de qualquer expansao posterior.
+No estado atual do repositorio, o proximo passo recomendado volta a nao ser abrir nova frente ampla sem gate.
+O sistema entra em **validacao operacional guiada**, usando as baselines publicadas da Fase 3 e da Fase 4 para capturar gaps reais de uso antes de qualquer expansao posterior.
 
 ## Stack
 
@@ -140,6 +148,7 @@ Guia completo:
 - `npm run test:phase3:block4`
 - `npm run test:phase3:block5`
 - `npm run test:phase3`
+- `npm run test:phase4`
 - `npm run check:all`
 - `npm run db:up`
 - `npm run db:down`
@@ -164,6 +173,7 @@ Guia completo:
 - [PLANS.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PLANS.md)
 - [PHASE2_PLAN.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PHASE2_PLAN.md)
 - [PHASE3_PLAN.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PHASE3_PLAN.md)
+- [PHASE4_PLAN.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PHASE4_PLAN.md)
 - [docs/phase3-decision-matrix.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-decision-matrix.md)
 - [docs/phase3-approval-board.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-approval-board.md)
 - [docs/phase3-block1-approval-round.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-approval-round.md)
@@ -180,6 +190,9 @@ Guia completo:
 - [docs/phase3-block5-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block5-test-suite.md)
 - [docs/phase3-block5-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block5-exit-checklist.md)
 - [docs/phase3-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-baseline.md)
+- [docs/phase4-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase4-test-suite.md)
+- [docs/phase4-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase4-exit-checklist.md)
+- [docs/phase4-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase4-baseline.md)
 - [docs/phase3-block1-sprint1-plan.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-sprint1-plan.md)
 - [docs/phase3-block1-sprint1-exit-gate.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-sprint1-exit-gate.md)
 - [docs/architecture.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/architecture.md)
@@ -215,7 +228,9 @@ Nao fazem parte desta etapa:
 - supply chain e compras complexas;
 - provider real de analise de imagem;
 - provider real de analise preditiva;
+- provider real de voz ou LLM para o assistente virtual;
 - automacao preditiva de agenda, estoque, preco ou comunicacao;
 - visibilidade final do tutor para analise de imagem;
+- assistente virtual omnichannel ou com memoria persistida;
 - UI final de troca de contexto multiunidade;
 - dashboards globais finais consolidados.

@@ -194,6 +194,7 @@ Rotas:
 - `/api/tutor/appointments/[appointmentId]/pre-check-in`
 - `/api/tutor/finance`
 - `/api/tutor/report-cards`
+- `/api/tutor/virtual-assistant`
 - `/api/tutor/waitlist`
 - `/api/tutor/waitlist/[waitlistEntryId]`
 
@@ -201,6 +202,7 @@ Regra:
 
 - toda rota do tutor exige ownership server-side;
 - nunca assumir que sessao de tutor autoriza leitura ampla.
+- o assistente virtual do tutor continua operando sobre transcricao e confirmacao explicita, sem provider real obrigatorio nem audio bruto no servidor.
 
 ## 4. Como manter este catalogo
 

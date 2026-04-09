@@ -250,7 +250,7 @@ Regras obrigatorias:
 
 O Bloco 2 da Fase 3 abriu recortes seguros em modulos operacionais, mas nao representa multiunidade irrestrita. Toda nova abertura precisa seguir o mapa de impacto e manter o backend como autoridade.
 
-## 14. IA e insights
+## 14. IA, insights e assistente virtual
 
 ### 14.1. Fundacao transversal
 
@@ -287,6 +287,16 @@ Na baseline atual:
 - resultado continua recomendacao auditavel;
 - pouco historico precisa degradar confianca de forma explicita;
 - insight nao executa acao automatica sozinho.
+
+### 14.5. Assistente virtual do tutor
+
+Na baseline atual:
+
+- o servidor recebe transcricao, nao audio bruto;
+- o assistente pode responder apenas consultas proprias do tutor e montar rascunho assistido de agendamento;
+- criacao de atendimento exige confirmacao explicita posterior;
+- ownership, disponibilidade e criacao continuam validados no servidor;
+- flag, quota ou configuracao invalida continuam bloqueando o modulo por `fail-closed`.
 
 ## 15. Runtime operacional, setup e update
 

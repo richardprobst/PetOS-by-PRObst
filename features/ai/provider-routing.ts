@@ -1,3 +1,4 @@
+import { aiVirtualAssistantProviderContract } from '@/features/assistant/contract'
 import { aiInsightsProviderContract } from '@/features/insights/contract'
 import type { AiConsentPurpose, AiInferenceModule } from './schemas'
 import { aiVisionProviderContract } from './vision/contract'
@@ -12,6 +13,7 @@ export interface AiModuleProviderContract {
 const aiModuleProviderContractMap = {
   IMAGE_ANALYSIS: aiVisionProviderContract,
   PREDICTIVE_INSIGHTS: aiInsightsProviderContract,
+  VIRTUAL_ASSISTANT: aiVirtualAssistantProviderContract,
 } as const satisfies Record<AiInferenceModule, AiModuleProviderContract>
 
 export function getAiModuleProviderContract(

@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { signTutorDocumentAction } from '@/features/documents/actions'
 import { isDocumentSignaturePendingForTutor } from '@/features/documents/services'
+import { TutorVirtualAssistantPanel } from '@/features/assistant/components/tutor-virtual-assistant-panel'
 import {
   cancelTutorWaitlistEntryAction,
   createTutorAppointmentAction,
@@ -191,6 +192,17 @@ export default async function TutorPage({ searchParams }: TutorPageProps) {
       />
 
       <ActionFlash message={params.message} status={params.status} />
+
+      <TutorVirtualAssistantPanel
+        pets={portal.dashboard.pets.map((pet) => ({
+          id: pet.id,
+          name: pet.name,
+        }))}
+        services={services.map((service) => ({
+          id: service.id,
+          name: service.name,
+        }))}
+      />
 
       <section className="grid gap-6 xl:grid-cols-[0.75fr_1.25fr]" id="alertas">
         <TutorPwaCard />

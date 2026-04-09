@@ -164,6 +164,10 @@ function resolveConsentPurpose(
     return 'PREDICTIVE_INSIGHT'
   }
 
+  if (request.module === 'VIRTUAL_ASSISTANT') {
+    return 'VOICE_ASSISTANT_TUTOR'
+  }
+
   return request.inferenceKey.startsWith('vision.gallery.')
     ? 'IMAGE_GALLERY_METADATA'
     : 'IMAGE_OPERATIONAL_ASSISTED'
@@ -182,6 +186,10 @@ function resolveConsentRequirement(
       : 'NOT_REQUIRED'
   }
 
+  if (request.module === 'VIRTUAL_ASSISTANT') {
+    return 'NOT_APPLICABLE'
+  }
+
   return 'NOT_APPLICABLE'
 }
 
@@ -190,5 +198,13 @@ function resolveHumanReviewRequirement(request: AiInferenceRequest) {
 }
 
 function resolveConsentScope(request: AiInferenceRequest): AiConsentScope {
-  return request.module === 'PREDICTIVE_INSIGHTS' ? 'UNIT' : 'PET'
+  if (request.module === 'PREDICTIVE_INSIGHTS') {
+    return 'UNIT'
+  }
+
+  if (request.module === 'VIRTUAL_ASSISTANT') {
+    return 'CLIENT'
+  }
+
+  return 'PET'
 }
