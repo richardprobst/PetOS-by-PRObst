@@ -355,6 +355,103 @@ export type AiRetentionPolicySnapshot = z.infer<
   typeof aiRetentionPolicySnapshotSchema
 >
 
+export const aiConsentPurposeSchema = z.enum([
+  'IMAGE_OPERATIONAL_ASSISTED',
+  'IMAGE_GALLERY_METADATA',
+  'PREDICTIVE_INSIGHT',
+  'INTERNAL_ADMIN_AUDIT',
+])
+
+export type AiConsentPurpose = z.infer<typeof aiConsentPurposeSchema>
+
+export const aiConsentRequirementSchema = z.enum([
+  'REQUIRED',
+  'NOT_REQUIRED',
+  'NOT_APPLICABLE',
+])
+
+export type AiConsentRequirement = z.infer<
+  typeof aiConsentRequirementSchema
+>
+
+export const aiConsentDecisionStatusSchema = z.enum([
+  'ALLOWED',
+  'BLOCKED',
+  'NOT_APPLICABLE',
+  'NOT_EVALUATED',
+])
+
+export type AiConsentDecisionStatus = z.infer<
+  typeof aiConsentDecisionStatusSchema
+>
+
+export const aiConsentStatusSchema = z.enum([
+  'GRANTED',
+  'MISSING',
+  'INCOMPATIBLE',
+  'NOT_APPLICABLE',
+  'NOT_EVALUATED',
+])
+
+export type AiConsentStatus = z.infer<typeof aiConsentStatusSchema>
+
+export const aiConsentOriginSchema = z.enum([
+  'TUTOR_FLOW_OPT_IN',
+  'ADMIN_CAPTURE',
+  'SYSTEM_POLICY',
+  'NOT_PROVIDED',
+])
+
+export type AiConsentOrigin = z.infer<typeof aiConsentOriginSchema>
+
+export const aiConsentScopeSchema = z.enum([
+  'PET',
+  'CLIENT',
+  'UNIT',
+  'INTERNAL',
+])
+
+export type AiConsentScope = z.infer<typeof aiConsentScopeSchema>
+
+export const aiConsentReasonCodeSchema = z.enum([
+  'CONSENT_GRANTED',
+  'CONSENT_MISSING',
+  'PURPOSE_NOT_ALLOWED',
+  'NOT_APPLICABLE',
+  'NOT_EVALUATED',
+])
+
+export type AiConsentReasonCode = z.infer<typeof aiConsentReasonCodeSchema>
+
+export const aiConsentRetentionBindingSchema = z.object({
+  extendedRetentionRequiresGlobalAdmin: z.boolean(),
+  interpretedResultPersistenceEligibility:
+    aiRetentionPersistenceEligibilitySchema,
+  policyVersion: aiRetentionPolicySnapshotSchema.shape.policyVersion,
+  rawProviderPayloadStatus: aiRetentionStatusSchema,
+  technicalMetadataRetentionDays: z.number().int().positive(),
+})
+
+export type AiConsentRetentionBinding = z.infer<
+  typeof aiConsentRetentionBindingSchema
+>
+
+export const aiConsentEvaluationSchema = z.object({
+  allowed: z.boolean(),
+  consentStatus: aiConsentStatusSchema,
+  decisionStatus: aiConsentDecisionStatusSchema,
+  humanReviewRequired: z.boolean(),
+  metadataVersion: z.literal('PHASE3_B1_T14'),
+  origin: aiConsentOriginSchema,
+  purpose: aiConsentPurposeSchema,
+  reasonCode: aiConsentReasonCodeSchema,
+  requirement: aiConsentRequirementSchema,
+  retention: aiConsentRetentionBindingSchema,
+  scope: aiConsentScopeSchema,
+})
+
+export type AiConsentEvaluation = z.infer<typeof aiConsentEvaluationSchema>
+
 export const aiProviderLogicalStatusSchema = z.enum([
   'NOT_CONFIGURED',
   'PLANNED',
@@ -404,9 +501,48 @@ export type AiOperationalReasonCode = z.infer<
   typeof aiOperationalReasonCodeSchema
 >
 
-export const aiFallbackStatusSchema = z.enum(['NOT_EVALUATED'])
+export const aiFallbackStatusSchema = z.enum([
+  'NOT_EVALUATED',
+  'NOT_CONFIGURED',
+  'ELIGIBLE',
+  'NOT_ELIGIBLE',
+  'DECLARED',
+  'UNAVAILABLE',
+])
 
 export type AiFallbackStatus = z.infer<typeof aiFallbackStatusSchema>
+
+export const aiFallbackStrategySchema = z.enum([
+  'NONE',
+  'DECLARED_PROVIDER_SWITCH',
+  'DECLARED_MODEL_SWITCH',
+])
+
+export type AiFallbackStrategy = z.infer<typeof aiFallbackStrategySchema>
+
+export const aiFallbackReasonCodeSchema = z.enum([
+  'NOT_YET_EVALUATED',
+  'FALLBACK_NOT_CONFIGURED',
+  'DECLARED_FOR_FUTURE_USE',
+  'PRIMARY_OPERATIONAL_FAILURE',
+  'PRIMARY_TEMPORARILY_UNAVAILABLE',
+  'PRIMARY_NOT_SUPPORTED',
+  'BLOCKED_BY_POLICY',
+  'BLOCKED_BY_QUOTA',
+  'FALLBACK_TARGET_UNAVAILABLE',
+])
+
+export type AiFallbackReasonCode = z.infer<typeof aiFallbackReasonCodeSchema>
+
+export const aiFallbackNextStepSchema = z.enum([
+  'NONE',
+  'CONFIGURE_FALLBACK',
+  'REVIEW_FUTURE_FALLBACK',
+  'MANUAL_RETRY_REVIEW',
+  'TERMINAL_FAILURE',
+])
+
+export type AiFallbackNextStep = z.infer<typeof aiFallbackNextStepSchema>
 
 export const aiCostStatusSchema = z.enum([
   'NOT_EVALUATED',
@@ -459,6 +595,22 @@ export const aiCostMetadataSchema = z.object({
 
 export type AiCostMetadata = z.infer<typeof aiCostMetadataSchema>
 
+export const aiFallbackMetadataSchema = z.object({
+  metadataVersion: z.literal('PHASE3_B1_T12'),
+  status: aiFallbackStatusSchema,
+  strategy: aiFallbackStrategySchema,
+  eligible: z.boolean().nullable().default(null),
+  reasonCode: aiFallbackReasonCodeSchema,
+  currentAttempt: z.number().int().positive().default(1),
+  primaryProvider: aiProviderDescriptorSchema,
+  primaryModel: aiModelDescriptorSchema,
+  fallbackProvider: aiProviderDescriptorSchema,
+  fallbackModel: aiModelDescriptorSchema,
+  nextStep: aiFallbackNextStepSchema,
+})
+
+export type AiFallbackMetadata = z.infer<typeof aiFallbackMetadataSchema>
+
 export const aiOperationalMetadataSchema = z.object({
   metadataVersion: z.literal('PHASE3_B1_T06'),
   provider: aiProviderDescriptorSchema,
@@ -467,12 +619,151 @@ export const aiOperationalMetadataSchema = z.object({
   operationalStatus: aiOperationalStatusSchema,
   operationalReasonCode: aiOperationalReasonCodeSchema,
   fallbackStatus: aiFallbackStatusSchema,
+  fallback: aiFallbackMetadataSchema,
 })
 
 export type AiOperationalMetadata = z.infer<typeof aiOperationalMetadataSchema>
 
+export const aiOperationalEventTypeSchema = z.enum([
+  'COST',
+  'ERROR',
+  'RAPID_SHUTDOWN',
+])
+
+export type AiOperationalEventType = z.infer<
+  typeof aiOperationalEventTypeSchema
+>
+
+export const aiOperationalEventClassSchema = z.enum([
+  'FUNCTIONAL_GUARD',
+  'OPERATIONAL_SIGNAL',
+])
+
+export type AiOperationalEventClass = z.infer<
+  typeof aiOperationalEventClassSchema
+>
+
+export const aiOperationalEventSeveritySchema = z.enum([
+  'INFO',
+  'WARNING',
+  'ERROR',
+  'CRITICAL',
+])
+
+export type AiOperationalEventSeverity = z.infer<
+  typeof aiOperationalEventSeveritySchema
+>
+
+export const aiOperationalEventOriginSchema = z.enum([
+  'POLICY',
+  'COST_GUARD',
+  'EXECUTION',
+  'FALLBACK',
+  'RAPID_SHUTDOWN',
+])
+
+export type AiOperationalEventOrigin = z.infer<
+  typeof aiOperationalEventOriginSchema
+>
+
+export const aiOperationalEventResolutionStatusSchema = z.enum([
+  'INFORMATIONAL',
+  'OPEN',
+])
+
+export type AiOperationalEventResolutionStatus = z.infer<
+  typeof aiOperationalEventResolutionStatusSchema
+>
+
+export const aiOperationalEventNextStepSchema = z.enum([
+  'NONE',
+  'REVIEW_COST_GUARD',
+  'REVIEW_COST_CONFIGURATION',
+  'REVIEW_PROVIDER_CONFIGURATION',
+  'REVIEW_OPERATIONAL_FAILURE',
+  'REVIEW_FALLBACK_PATH',
+  'REVIEW_RAPID_SHUTDOWN',
+])
+
+export type AiOperationalEventNextStep = z.infer<
+  typeof aiOperationalEventNextStepSchema
+>
+
+export const aiRapidShutdownScopeSchema = z.enum(['GLOBAL', 'MODULE'])
+
+export type AiRapidShutdownScope = z.infer<typeof aiRapidShutdownScopeSchema>
+
+export const aiOperationalEventCodeSchema = z.enum([
+  'COST_ESTIMATE_AVAILABLE',
+  'COST_UNAVAILABLE',
+  'COST_NOT_CONFIGURED',
+  'COST_BLOCKED_BY_QUOTA',
+  'COST_GUARD_NOT_CONFIGURED',
+  'COST_CONSUMPTION_PREVENTED',
+  'ERROR_OPERATIONAL_FAILURE',
+  'ERROR_TEMPORARILY_UNAVAILABLE',
+  'ERROR_MISSING_CONFIGURATION',
+  'ERROR_NOT_SUPPORTED',
+  'ERROR_TERMINAL_WITHOUT_FALLBACK',
+  'ERROR_FALLBACK_ELIGIBLE',
+  'RAPID_SHUTDOWN_ACTIVE',
+])
+
+export type AiOperationalEventCode = z.infer<
+  typeof aiOperationalEventCodeSchema
+>
+
+const aiOperationalEventErrorCodeSchema = z.enum([
+  'DISABLED',
+  'NOT_SUPPORTED',
+  'QUOTA_EXCEEDED',
+  'QUOTA_NOT_CONFIGURED',
+  'CONSENT_REQUIRED',
+  'CONSENT_INCOMPATIBLE',
+  'TEMPORARILY_UNAVAILABLE',
+  'OPERATIONAL_FAILURE',
+])
+
+export const aiOperationalEventSchema = z.object({
+  metadataVersion: z.literal('PHASE3_B1_T15'),
+  eventId: z.string().trim().min(1),
+  eventType: aiOperationalEventTypeSchema,
+  eventClass: aiOperationalEventClassSchema,
+  eventCode: aiOperationalEventCodeSchema,
+  severity: aiOperationalEventSeveritySchema,
+  origin: aiOperationalEventOriginSchema,
+  module: aiInferenceModuleSchema,
+  inferenceKey: z.string().trim().min(1),
+  requestId: z.string().trim().min(1).nullable().default(null),
+  executionId: z.string().trim().min(1).nullable().default(null),
+  unitId: z.string().trim().min(1).nullable().default(null),
+  executionStatus: z.enum([
+    'ACCEPTED',
+    'QUEUED',
+    'RUNNING',
+    'COMPLETED',
+    'BLOCKED',
+    'FAILED',
+  ]),
+  operationalStatus: aiOperationalStatusSchema,
+  policyReasonCode: aiPolicyReasonCodeSchema.nullable().default(null),
+  errorCode: aiOperationalEventErrorCodeSchema.nullable().default(null),
+  costStatus: aiCostStatusSchema,
+  fallbackStatus: aiFallbackStatusSchema,
+  shutdownScope: aiRapidShutdownScopeSchema.nullable().default(null),
+  reasonSummary: z.string().trim().min(1),
+  resolutionStatus: aiOperationalEventResolutionStatusSchema,
+  actionRequired: z.boolean(),
+  nextStep: aiOperationalEventNextStepSchema,
+})
+
+export type AiOperationalEvent = z.infer<typeof aiOperationalEventSchema>
+
 export const aiExecutionEventNameSchema = z.enum([
-  'AI_EXECUTION_PENDING',
+  'AI_EXECUTION_ACCEPTED',
+  'AI_EXECUTION_QUEUED',
+  'AI_EXECUTION_RUNNING',
+  'AI_EXECUTION_COMPLETED',
   'AI_EXECUTION_BLOCKED',
   'AI_EXECUTION_FAILED',
 ])
@@ -481,6 +772,9 @@ export type AiExecutionEventName = z.infer<typeof aiExecutionEventNameSchema>
 
 export const aiExecutionDecisionClassSchema = z.enum([
   'ACCEPTED_FOR_FUTURE_EXECUTION',
+  'QUEUED_FOR_ASYNC_EXECUTION',
+  'RUNNING_INTERNAL_EXECUTION',
+  'COMPLETED_ASSISTIVE_RESULT',
   'FUNCTIONAL_BLOCK',
   'OPERATIONAL_BLOCK',
   'OPERATIONAL_FAILURE',
@@ -493,7 +787,16 @@ export type AiExecutionDecisionClass = z.infer<
 export const aiExecutionObservabilitySnapshotSchema = z.object({
   eventName: aiExecutionEventNameSchema,
   decisionClass: aiExecutionDecisionClassSchema,
-  executionStatus: z.enum(['PENDING', 'BLOCKED', 'FAILED']),
+  consentDecisionStatus: aiConsentDecisionStatusSchema,
+  consentReasonCode: aiConsentReasonCodeSchema,
+  executionStatus: z.enum([
+    'ACCEPTED',
+    'QUEUED',
+    'RUNNING',
+    'COMPLETED',
+    'BLOCKED',
+    'FAILED',
+  ]),
   module: aiInferenceModuleSchema,
   inferenceKey: z.string().trim().min(1),
   unitId: z.string().trim().min(1).nullable().default(null),
@@ -501,6 +804,9 @@ export const aiExecutionObservabilitySnapshotSchema = z.object({
   operationalStatus: aiOperationalStatusSchema,
   costStatus: aiCostStatusSchema,
   fallbackStatus: aiFallbackStatusSchema,
+  fallbackReasonCode: aiFallbackReasonCodeSchema,
+  fallbackStrategy: aiFallbackStrategySchema,
+  fallbackNextStep: aiFallbackNextStepSchema,
   evaluatedFlags: z.array(aiGateEvaluationSchema).default([]),
   policyReasonCode: aiPolicyReasonCodeSchema.nullable().default(null),
   retentionPolicyVersion: aiRetentionPolicySnapshotSchema.shape.policyVersion,
@@ -515,6 +821,8 @@ export const aiLayerErrorCodeSchema = z.enum([
   'NOT_SUPPORTED',
   'QUOTA_EXCEEDED',
   'QUOTA_NOT_CONFIGURED',
+  'CONSENT_REQUIRED',
+  'CONSENT_INCOMPATIBLE',
   'TEMPORARILY_UNAVAILABLE',
   'OPERATIONAL_FAILURE',
 ])
@@ -556,6 +864,8 @@ export const aiBlockedOutcomeSchema = z.object({
       'NOT_SUPPORTED',
       'QUOTA_EXCEEDED',
       'QUOTA_NOT_CONFIGURED',
+      'CONSENT_REQUIRED',
+      'CONSENT_INCOMPATIBLE',
       'TEMPORARILY_UNAVAILABLE',
     ]),
   }),
@@ -577,8 +887,10 @@ export const aiFailedOutcomeSchema = z.object({
 export type AiFailedOutcome = z.infer<typeof aiFailedOutcomeSchema>
 
 export const aiExecutionStateSchema = z.enum([
+  'ACCEPTED',
+  'QUEUED',
+  'RUNNING',
   'BLOCKED',
-  'PENDING',
   'COMPLETED',
   'FAILED',
   'DISCARDED',
@@ -586,22 +898,38 @@ export const aiExecutionStateSchema = z.enum([
 
 export type AiExecutionState = z.infer<typeof aiExecutionStateSchema>
 
-export const aiExecutionModeSchema = z.enum(['DEFERRED'])
+export const aiExecutionModeSchema = z.enum(['DEFERRED', 'IMMEDIATE'])
 
 export type AiExecutionMode = z.infer<typeof aiExecutionModeSchema>
 
-export const aiExecutionProviderStatusSchema = z.enum(['NOT_STARTED'])
+export const aiExecutionProviderStatusSchema = z.enum([
+  'NOT_STARTED',
+  'RUNNING',
+  'COMPLETED',
+  'FAILED',
+  'NOT_SUPPORTED',
+])
 
 export type AiExecutionProviderStatus = z.infer<
   typeof aiExecutionProviderStatusSchema
 >
 
-export const aiExecutionJobStatusSchema = z.enum(['NOT_SCHEDULED'])
+export const aiExecutionJobStatusSchema = z.enum([
+  'NOT_SCHEDULED',
+  'QUEUED',
+  'RUNNING',
+  'COMPLETED',
+  'BLOCKED',
+  'FAILED',
+  'NOT_SUPPORTED',
+])
 
 export type AiExecutionJobStatus = z.infer<typeof aiExecutionJobStatusSchema>
 
 export const aiExecutionNextStepSchema = z.enum([
   'NONE',
+  'SCHEDULE_INTERNAL_JOB',
+  'AWAIT_INTERNAL_RUNNER',
   'AWAIT_PROVIDER_ADAPTER',
 ])
 
@@ -621,9 +949,14 @@ export const aiExecutionRecordSchema = z.object({
   unitId: z.string().trim().min(1).nullable().default(null),
   requestedByUserId: z.string().trim().min(1).nullable().default(null),
   requestedAt: z.coerce.date(),
+  acceptedAt: z.coerce.date().nullable().default(null),
+  queuedAt: z.coerce.date().nullable().default(null),
+  startedAt: z.coerce.date().nullable().default(null),
+  finishedAt: z.coerce.date().nullable().default(null),
   handledAt: z.coerce.date(),
   policyReasonCode: aiPolicyReasonCodeSchema.nullable().default(null),
   errorCode: aiLayerErrorCodeSchema.nullable().default(null),
+  statusMessage: z.string().trim().min(1).nullable().default(null),
 })
 
 export type AiExecutionRecord = z.infer<typeof aiExecutionRecordSchema>
@@ -658,6 +991,8 @@ export const aiAuditSnapshotSchema = z.object({
 export type AiAuditSnapshot = z.infer<typeof aiAuditSnapshotSchema>
 
 const aiExecutionEnvelopeBaseSchema = z.object({
+  consent: aiConsentEvaluationSchema,
+  events: z.array(aiOperationalEventSchema).default([]),
   request: aiInferenceRequestSchema,
   execution: aiExecutionRecordSchema,
   observability: aiExecutionObservabilitySnapshotSchema,
@@ -666,16 +1001,52 @@ const aiExecutionEnvelopeBaseSchema = z.object({
   technicalMetadata: aiTechnicalMetadataSchema,
 })
 
-export const aiPendingExecutionEnvelopeSchema = aiExecutionEnvelopeBaseSchema.extend(
+export const aiAcceptedExecutionEnvelopeSchema = aiExecutionEnvelopeBaseSchema.extend(
   {
-    status: z.literal('PENDING'),
+    status: z.literal('ACCEPTED'),
     policy: aiPolicyResultSchema,
     outcome: z.null(),
   },
 )
 
-export type AiPendingExecutionEnvelope = z.infer<
-  typeof aiPendingExecutionEnvelopeSchema
+export type AiAcceptedExecutionEnvelope = z.infer<
+  typeof aiAcceptedExecutionEnvelopeSchema
+>
+
+export const aiQueuedExecutionEnvelopeSchema = aiExecutionEnvelopeBaseSchema.extend(
+  {
+    status: z.literal('QUEUED'),
+    policy: aiPolicyResultSchema,
+    outcome: z.null(),
+  },
+)
+
+export type AiQueuedExecutionEnvelope = z.infer<
+  typeof aiQueuedExecutionEnvelopeSchema
+>
+
+export const aiRunningExecutionEnvelopeSchema = aiExecutionEnvelopeBaseSchema.extend(
+  {
+    status: z.literal('RUNNING'),
+    policy: aiPolicyResultSchema,
+    outcome: z.null(),
+  },
+)
+
+export type AiRunningExecutionEnvelope = z.infer<
+  typeof aiRunningExecutionEnvelopeSchema
+>
+
+export const aiCompletedExecutionEnvelopeSchema = aiExecutionEnvelopeBaseSchema.extend(
+  {
+    status: z.literal('COMPLETED'),
+    policy: aiPolicyResultSchema,
+    outcome: aiCompletedOutcomeSchema,
+  },
+)
+
+export type AiCompletedExecutionEnvelope = z.infer<
+  typeof aiCompletedExecutionEnvelopeSchema
 >
 
 export const aiBlockedExecutionEnvelopeSchema = aiExecutionEnvelopeBaseSchema.extend(
@@ -703,7 +1074,10 @@ export type AiFailedExecutionEnvelope = z.infer<
 >
 
 export const aiExecutionEnvelopeSchema = z.discriminatedUnion('status', [
-  aiPendingExecutionEnvelopeSchema,
+  aiAcceptedExecutionEnvelopeSchema,
+  aiQueuedExecutionEnvelopeSchema,
+  aiRunningExecutionEnvelopeSchema,
+  aiCompletedExecutionEnvelopeSchema,
   aiBlockedExecutionEnvelopeSchema,
   aiFailedExecutionEnvelopeSchema,
 ])

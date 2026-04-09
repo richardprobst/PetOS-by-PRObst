@@ -1,14 +1,25 @@
 import {
+  type AiConsentEvaluation,
+  aiCostMetadataSchema,
   aiExecutionObservabilitySnapshotSchema,
+  aiModelDescriptorSchema,
   aiOperationalMetadataSchema,
+  aiProviderDescriptorSchema,
   type AiExecutionObservabilitySnapshot,
+  type AiInferenceOutcome,
   type AiInferenceRequest,
   type AiOperationalMetadata,
   type AiPolicyResult,
   type AiRetentionPolicySnapshot,
 } from './schemas'
+import {
+  createAiFallbackMetadata,
+  evaluateAiFallbackMetadata,
+  type AiFallbackMetadataInput,
+} from './fallback'
 
 export interface AiOperationalMetadataInput {
+  fallback?: AiFallbackMetadataInput
   provider?: {
     contractVersion?: string | null
     providerId?: string | null
@@ -56,43 +67,76 @@ export function createAiOperationalMetadata(
       : costStatus === 'NOT_EVALUATED' || costStatus === 'NOT_CONFIGURED'
         ? 'NOT_EVALUATED'
         : 'CONFIGURED')
+  const provider = aiProviderDescriptorSchema.parse({
+    contractVersion: input.provider?.contractVersion ?? null,
+    metadataOrigin: providerMetadataOrigin,
+    providerId: input.provider?.providerId ?? null,
+    providerStatus,
+  })
+  const model = aiModelDescriptorSchema.parse({
+    metadataOrigin: modelMetadataOrigin,
+    modelId: input.model?.modelId ?? null,
+    modelStatus,
+  })
+  const cost = aiCostMetadataSchema.parse({
+    costClass:
+      input.cost?.costClass ??
+      (costStatus === 'ESTIMATED' ? 'MEDIUM' : 'NOT_CLASSIFIED'),
+    estimateLabel: input.cost?.estimateLabel ?? null,
+    measurementUnit: 'INFERENCE_REQUEST',
+    metadataOrigin: costMetadataOrigin,
+    status: costStatus,
+  })
+  const fallback = createAiFallbackMetadata({
+    fallback: input.fallback,
+    primaryModel: model,
+    primaryProvider: provider,
+  })
 
   return aiOperationalMetadataSchema.parse({
-    cost: {
-      costClass:
-        input.cost?.costClass ??
-        (costStatus === 'ESTIMATED' ? 'MEDIUM' : 'NOT_CLASSIFIED'),
-      estimateLabel: input.cost?.estimateLabel ?? null,
-      measurementUnit: 'INFERENCE_REQUEST',
-      metadataOrigin: costMetadataOrigin,
-      status: costStatus,
-    },
-    fallbackStatus: 'NOT_EVALUATED',
+    cost,
+    fallback,
+    fallbackStatus: fallback.status,
     metadataVersion: 'PHASE3_B1_T06',
-    model: {
-      metadataOrigin: modelMetadataOrigin,
-      modelId: input.model?.modelId ?? null,
-      modelStatus,
-    },
+    model,
     operationalReasonCode: operationalState.reasonCode,
     operationalStatus: operationalState.status,
-    provider: {
-      contractVersion: input.provider?.contractVersion ?? null,
-      metadataOrigin: providerMetadataOrigin,
-      providerId: input.provider?.providerId ?? null,
-      providerStatus,
+    provider,
+  })
+}
+
+export function applyAiOutcomeToOperationalMetadata(
+  operational: AiOperationalMetadata,
+  outcome: AiInferenceOutcome,
+): AiOperationalMetadata {
+  const fallback = evaluateAiFallbackMetadata(operational.fallback, outcome)
+  const operationalState = resolveOutcomeOperationalState(operational, outcome)
+  const costStatus = resolveOutcomeCostStatus(operational, outcome)
+
+  return aiOperationalMetadataSchema.parse({
+    ...operational,
+    cost: {
+      ...operational.cost,
+      status: costStatus,
     },
+    fallback,
+    fallbackStatus: fallback.status,
+    operationalReasonCode: operationalState.reasonCode,
+    operationalStatus: operationalState.status,
   })
 }
 
 export function createAiExecutionObservabilitySnapshot(input: {
+  consent: AiConsentEvaluation
   operational: AiOperationalMetadata
   policy: AiPolicyResult | null
   request: AiInferenceRequest
   retention: AiRetentionPolicySnapshot
-  status: 'PENDING' | 'BLOCKED' | 'FAILED'
+  status: 'ACCEPTED' | 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'BLOCKED' | 'FAILED'
 }): AiExecutionObservabilitySnapshot {
   return aiExecutionObservabilitySnapshotSchema.parse({
+    consentDecisionStatus: input.consent.decisionStatus,
+    consentReasonCode: input.consent.reasonCode,
     costStatus: input.operational.cost.status,
     decisionClass: resolveExecutionDecisionClass(
       input.status,
@@ -101,7 +145,10 @@ export function createAiExecutionObservabilitySnapshot(input: {
     evaluatedFlags: input.policy?.gating.evaluations ?? [],
     eventName: resolveEventName(input.status),
     executionStatus: input.status,
+    fallbackNextStep: input.operational.fallback.nextStep,
+    fallbackReasonCode: input.operational.fallback.reasonCode,
     fallbackStatus: input.operational.fallbackStatus,
+    fallbackStrategy: input.operational.fallback.strategy,
     inferenceKey: input.request.inferenceKey,
     module: input.request.module,
     operationalStatus: input.operational.operationalStatus,
@@ -168,10 +215,63 @@ function resolveCostStatus(
   return 'NOT_EVALUATED'
 }
 
-function resolveEventName(status: 'PENDING' | 'BLOCKED' | 'FAILED') {
+function resolveOutcomeOperationalState(
+  operational: AiOperationalMetadata,
+  outcome: AiInferenceOutcome,
+) {
+  if (outcome.status === 'FAILED') {
+    return {
+      reasonCode: 'OPERATIONAL_FAILURE',
+      status: 'TEMPORARILY_UNAVAILABLE',
+    } as const
+  }
+
+  if (
+    outcome.status === 'BLOCKED' &&
+    outcome.error.code === 'TEMPORARILY_UNAVAILABLE'
+  ) {
+    return {
+      reasonCode: 'POLICY_TEMPORARILY_UNAVAILABLE',
+      status: 'TEMPORARILY_UNAVAILABLE',
+    } as const
+  }
+
+  return {
+    reasonCode: operational.operationalReasonCode,
+    status: operational.operationalStatus,
+  } as const
+}
+
+function resolveOutcomeCostStatus(
+  operational: AiOperationalMetadata,
+  outcome: AiInferenceOutcome,
+) {
+  if (outcome.status === 'FAILED') {
+    return 'UNAVAILABLE' as const
+  }
+
+  if (
+    outcome.status === 'BLOCKED' &&
+    outcome.error.code === 'TEMPORARILY_UNAVAILABLE'
+  ) {
+    return 'UNAVAILABLE' as const
+  }
+
+  return operational.cost.status
+}
+
+function resolveEventName(
+  status: 'ACCEPTED' | 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'BLOCKED' | 'FAILED',
+) {
   switch (status) {
-    case 'PENDING':
-      return 'AI_EXECUTION_PENDING'
+    case 'ACCEPTED':
+      return 'AI_EXECUTION_ACCEPTED'
+    case 'QUEUED':
+      return 'AI_EXECUTION_QUEUED'
+    case 'RUNNING':
+      return 'AI_EXECUTION_RUNNING'
+    case 'COMPLETED':
+      return 'AI_EXECUTION_COMPLETED'
     case 'BLOCKED':
       return 'AI_EXECUTION_BLOCKED'
     case 'FAILED':
@@ -180,11 +280,23 @@ function resolveEventName(status: 'PENDING' | 'BLOCKED' | 'FAILED') {
 }
 
 function resolveExecutionDecisionClass(
-  status: 'PENDING' | 'BLOCKED' | 'FAILED',
+  status: 'ACCEPTED' | 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'BLOCKED' | 'FAILED',
   reasonCode: AiPolicyResult['decision']['reasonCode'] | null,
 ) {
-  if (status === 'PENDING') {
+  if (status === 'ACCEPTED') {
     return 'ACCEPTED_FOR_FUTURE_EXECUTION'
+  }
+
+  if (status === 'QUEUED') {
+    return 'QUEUED_FOR_ASYNC_EXECUTION'
+  }
+
+  if (status === 'RUNNING') {
+    return 'RUNNING_INTERNAL_EXECUTION'
+  }
+
+  if (status === 'COMPLETED') {
+    return 'COMPLETED_ASSISTIVE_RESULT'
   }
 
   if (status === 'FAILED') {

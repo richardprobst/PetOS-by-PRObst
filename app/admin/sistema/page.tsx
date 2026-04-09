@@ -5,6 +5,11 @@ import { FormField } from '@/components/ui/form-field'
 import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import {
+  canReadAiFoundationDiagnostics,
+  getAiFoundationDiagnostics,
+} from '@/features/ai/admin-diagnostics'
+import { getMultiUnitFoundationDiagnostics } from '@/features/multiunit/admin-diagnostics'
+import {
   enterMaintenanceModeAction,
   leaveMaintenanceModeAction,
   openRecoveryIncidentAction,
@@ -83,17 +88,64 @@ function getUpdateExecutionStepTone(
   }
 }
 
+function getAiDiagnosticTone(value: string | null | undefined) {
+  switch (value) {
+    case 'ALLOWED':
+    case 'ENABLED':
+    case 'COMPLETED':
+    case 'GRANTED':
+    case 'LOCAL':
+    case 'RESOLVED':
+    case 'AVAILABLE':
+      return 'success' as const
+    case 'DECLARED':
+    case 'ESTIMATED':
+    case 'GLOBAL_AUTHORIZED':
+    case 'NOT_APPLICABLE':
+    case 'QUEUED':
+    case 'RUNNING':
+      return 'info' as const
+    case 'CRITICAL':
+    case 'ERROR':
+    case 'EXCEEDED':
+    case 'FAILED':
+    case 'BLOCKED':
+    case 'DISABLED':
+    case 'INCOMPATIBLE':
+    case 'NOT_ELIGIBLE':
+    case 'TEMPORARILY_UNAVAILABLE':
+    case 'UNRESOLVED':
+      return 'danger' as const
+    case 'INVALID':
+    case 'MISSING':
+    case 'NOT_CONFIGURED':
+    case 'NOT_EVALUATED':
+    case 'WARNING':
+      return 'warning' as const
+    default:
+      return 'neutral' as const
+  }
+}
+
 export default async function SystemAdminPage({ searchParams }: SystemPageProps) {
   const actor = await requireInternalAreaUser('/admin/sistema')
   const params = await searchParams
   const canOperateMaintenance = hasPermission(actor, 'sistema.manutencao.operar')
   const canOperateRepair = hasPermission(actor, 'sistema.reparo.operar')
   const canOperateUpdate = hasPermission(actor, 'sistema.update.operar')
-  const [overview, updatePreflight, updateExecutions] = await Promise.all([
-    getSystemOperationsOverview(actor),
-    canOperateUpdate ? getUpdatePreflight(actor) : Promise.resolve(null),
-    canOperateUpdate ? listUpdateExecutions(actor) : Promise.resolve([]),
-  ])
+  const canReadFoundationDiagnostics = canReadAiFoundationDiagnostics(actor)
+  const [overview, updatePreflight, updateExecutions, aiDiagnostics, multiUnitDiagnostics] =
+    await Promise.all([
+      getSystemOperationsOverview(actor),
+      canOperateUpdate ? getUpdatePreflight(actor) : Promise.resolve(null),
+      canOperateUpdate ? listUpdateExecutions(actor) : Promise.resolve([]),
+      canReadFoundationDiagnostics
+        ? Promise.resolve(getAiFoundationDiagnostics(actor))
+        : Promise.resolve(null),
+      canReadFoundationDiagnostics
+        ? Promise.resolve(getMultiUnitFoundationDiagnostics(actor))
+        : Promise.resolve(null),
+    ])
   const openIncidents = overview.recoveryIncidents.filter((incident) => incident.status === 'OPEN')
   const latestUpdateExecution = updateExecutions[0] ?? null
 
@@ -160,6 +212,282 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
             />
           </div>
         </div>
+      </section>
+
+      <section className="surface-panel rounded-[1.75rem] p-6">
+        <p className="section-label">Diagnostico minimo da Fase 3</p>
+        {canReadFoundationDiagnostics && aiDiagnostics && multiUnitDiagnostics ? (
+          <div className="mt-4 space-y-6">
+            <FeedbackMessage
+              description="Leitura administrativa minima, protegida e somente server-side da fundacao de IA e dos sinais essenciais de multiunidade. Esta superficie nao abre painel final nem operacao completa."
+              title="Diagnostico interno protegido"
+              tone="info"
+            />
+
+            <div className="grid gap-4 md:grid-cols-3">
+              {aiDiagnostics.flags.map((flag) => (
+                <article
+                  className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/50 p-4"
+                  key={flag.flagKey}
+                >
+                  <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                    {flag.label}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <StatusBadge tone={getAiDiagnosticTone(flag.status)}>
+                      {flag.status}
+                    </StatusBadge>
+                    <StatusBadge tone="info">
+                      {flag.normalizedValue === null ? 'sem valor' : String(flag.normalizedValue)}
+                    </StatusBadge>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                    chave {flag.flagKey}
+                    {flag.environmentKey ? ` / env ${flag.environmentKey}` : ''}
+                  </p>
+                </article>
+              ))}
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[0.88fr_1.12fr]">
+              <article className="rounded-[1.5rem] border border-[color:var(--line)] bg-white/55 p-5">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Contexto multiunidade interno
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <StatusBadge tone={getAiDiagnosticTone(multiUnitDiagnostics.session.status)}>
+                    {multiUnitDiagnostics.session.status}
+                  </StatusBadge>
+                  <StatusBadge
+                    tone={getAiDiagnosticTone(multiUnitDiagnostics.session.contextType)}
+                  >
+                    {multiUnitDiagnostics.session.contextType ?? 'sem contexto'}
+                  </StatusBadge>
+                  <StatusBadge
+                    tone={getAiDiagnosticTone(
+                      multiUnitDiagnostics.access.failClosed ? 'UNRESOLVED' : 'RESOLVED',
+                    )}
+                  >
+                    {multiUnitDiagnostics.access.failClosed ? 'fail-closed' : 'contexto valido'}
+                  </StatusBadge>
+                </div>
+                <div className="mt-4 space-y-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  <p>
+                    unidade home{' '}
+                    <strong className="text-[color:var(--foreground)]">
+                      {multiUnitDiagnostics.session.homeUnitId ?? 'nao definida'}
+                    </strong>
+                  </p>
+                  <p>
+                    unidade ativa{' '}
+                    <strong className="text-[color:var(--foreground)]">
+                      {multiUnitDiagnostics.session.activeUnitId ?? 'nao resolvida'}
+                    </strong>
+                  </p>
+                  <p>
+                    origem {multiUnitDiagnostics.session.contextOrigin ?? 'nao definida'} /
+                    requested {multiUnitDiagnostics.session.requestedUnitId ?? 'nenhuma'}
+                  </p>
+                  <p>
+                    leitura global{' '}
+                    {multiUnitDiagnostics.access.hasGlobalReadRole ? 'sim' : 'nao'} / escrita
+                    global {multiUnitDiagnostics.access.hasGlobalWriteRole ? 'sim' : 'nao'}
+                  </p>
+                  <p>
+                    escopo local resolvido{' '}
+                    {multiUnitDiagnostics.access.hasResolvedLocalScope ? 'sim' : 'nao'}
+                  </p>
+                  <p>
+                    cross-unit solicitado{' '}
+                    {multiUnitDiagnostics.session.crossUnitRequested ? 'sim' : 'nao'} / acesso{' '}
+                    {multiUnitDiagnostics.session.crossUnitAccess ? 'autorizado' : 'bloqueado'}
+                  </p>
+                  <p>
+                    ownership base{' '}
+                    <strong className="text-[color:var(--foreground)]">
+                      {multiUnitDiagnostics.ownershipBase?.kind ?? 'indisponivel'}
+                    </strong>
+                    {' / '}primary{' '}
+                    <strong className="text-[color:var(--foreground)]">
+                      {multiUnitDiagnostics.ownershipBase?.primaryUnitId ?? 'nao resolvida'}
+                    </strong>
+                    {' / '}reassign audit{' '}
+                    {multiUnitDiagnostics.ownershipBase?.reassignmentAuditRequired
+                      ? 'obrigatorio'
+                      : 'nao aplicavel'}
+                  </p>
+                </div>
+              </article>
+
+              <article className="rounded-[1.5rem] border border-[color:var(--line)] bg-white/55 p-5">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Lifecycle de referencia
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <StatusBadge tone={getAiDiagnosticTone(aiDiagnostics.lifecycleReference.accepted.status)}>
+                    admissao
+                  </StatusBadge>
+                  <StatusBadge tone={getAiDiagnosticTone(aiDiagnostics.lifecycleReference.queued.status)}>
+                    fila logica
+                  </StatusBadge>
+                  <StatusBadge tone={getAiDiagnosticTone(aiDiagnostics.lifecycleReference.running.status)}>
+                    execucao
+                  </StatusBadge>
+                  <StatusBadge tone={getAiDiagnosticTone(aiDiagnostics.lifecycleReference.completed.status)}>
+                    conclusao
+                  </StatusBadge>
+                  <StatusBadge tone={getAiDiagnosticTone(aiDiagnostics.lifecycleReference.blocked.status)}>
+                    bloqueio
+                  </StatusBadge>
+                  <StatusBadge tone={getAiDiagnosticTone(aiDiagnostics.lifecycleReference.failed.status)}>
+                    falha
+                  </StatusBadge>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  Esta sonda usa o mesmo envelope provider-neutral do backend para provar admissao,
+                  fila, execucao, bloqueio, falha e conclusao sem provider real, fila externa ou
+                  mutacao administrativa.
+                </p>
+              </article>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {multiUnitDiagnostics.probes.map((probe) => (
+                <article
+                  className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/45 p-4"
+                  key={probe.key}
+                >
+                  <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                    {probe.label}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <StatusBadge tone={getAiDiagnosticTone(probe.allowed ? 'ALLOWED' : 'BLOCKED')}>
+                      {probe.allowed ? 'ALLOWED' : 'BLOCKED'}
+                    </StatusBadge>
+                    <StatusBadge tone={getAiDiagnosticTone(probe.accessMode)}>
+                      {probe.accessMode}
+                    </StatusBadge>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                    motivo{' '}
+                    <strong className="text-[color:var(--foreground)]">{probe.reasonCode}</strong>
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                    unidade alvo {probe.requestedUnitId ?? 'sessao atual'} / ownership{' '}
+                    {probe.ownershipKind ?? 'sem binding'}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                    contexto {probe.contextStatus}
+                    {probe.contextType ? ` / ${probe.contextType}` : ''}
+                  </p>
+                </article>
+              ))}
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              {aiDiagnostics.modules.map((moduleDiagnostic) => (
+                <article
+                  className="rounded-[1.5rem] border border-[color:var(--line)] bg-white/55 p-5"
+                  key={moduleDiagnostic.module}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge tone="info">{moduleDiagnostic.module}</StatusBadge>
+                    <StatusBadge tone={getAiDiagnosticTone(moduleDiagnostic.current.status)}>
+                      {moduleDiagnostic.current.status}
+                    </StatusBadge>
+                    <StatusBadge tone={getAiDiagnosticTone(moduleDiagnostic.current.policyReasonCode)}>
+                      {moduleDiagnostic.current.policyReasonCode ?? 'sem policy'}
+                    </StatusBadge>
+                  </div>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                      <p>
+                        gating {moduleDiagnostic.current.gateReasonCode ?? 'nao avaliado'} / quota{' '}
+                        {moduleDiagnostic.current.moduleQuota?.status ?? 'nao avaliada'}
+                      </p>
+                      <p>
+                        consentimento {moduleDiagnostic.current.consentDecisionStatus} / fallback{' '}
+                        {moduleDiagnostic.current.fallbackStatus}
+                      </p>
+                      <p>
+                        custo {moduleDiagnostic.current.costStatus} / operacional{' '}
+                        {moduleDiagnostic.current.operationalStatus}
+                      </p>
+                      <p>
+                        retention {moduleDiagnostic.current.retentionPolicyVersion} / fail-closed{' '}
+                        {moduleDiagnostic.current.failClosed ? 'ativo' : 'invalido'}
+                      </p>
+                    </div>
+                    <div className="space-y-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                      <p>
+                        prefixes{' '}
+                        <strong className="text-[color:var(--foreground)]">
+                          {moduleDiagnostic.contract.supportedInferenceKeyPrefixes.join(', ')}
+                        </strong>
+                      </p>
+                      <p>
+                        finalidades{' '}
+                        <strong className="text-[color:var(--foreground)]">
+                          {moduleDiagnostic.contract.supportedConsentPurposes.join(', ')}
+                        </strong>
+                      </p>
+                      <p>
+                        revisao humana{' '}
+                        {moduleDiagnostic.contract.requiresHumanReview ? 'obrigatoria' : 'nao'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {moduleDiagnostic.current.events.map((event) => (
+                      <StatusBadge
+                        key={`${moduleDiagnostic.module}-${event.eventCode}`}
+                        tone={getAiDiagnosticTone(event.severity)}
+                      >
+                        {event.eventCode}
+                      </StatusBadge>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {aiDiagnostics.scenarios.map((scenario) => (
+                <article
+                  className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/45 p-4"
+                  key={scenario.key}
+                >
+                  <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                    {scenario.label}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <StatusBadge tone={getAiDiagnosticTone(scenario.envelope.status)}>
+                      {scenario.envelope.status}
+                    </StatusBadge>
+                    <StatusBadge tone={getAiDiagnosticTone(scenario.envelope.policyReasonCode)}>
+                      {scenario.envelope.policyReasonCode ?? 'sem policy'}
+                    </StatusBadge>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                    {scenario.envelope.statusMessage ?? 'Sem mensagem resumida.'}
+                  </p>
+                  {scenario.envelope.events[0] ? (
+                    <p className="mt-3 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                      evento {scenario.envelope.events[0].eventCode} / proximo passo{' '}
+                      {scenario.envelope.events[0].nextStep}
+                    </p>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="mt-4 text-sm leading-6 text-[color:var(--foreground-soft)]">
+            O diagnostico minimo da fundacao exige uma permissao alta de sistema:
+            <code> sistema.manutencao.operar</code>, <code> sistema.reparo.operar</code> ou{' '}
+            <code>sistema.update.operar</code>.
+          </p>
+        )}
       </section>
 
       <section className="surface-panel rounded-[1.75rem] p-6">

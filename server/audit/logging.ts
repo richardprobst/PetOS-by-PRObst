@@ -1,6 +1,6 @@
 import { sanitizeAuditDetails } from '@/server/audit/sanitize'
 
-type AuditWriter = {
+export type AuditWriter = {
   auditLog: {
     create(args: {
       data: {
@@ -15,7 +15,7 @@ type AuditWriter = {
   }
 }
 
-interface AuditLogInput {
+export interface AuditLogInput {
   unitId?: string | null
   userId?: string | null
   action: string

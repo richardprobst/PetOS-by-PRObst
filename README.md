@@ -30,6 +30,13 @@ Neste ponto, o repositorio preserva a baseline tecnica do MVP validado e conclui
 
 Fase 3 e roadmap futuro continuam fora do escopo desta baseline.
 
+Dentro da Fase 3, o **Bloco 1** ficou fechado como fundacao tecnica e documental, com suite minima reconhecivel e checklist formal de saida para o Bloco 2.
+
+As evidencias documentais centrais desse handoff sao:
+
+- [docs/phase3-block1-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-test-suite.md)
+- [docs/phase3-block1-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-exit-checklist.md)
+
 O repositorio tambem fechou a frente interna de **installer/updater assistido**, com:
 
 - setup protegido por flag, token e sessao temporaria;
@@ -107,6 +114,7 @@ Guia completo:
 - `npm run typecheck`
 - `npm run lint`
 - `npm test`
+- `npm run test:phase3:block1`
 - `npm run check:all`
 - `npm run db:up`
 - `npm run db:down`
@@ -136,6 +144,8 @@ Guia completo:
 - [docs/phase3-block1-approval-round.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-approval-round.md)
 - [docs/phase3-block1-operational-plan.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-operational-plan.md)
 - [docs/phase3-block1-technical-backlog.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-technical-backlog.md)
+- [docs/phase3-block1-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-test-suite.md)
+- [docs/phase3-block1-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-exit-checklist.md)
 - [docs/phase3-block1-sprint1-plan.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-sprint1-plan.md)
 - [docs/phase3-block1-sprint1-exit-gate.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-sprint1-exit-gate.md)
 - [docs/architecture.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/architecture.md)

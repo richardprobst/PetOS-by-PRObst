@@ -14,6 +14,7 @@ import {
   aiTechnicalMetadataSchema,
   type AiAuditSnapshot,
   type AiBlockedOutcome,
+  type AiConsentEvaluation,
   type AiCompletedOutcome,
   type AiFailedOutcome,
   type AiGateDecision,
@@ -162,6 +163,34 @@ export function createAiBlockedOutcome(
       retryable: false,
     }),
     technicalMetadata: createAiTechnicalMetadata(input.technicalMetadata),
+  })
+}
+
+export function createAiConsentBlockedOutcome(
+  request: AiInferenceRequest,
+  consent: Pick<AiConsentEvaluation, 'reasonCode'>,
+) {
+  const message =
+    consent.reasonCode === 'CONSENT_MISSING'
+      ? 'AI inference is blocked because the required consent for this purpose is missing.'
+      : 'AI inference is blocked because the available consent does not cover the requested purpose.'
+
+  return aiBlockedOutcomeSchema.parse({
+    status: 'BLOCKED',
+    request,
+    gateDecision: createAiAllowedGateDecision(request),
+    error: createAiLayerError({
+      code:
+        consent.reasonCode === 'CONSENT_MISSING'
+          ? 'CONSENT_REQUIRED'
+          : 'CONSENT_INCOMPATIBLE',
+      details: {
+        consentReasonCode: consent.reasonCode,
+      },
+      message,
+      retryable: false,
+    }),
+    technicalMetadata: createAiTechnicalMetadata(),
   })
 }
 

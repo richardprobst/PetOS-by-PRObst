@@ -6,6 +6,7 @@ import {
   createAiFlagKeys,
   createAiAllowedGateDecision,
 } from './domain'
+import { isAiInferenceKeySupportedByModule } from './provider-routing'
 import {
   AI_GLOBAL_ENV_KEY,
   AI_GLOBAL_FLAG_KEY,
@@ -18,7 +19,6 @@ import {
   type AiGateEvaluation,
   type AiGateEvaluationStatus,
   type AiGatingResult,
-  type AiInferenceModule,
   type AiInferenceRequest,
 } from './schemas'
 
@@ -39,14 +39,6 @@ type AiGateResolution =
       gating: AiGatingResult
       outcome: AiBlockedOutcome
     }
-
-const aiModuleInferenceKeyPrefixes: Record<
-  AiInferenceModule,
-  readonly string[]
-> = {
-  IMAGE_ANALYSIS: ['vision.'],
-  PREDICTIVE_INSIGHTS: ['predictive.'],
-}
 
 function parseAiEnvironmentFlagValue(
   rawValue: string | undefined,
@@ -128,11 +120,6 @@ function resolveAiModuleSupportReason(
   request: AiInferenceRequest,
 ): AiGateDecision | null {
   const expectedFlagKeys = createAiFlagKeys(request.module)
-  const supportedPrefixes = aiModuleInferenceKeyPrefixes[request.module]
-
-  if (!supportedPrefixes) {
-    return createAiBlockedGateDecision(request, 'NOT_SUPPORTED')
-  }
 
   if (
     request.flagKeys.global !== AI_GLOBAL_FLAG_KEY ||
@@ -141,8 +128,9 @@ function resolveAiModuleSupportReason(
     return createAiBlockedGateDecision(request, 'NOT_SUPPORTED')
   }
 
-  const isInferenceKeySupported = supportedPrefixes.some((prefix) =>
-    request.inferenceKey.startsWith(prefix),
+  const isInferenceKeySupported = isAiInferenceKeySupportedByModule(
+    request.module,
+    request.inferenceKey,
   )
 
   if (!isInferenceKeySupported) {

@@ -2,7 +2,10 @@ import { Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { prisma } from '@/server/db/prisma'
 import { AppError } from '@/server/http/errors'
-import { resolveScopedUnitId } from '@/server/authorization/scope'
+import {
+  assertActorCanAccessOwnershipBinding,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { writeAuditLog } from '@/server/audit/logging'
 import { recalculateAppointmentServiceCommissions } from '@/features/appointments/financial'
 import { operationalStatusIds } from '@/features/appointments/constants'
@@ -22,6 +25,7 @@ import {
 import type {
   AppointmentCheckInInput,
   AppointmentServiceItemInput,
+  AppointmentScopeQuery,
   CancelAppointmentInput,
   ChangeAppointmentStatusInput,
   CreateAppointmentInput,
@@ -467,6 +471,37 @@ function calculateEstimatedTotalAmount(
   )
 }
 
+function buildAppointmentReadOwnership(unitId: string) {
+  return {
+    kind: 'LOCAL_RECORD' as const,
+    primaryUnitId: unitId,
+    linkedUnitIds: [] as string[],
+    reassignmentAuditRequired: true as const,
+  }
+}
+
+export function resolveAppointmentReadUnitId(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(actor, requestedUnitId ?? null)
+}
+
+export function assertActorCanReadAppointmentInScope(
+  actor: AuthenticatedUserData,
+  appointmentUnitId: string,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  assertActorCanAccessOwnershipBinding(
+    actor,
+    buildAppointmentReadOwnership(appointmentUnitId),
+    options,
+  )
+}
+
 async function getAppointmentOrThrow(actor: AuthenticatedUserData, appointmentId: string) {
   const appointment = await prisma.appointment.findUnique({
     where: {
@@ -486,6 +521,30 @@ async function getAppointmentOrThrow(actor: AuthenticatedUserData, appointmentId
   return appointment
 }
 
+async function getAppointmentForReadOrThrow(
+  actor: AuthenticatedUserData,
+  appointmentId: string,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  const appointment = await prisma.appointment.findUnique({
+    where: {
+      id: appointmentId,
+    },
+    include: appointmentDetailsInclude,
+  })
+
+  if (!appointment) {
+    throw new AppError('NOT_FOUND', 404, 'Appointment not found.')
+  }
+
+  assertActorCanReadAppointmentInScope(actor, appointment.unitId, options)
+
+  return appointment
+}
+
 function assertAppointmentCanBeEdited(appointment: AppointmentWithDetails) {
   if (
     appointment.operationalStatusId === operationalStatusIds.completed ||
@@ -501,7 +560,7 @@ function assertAppointmentCanBeEdited(appointment: AppointmentWithDetails) {
 }
 
 export async function listAppointments(actor: AuthenticatedUserData, query: ListAppointmentsQuery) {
-  const scopedUnitId = query.unitId ? resolveScopedUnitId(actor, query.unitId) : actor.unitId
+  const scopedUnitId = resolveAppointmentReadUnitId(actor, query.unitId ?? null)
 
   return prisma.appointment.findMany({
     where: {
@@ -525,8 +584,14 @@ export async function listAppointments(actor: AuthenticatedUserData, query: List
   })
 }
 
-export async function getAppointmentById(actor: AuthenticatedUserData, appointmentId: string) {
-  return getAppointmentOrThrow(actor, appointmentId)
+export async function getAppointmentById(
+  actor: AuthenticatedUserData,
+  appointmentId: string,
+  query: AppointmentScopeQuery = {},
+) {
+  return getAppointmentForReadOrThrow(actor, appointmentId, {
+    requestedUnitId: query.unitId ?? null,
+  })
 }
 
 export async function createAppointmentInMutation(

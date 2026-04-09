@@ -40,6 +40,8 @@ test('createAiOperationalMetadata models provider and model as not configured by
   assert.equal(metadata.model.modelStatus, 'NOT_CONFIGURED')
   assert.equal(metadata.operationalStatus, 'NOT_CONFIGURED')
   assert.equal(metadata.cost.status, 'NOT_CONFIGURED')
+  assert.equal(metadata.fallbackStatus, 'NOT_EVALUATED')
+  assert.equal(metadata.fallback.reasonCode, 'NOT_YET_EVALUATED')
 })
 
 test('createAiOperationalMetadata supports declared provider and model metadata without a real provider adapter', () => {
@@ -63,6 +65,7 @@ test('createAiOperationalMetadata supports declared provider and model metadata 
   assert.equal(metadata.model.modelStatus, 'DECLARED')
   assert.equal(metadata.model.modelId, 'assistive-vision-v1')
   assert.equal(metadata.operationalStatus, 'DECLARED')
+  assert.equal(metadata.fallbackStatus, 'NOT_EVALUATED')
 })
 
 test('createAiOperationalMetadata supports estimated cost metadata without billing real', () => {
@@ -85,6 +88,20 @@ test('createAiOperationalMetadata supports estimated cost metadata without billi
   assert.equal(metadata.cost.estimateLabel, 'estimated-low-per-request')
   assert.equal(metadata.cost.measurementUnit, 'INFERENCE_REQUEST')
   assert.equal(metadata.cost.metadataOrigin, 'ESTIMATED')
+})
+
+test('createAiOperationalMetadata marks fallback as not configured when only the strategy is declared', () => {
+  const request = createImageRequest()
+  const policy = evaluateAiQuotaPolicy(request, enabledEnvironment)
+  const metadata = createAiOperationalMetadata(request, policy, {
+    fallback: {
+      strategy: 'DECLARED_PROVIDER_SWITCH',
+    },
+  })
+
+  assert.equal(metadata.fallbackStatus, 'NOT_CONFIGURED')
+  assert.equal(metadata.fallback.reasonCode, 'FALLBACK_NOT_CONFIGURED')
+  assert.equal(metadata.fallback.nextStep, 'CONFIGURE_FALLBACK')
 })
 
 test('createAiOperationalMetadata keeps temporary operational unavailability distinct from functional disablement', () => {

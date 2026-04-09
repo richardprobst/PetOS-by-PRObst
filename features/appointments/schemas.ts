@@ -89,6 +89,10 @@ export const listAppointmentsQuerySchema = z.object({
   startTo: optionalDate,
 })
 
+export const appointmentScopeQuerySchema = z.object({
+  unitId: optionalString,
+})
+
 export const changeAppointmentStatusInputSchema = z.object({
   nextStatusId: z.enum([
     operationalStatusIds.confirmed,
@@ -189,6 +193,7 @@ export type AppointmentServiceItemInput = z.infer<typeof appointmentServiceItemS
 export type CreateAppointmentInput = z.infer<typeof createAppointmentInputSchema>
 export type UpdateAppointmentInput = z.infer<typeof updateAppointmentInputSchema>
 export type ListAppointmentsQuery = z.infer<typeof listAppointmentsQuerySchema>
+export type AppointmentScopeQuery = z.infer<typeof appointmentScopeQuerySchema>
 export type ChangeAppointmentStatusInput = z.infer<typeof changeAppointmentStatusInputSchema>
 export type CancelAppointmentInput = z.infer<typeof cancelAppointmentInputSchema>
 export type RescheduleAppointmentInput = z.infer<typeof rescheduleAppointmentInputSchema>

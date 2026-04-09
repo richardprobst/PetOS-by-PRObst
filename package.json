@@ -19,6 +19,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "node --import tsx --test --test-isolation=none tests/**/*.test.ts",
+    "test:phase3:block1": "node --import tsx --test --test-isolation=none tests/server/ai/*.test.ts tests/server/multiunit/*.test.ts tests/server/phase3-block1-smoke.test.ts",
     "test:watch": "node --import tsx --test --test-isolation=none --watch tests/**/*.test.ts",
     "typecheck": "node -e \"require('node:fs').rmSync('.next/types',{ recursive: true, force: true })\" && next typegen && tsc --noEmit",
     "check:all": "npm run ops:preflight && npm run prisma:check && npm run typecheck && npm run lint && npm test && npm run build",

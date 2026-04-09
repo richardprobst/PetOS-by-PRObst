@@ -1,8 +1,11 @@
-import { readValidatedJson } from '@/server/http/request'
+import { readValidatedJson, readValidatedSearchParams } from '@/server/http/request'
 import { ok, routeErrorResponse } from '@/server/http/responses'
 import { requireInternalApiUser } from '@/server/authorization/api-access'
 import { enforceMutationRateLimit } from '@/server/security/operations'
-import { updateAppointmentInputSchema } from '@/features/appointments/schemas'
+import {
+  appointmentScopeQuerySchema,
+  updateAppointmentInputSchema,
+} from '@/features/appointments/schemas'
 import { getAppointmentById, updateAppointment } from '@/features/appointments/services'
 
 interface RouteContext {
@@ -15,8 +18,9 @@ export async function GET(request: Request, context: RouteContext) {
   try {
     const actor = await requireInternalApiUser('agendamento.visualizar')
     const { appointmentId } = await context.params
+    const query = readValidatedSearchParams(request, appointmentScopeQuerySchema)
 
-    return ok(await getAppointmentById(actor, appointmentId))
+    return ok(await getAppointmentById(actor, appointmentId, query))
   } catch (error) {
     return routeErrorResponse(error, { request })
   }

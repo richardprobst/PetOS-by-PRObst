@@ -70,6 +70,23 @@ export function createAiRetentionPolicySnapshot(
   })
 }
 
+export function getAiRetentionArtifactPolicy(
+  snapshot: AiRetentionPolicySnapshot,
+  artifactCategory: AiRetentionArtifactCategory,
+) {
+  const artifact = snapshot.artifacts.find(
+    (entry) => entry.artifactCategory === artifactCategory,
+  )
+
+  if (!artifact) {
+    throw new Error(
+      `AI retention policy is missing the required artifact category "${artifactCategory}".`,
+    )
+  }
+
+  return artifact
+}
+
 function createArtifactPolicy(
   artifactCategory: AiRetentionArtifactCategory,
   overrides: Partial<AiArtifactRetentionPolicy>,

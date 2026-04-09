@@ -46,6 +46,18 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- A primeira fatia controlada do Bloco 2 da Fase 3 agora aplica escopo multiunidade server-side nas leituras de `appointments`, fazendo listagem e detalhe consumirem o contexto resolvido da sessao ou `unitId` explicitamente autorizado sem abrir escrita estrutural cross-unit, UI final ou rollout amplo do modulo.
+- O `B1-T19` da Fase 3 agora fecha o Bloco 1 com um checklist formal e auditavel de saida para o Bloco 2, alinhado ao plano operacional, ao mapa de impacto multiunidade, a `npm run test:phase3:block1` e ao smoke final administrativo interno, sem abrir feature nova, provider real ou multiunidade operacional completa.
+- O `B1-T18` da Fase 3 agora consolida a suite minima de testes do Bloco 1, com script dedicado, smoke administrativo interno e documento explicito de cobertura e sinais de handoff, sem abrir nova feature, provider real ou Bloco 2.
+- O `B1-T17` da Fase 3 agora expõe a superficie interna minima de contexto multiunidade sobre a base administrativa ja aberta no `B1-T16`, com leitura protegida de unidade ativa, papel global, ownership base e probes de escopo/limite sem abrir UI final multiunidade nem o Bloco 2.
+- O `B1-T16` da Fase 3 agora adiciona a superficie administrativa minima de diagnostico da fundacao, com leitura protegida de flags, gating, quota, bloqueios, lifecycle conceitual, eventos operacionais minimos e sinais essenciais de multiunidade em `/admin/sistema` e em rota interna, sem abrir painel final, provider real ou mutacoes administrativas novas.
+- O `B1-T15` da Fase 3 agora adiciona os eventos minimos de custo, erro e desligamento rapido da camada de IA, com contrato provider-neutral, classificacao de severidade e proximo passo sugerido, integrados ao envelope e a auditoria minima sem abrir billing real, painel final ou persistencia definitiva.
+- O `B1-T14` da Fase 3 agora adiciona a trilha transversal de consentimento e retencao da camada de IA, com contrato provider-neutral de finalidade, gate server-side por consentimento, integracao coerente com retencao e auditoria minima e bloqueio explicito de inferencias de imagem sem opt-in compativel, sem abrir UI final, provider real ou persistencia definitiva.
+- O `B1-T13` da Fase 3 agora adiciona a auditoria minima de uso de IA, com eventos estruturados para tentativa, bloqueio, execucao, fallback e decisao humana relevante, reaproveitando `auditLog` e o contexto multiunidade ja existente sem abrir persistencia nova ou UI administrativa.
+- O `B1-T12` da Fase 3 agora adiciona o fallback conceitual minimo da camada de IA, com contrato provider-neutral para elegibilidade, indisponibilidade, ausencia de configuracao e proximo passo sugerido, integrando esses metadados ao lifecycle assincrono e ao adaptador interno sem abrir fallback real entre vendors, retry real ou persistencia definitiva.
+- O `B1-T11` da Fase 3 agora adiciona o envelope minimo de jobs e estados assincronos da camada de IA, distinguindo admissao, fila logica, execucao imediata controlada, conclusao, bloqueio, falha e `NOT_SUPPORTED` sem abrir fila externa, retry real completo ou provider real.
+- O `B1-T10` da Fase 3 agora adiciona o adaptador interno de provider da camada de IA, com contrato normalizado, executor unico server-side, subdominios preparados para `vision` e `insights` e mapeamento auditavel de resposta valida, erro tecnico e bloqueio por flag sem integrar provider real.
+- O `B1-T09` da Fase 3 agora registra o mapa tecnico de impacto multiunidade em filtros, consultas, listagens e dashboards, deixando explicito onde o sistema ja esta seguro no escopo local, onde ainda assume single-unit e o que deve permanecer bloqueado ate o Bloco 2.
 - O `B1-T08` da Fase 3 agora conecta ownership e visibilidade base de cliente/pet ao contexto multiunidade server-side, aplicando leitura local, leitura global autorizada e bloqueio de edicao cross-unit por padrao sem abrir multiunidade operacional completa.
 - O `B1-T07` da Fase 3 agora adiciona a fundacao server-side de contexto de unidade e isolamento base multiunidade, com snapshot de sessao, decisao central de escopo, bloqueio cross-unit por padrao e permissao global explicita para leitura ou edicao estrutural sem abrir a operacao multiunidade completa.
 - O `B1-T06` da Fase 3 agora adiciona metadados operacionais provider-neutral ao envelope da IA, representando provider/modelo declarados, classe de custo estimado, fallback e observabilidade minima sem integrar provider real, billing real ou storage definitivo.
@@ -87,6 +99,11 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `server/jobs/ai.ts` como ponto unico inicial de scheduling logico da camada de IA, sem fila real de producao.
+- `server/integrations/ai/adapter.ts` como executor unico do adaptador interno de provider da Fase 3, consumindo envelope, gating e politica existentes antes de qualquer integracao real.
+- `features/ai/provider-routing.ts`, `features/ai/vision/contract.ts` e `features/insights/contract.ts` como base dos subdominios e do roteamento provider-neutral por modulo.
+- `tests/server/ai/provider-adapter.test.ts` para cobrir resposta valida do adaptador, erro tecnico normalizado e bloqueio por flag sem chamada de provider.
+- `docs/phase3-block1-multiunit-impact-map.md` como mapa tecnico central do `B1-T09`, inventariando superficies afetadas, classificacao por risco e backlog derivado para a abertura controlada do Bloco 2.
 - `features/clients/ownership.ts` como contrato minimo de ownership de cliente/pet por unidade, reutilizado pela camada de autorizacao multiunidade.
 - Cobertura de testes `tests/server/multiunit/client-pet-ownership.test.ts` para leitura local, leitura global autorizada e bloqueio de edicao cross-unit sem permissao global.
 - `features/ai/execution.ts` como orquestrador inicial server-side do envelope de execucao da IA da Fase 3.
