@@ -6,6 +6,14 @@ import { FormField } from '@/components/ui/form-field'
 import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import {
+  createPredictiveInsightAction,
+  recordPredictiveInsightFeedbackAction,
+} from '@/features/insights/actions'
+import {
+  listPredictiveInsights,
+  parsePredictiveInsightExplanation,
+} from '@/features/insights/services'
+import {
   createAppointmentCapacityRuleAction,
   createScheduleBlockAction,
   deactivateAppointmentCapacityRuleAction,
@@ -40,10 +48,15 @@ import { listWaitlistEntries } from '@/features/waitlist/services'
 import { listPets } from '@/features/pets/services'
 import { listServices } from '@/features/services/services'
 import { formatCurrency, formatDateTime, toDateTimeLocalValue } from '@/lib/formatters'
-import { assertPermission, hasPermission } from '@/server/authorization/access-control'
+import {
+  assertPermission,
+  hasAnyPermission,
+  hasPermission,
+} from '@/server/authorization/access-control'
 import { requireInternalAreaUser } from '@/server/authorization/guards'
 
 type AgendaView = 'day' | 'week' | 'month'
+type PredictiveInsightRow = Awaited<ReturnType<typeof listPredictiveInsights>>[number]
 
 interface AgendaPageProps {
   searchParams: Promise<{
@@ -255,6 +268,55 @@ function getTaxiDogStatusLabel(value: string) {
   return labels[value] ?? value
 }
 
+function getPredictiveInsightExecutionTone(status: string) {
+  if (status === 'COMPLETED') {
+    return 'success'
+  }
+
+  if (status === 'FAILED') {
+    return 'danger'
+  }
+
+  return 'warning'
+}
+
+function getPredictiveInsightFeedbackTone(status: string) {
+  if (status === 'ACTION_PLANNED') {
+    return 'success'
+  }
+
+  if (status === 'NOT_USEFUL') {
+    return 'danger'
+  }
+
+  if (status === 'ACKNOWLEDGED') {
+    return 'info'
+  }
+
+  return 'warning'
+}
+
+function getPredictiveInsightFeedbackLabel(status: string) {
+  const labels: Record<string, string> = {
+    ACKNOWLEDGED: 'Lido',
+    ACTION_PLANNED: 'Acao planejada',
+    NOT_USEFUL: 'Nao util',
+    PENDING: 'Sem retorno',
+  }
+
+  return labels[status] ?? status
+}
+
+function getPredictiveInsightConfidenceLabel(value: string) {
+  const labels: Record<string, string> = {
+    HIGH: 'Alta',
+    LOW: 'Baixa',
+    MEDIUM: 'Media',
+  }
+
+  return labels[value] ?? value
+}
+
 function getAppointmentStatusActionOptions(currentStatusId: string) {
   switch (currentStatusId) {
     case 'SCHEDULED':
@@ -307,6 +369,15 @@ export default async function AdminAgendaPage({ searchParams }: AgendaPageProps)
   const canEditWaitlist = hasPermission(actor, 'agenda.waitlist.editar')
   const canViewTaxiDog = hasPermission(actor, 'agenda.taxi_dog.visualizar')
   const canEditTaxiDog = hasPermission(actor, 'agenda.taxi_dog.editar')
+  const canViewPredictiveInsights = hasAnyPermission(actor, [
+    'agendamento.visualizar',
+    'ai.insights.visualizar',
+    'ai.insights.executar',
+  ])
+  const canGeneratePredictiveInsights = hasAnyPermission(actor, [
+    'agendamento.visualizar',
+    'ai.insights.executar',
+  ])
 
   const shouldLoadReferenceData =
     canCreateAppointments ||
@@ -325,6 +396,7 @@ export default async function AdminAgendaPage({ searchParams }: AgendaPageProps)
     capacityRules,
     scheduleBlocks,
     waitlistEntries,
+    predictiveInsights,
   ] = await Promise.all([
     listAppointments(actor, {
       startFrom: agendaWindow.start,
@@ -342,23 +414,33 @@ export default async function AdminAgendaPage({ searchParams }: AgendaPageProps)
           startTo: agendaWindow.end,
         })
       : Promise.resolve([]),
-    canViewWaitlist
-      ? listWaitlistEntries(actor, {
-          status: 'PENDING',
-          startFrom: agendaWindow.start,
-          startTo: agendaWindow.end,
-        })
-      : Promise.resolve([]),
-  ])
+      canViewWaitlist
+        ? listWaitlistEntries(actor, {
+            status: 'PENDING',
+            startFrom: agendaWindow.start,
+            startTo: agendaWindow.end,
+          })
+        : Promise.resolve([]),
+      canViewPredictiveInsights
+        ? listPredictiveInsights(actor, {
+            kind: 'APPOINTMENT_DEMAND_FORECAST',
+            limit: 5,
+          })
+        : Promise.resolve([] as PredictiveInsightRow[]),
+    ])
 
   const appointmentCountWithTaxiDog = appointments.filter((appointment) => appointment.taxiDogRide).length
+  const latestPredictiveInsight = predictiveInsights[0] ?? null
+  const latestPredictiveExplanation = latestPredictiveInsight
+    ? parsePredictiveInsightExplanation(latestPredictiveInsight.explanation)
+    : null
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        eyebrow="Agenda avancada"
-        title="Capacidade, bloqueios, waitlist e Taxi Dog em fluxo administrativo server-side."
-        description="O Bloco 4 expande a agenda do MVP com capacidade por profissional e porte, bloqueios operacionais, promocao controlada da waitlist e fluxo pratico de Taxi Dog, sem abrir CRM nem roteirizacao sofisticada."
+        <PageHeader
+          eyebrow="Agenda avancada"
+          title="Capacidade, bloqueios e demanda assistiva em fluxo administrativo server-side."
+          description="A agenda segue com capacidade, bloqueios, waitlist e Taxi Dog, e agora ganha o primeiro insight preditivo auditavel por unidade para apoiar planejamento sem abrir automacao."
         actions={
           <>
             <Link className="ui-button-secondary" href={buildAgendaHref(selectedView, agendaWindow.previousReferenceDate)}>
@@ -435,9 +517,203 @@ export default async function AdminAgendaPage({ searchParams }: AgendaPageProps)
             </article>
           ))}
         </div>
-      </section>
+        </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        {canViewPredictiveInsights ? (
+          <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+            <div className="surface-panel rounded-[1.75rem] p-6">
+              <p className="section-label">Insight preditivo por unidade</p>
+              <p className="mt-3 text-lg font-semibold text-[color:var(--foreground)]">
+                Previsao assistiva de demanda de agenda
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                Primeiro corte do Bloco 4: recomendacao interna por unidade,
+                explicada por janela historica e horizonte de 7 dias, sem
+                automacao e sem provider real.
+              </p>
+
+              {latestPredictiveInsight && latestPredictiveExplanation ? (
+                <div className="mt-5 space-y-4 rounded-[1.5rem] border border-[color:var(--line)] bg-white/50 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge tone={getPredictiveInsightExecutionTone(latestPredictiveInsight.executionStatus)}>
+                      {latestPredictiveInsight.executionStatus}
+                    </StatusBadge>
+                    <StatusBadge tone={getPredictiveInsightFeedbackTone(latestPredictiveInsight.feedbackStatus)}>
+                      {getPredictiveInsightFeedbackLabel(latestPredictiveInsight.feedbackStatus)}
+                    </StatusBadge>
+                  </div>
+                  <p className="text-sm leading-6 text-[color:var(--foreground)]">
+                    {latestPredictiveInsight.resultSummary ?? 'Sem resumo para o snapshot atual.'}
+                  </p>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/70 p-3">
+                      <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--foreground-soft)]">
+                        Proximos 7 dias
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-[color:var(--foreground)]">
+                        {latestPredictiveExplanation.forecastNext7Days.toFixed(1)}
+                      </p>
+                    </article>
+                    <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/70 p-3">
+                      <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--foreground-soft)]">
+                        Historico usado
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-[color:var(--foreground)]">
+                        {latestPredictiveExplanation.historyDaysAvailable} dias
+                      </p>
+                    </article>
+                    <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/70 p-3">
+                      <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--foreground-soft)]">
+                        Confianca
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-[color:var(--foreground)]">
+                        {getPredictiveInsightConfidenceLabel(latestPredictiveExplanation.confidence)}
+                      </p>
+                    </article>
+                  </div>
+                  <p className="text-xs leading-5 text-[color:var(--foreground-soft)]">
+                    Janela historica:{' '}
+                    {formatDateTime(latestPredictiveExplanation.historyWindowStart)} ate{' '}
+                    {formatDateTime(latestPredictiveExplanation.historyWindowEnd)}. Horizonte
+                    previsto:{' '}
+                    {formatDateTime(latestPredictiveExplanation.forecastWindowStart)} ate{' '}
+                    {formatDateTime(latestPredictiveExplanation.forecastWindowEnd)}.
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-5 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  Ainda nao existe snapshot preditivo para a unidade ativa. Gere o
+                  primeiro registro para abrir o painel auditavel deste bloco.
+                </p>
+              )}
+
+              {canGeneratePredictiveInsights ? (
+                <form action={createPredictiveInsightAction} className="mt-5 space-y-4 rounded-[1.5rem] border border-[color:var(--line)] bg-white/55 p-4">
+                  <input name="kind" type="hidden" value="APPOINTMENT_DEMAND_FORECAST" />
+                  <div>
+                    <p className="text-sm font-semibold text-[color:var(--foreground)]">
+                      Gerar snapshot diario controlado
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                      O calculo usa somente historico da unidade ativa, respeita o
+                      gating da IA e grava envelope auditavel com recomendacoes
+                      separadas de qualquer acao automatica.
+                    </p>
+                  </div>
+                  <button className="ui-button-primary" type="submit">
+                    Gerar insight de demanda
+                  </button>
+                </form>
+              ) : null}
+            </div>
+
+            <div className="surface-panel rounded-[1.75rem] p-6">
+              <p className="section-label">Snapshots recentes</p>
+              <p className="mt-3 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                Esta tabela registra a trilha minima de utilidade do bloco: leitura,
+                status operacional e retorno do operador sobre uso real do insight.
+              </p>
+              <div className="mt-4">
+                <DataTable<PredictiveInsightRow>
+                  columns={[
+                    {
+                      id: 'snapshot',
+                      header: 'Snapshot',
+                      render: (predictiveInsight) => {
+                        const explanation = parsePredictiveInsightExplanation(
+                          predictiveInsight.explanation,
+                        )
+
+                        return (
+                          <div>
+                            <p className="font-semibold text-[color:var(--foreground)]">
+                              {predictiveInsight.resultSummary ?? 'Sem resumo'}
+                            </p>
+                            <p>
+                              {formatDateTime(predictiveInsight.snapshotDate)} -{' '}
+                              {getPredictiveInsightConfidenceLabel(explanation.confidence)}
+                            </p>
+                          </div>
+                        )
+                      },
+                    },
+                    {
+                      id: 'window',
+                      header: 'Janela',
+                      render: (predictiveInsight) => {
+                        const explanation = parsePredictiveInsightExplanation(
+                          predictiveInsight.explanation,
+                        )
+
+                        return (
+                          <div>
+                            <p>
+                              Hist.: {formatDateTime(explanation.historyWindowStart)} ate{' '}
+                              {formatDateTime(explanation.historyWindowEnd)}
+                            </p>
+                            <p>
+                              Prev.: {formatDateTime(explanation.forecastWindowStart)} ate{' '}
+                              {formatDateTime(explanation.forecastWindowEnd)}
+                            </p>
+                          </div>
+                        )
+                      },
+                    },
+                    {
+                      id: 'status',
+                      header: 'Status',
+                      render: (predictiveInsight) => (
+                        <div className="flex flex-wrap gap-2">
+                          <StatusBadge tone={getPredictiveInsightExecutionTone(predictiveInsight.executionStatus)}>
+                            {predictiveInsight.executionStatus}
+                          </StatusBadge>
+                          <StatusBadge tone={getPredictiveInsightFeedbackTone(predictiveInsight.feedbackStatus)}>
+                            {getPredictiveInsightFeedbackLabel(predictiveInsight.feedbackStatus)}
+                          </StatusBadge>
+                        </div>
+                      ),
+                    },
+                    {
+                      id: 'action',
+                      header: 'Utilidade',
+                      render: (predictiveInsight) =>
+                        canGeneratePredictiveInsights ? (
+                          <div className="flex flex-wrap gap-2">
+                            <form action={recordPredictiveInsightFeedbackAction}>
+                              <input name="predictiveInsightId" type="hidden" value={predictiveInsight.id} />
+                              <input name="feedbackStatus" type="hidden" value="ACKNOWLEDGED" />
+                              <button className="ui-link text-sm font-semibold" type="submit">
+                                Marcar como lido
+                              </button>
+                            </form>
+                            <form action={recordPredictiveInsightFeedbackAction}>
+                              <input name="predictiveInsightId" type="hidden" value={predictiveInsight.id} />
+                              <input name="feedbackStatus" type="hidden" value="ACTION_PLANNED" />
+                              <button className="ui-link text-sm font-semibold text-[color:#0f766e]" type="submit">
+                                Planejar acao
+                              </button>
+                            </form>
+                            <form action={recordPredictiveInsightFeedbackAction}>
+                              <input name="predictiveInsightId" type="hidden" value={predictiveInsight.id} />
+                              <input name="feedbackStatus" type="hidden" value="NOT_USEFUL" />
+                              <button className="ui-link text-sm font-semibold text-[color:#8b5a3c]" type="submit">
+                                Nao foi util
+                              </button>
+                            </form>
+                          </div>
+                        ) : (
+                          'Somente leitura'
+                        ),
+                    },
+                  ]}
+                  rows={predictiveInsights}
+                />
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="surface-panel rounded-[1.75rem] p-6">
           <p className="section-label">Criar atendimento</p>
           {canCreateAppointments ? (

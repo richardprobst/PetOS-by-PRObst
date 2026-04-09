@@ -1,6 +1,6 @@
 # Phase 3 Approval Board
 
-Data da ultima revisao: 2026-04-07
+Data da ultima revisao: 2026-04-09
 
 ## Objetivo
 
@@ -238,13 +238,14 @@ Para a rodada curta de ratificacao humana que fecha apenas `B1`, `B2` e `C1`, us
 - **ID da decisao**: `E1`
 - **Nome da decisao**: primeiro insight preditivo
 - **Resumo curto**: define o caso de uso inicial com maior utilidade e menor risco
-- **Status**: `pendente`
+- **Status**: `aprovado`
 - **Decisao recomendada**: previsao de demanda de agenda por unidade
 - **Ajustes exigidos**:
-  - aprovar KPI de sucesso;
-  - aprovar o dashboard inicial.
+  - nenhum para o primeiro corte ratificado do Bloco 4.
 - **O que fica bloqueado se permanecer pendente**: backlog do Bloco 4
-- **Observacoes executivas**: nao bloqueia o Bloco 1
+- **Observacoes executivas**:
+  - o KPI minimo do primeiro corte passa a ser a trilha de feedback operacional do snapshot (`ACKNOWLEDGED`, `ACTION_PLANNED`, `NOT_USEFUL`);
+  - o dashboard inicial aprovado e a secao minima de insight em `/admin/agenda`.
 
 ### E2 - Escopo, janela historica e frequencia
 
@@ -254,10 +255,10 @@ Para a rodada curta de ratificacao humana que fecha apenas `B1`, `B2` e `C1`, us
 - **Status**: `aprovado com ajustes`
 - **Decisao recomendada**: por unidade, com minimo de 6 meses de historico util e recalculo diario
 - **Ajustes exigidos**:
-  - aprovar fallback quando a unidade nao tiver historico suficiente;
-  - aprovar janela minima alternativa para bases novas.
+  - fallback para unidade sem historico suficiente foi ratificado no primeiro corte com janela alternativa e rebaixamento explicito de confianca;
+  - o recalculo diario continua como evolucao operacional posterior e nao invalida o corte inicial on-demand do Bloco 4.
 - **O que fica bloqueado se permanecer pendente**: cron e dataset final do Bloco 4
-- **Observacoes executivas**: nao bloqueia a fundacao
+- **Observacoes executivas**: o primeiro corte fecha com escopo por unidade e historico degradavel sem abrir automacao.
 
 ### E3 - Natureza da saida preditiva
 
@@ -301,8 +302,7 @@ Para a rodada curta de ratificacao humana que fecha apenas `B1`, `B2` e `C1`, us
 
 ### D. Pendencias nao bloqueantes
 
-- `D1` primeiro corte de casos de uso de imagem
-- `E1` primeiro insight preditivo
+- nenhuma pendencia nao bloqueante aberta neste momento
 
 ### E. Itens rejeitados
 
@@ -330,8 +330,7 @@ Para a rodada curta de ratificacao humana que fecha apenas `B1`, `B2` e `C1`, us
 
 ### O que deve permanecer pendente
 
-- escolha do primeiro caso exato de imagem;
-- escolha do primeiro insight exato do preditivo.
+- nenhuma escolha critica adicional precisa permanecer pendente para manter a fundacao e os primeiros cortes de imagem e preditivo fechados.
 
 ### A Fase 3 pode iniciar o Bloco 1?
 

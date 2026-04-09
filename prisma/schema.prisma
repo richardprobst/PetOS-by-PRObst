@@ -151,6 +151,27 @@ enum ImageAnalysisVisibility {
   INTERNAL_OPERATOR_AND_AUDIT
 }
 
+enum PredictiveInsightKind {
+  APPOINTMENT_DEMAND_FORECAST
+}
+
+enum PredictiveInsightExecutionStatus {
+  COMPLETED
+  BLOCKED
+  FAILED
+}
+
+enum PredictiveInsightVisibility {
+  INTERNAL_OPERATOR_AND_AUDIT
+}
+
+enum PredictiveInsightFeedbackStatus {
+  PENDING
+  ACKNOWLEDGED
+  ACTION_PLANNED
+  NOT_USEFUL
+}
+
 enum DepositStatus {
   PENDING
   CONFIRMED
@@ -354,6 +375,7 @@ model Unit {
   documents                Document[]
   mediaAssets              MediaAsset[]
   imageAnalyses            ImageAnalysis[]
+  predictiveInsights       PredictiveInsightSnapshot[]
   deposits                 Deposit[]
   refunds                  Refund[]
   clientCredits            ClientCredit[]
@@ -403,6 +425,8 @@ model User {
   archivedMediaAssets             MediaAsset[]                    @relation("MediaAssetArchivedBy")
   requestedImageAnalyses          ImageAnalysis[]                 @relation("ImageAnalysisRequestedBy")
   reviewedImageAnalyses           ImageAnalysis[]                 @relation("ImageAnalysisReviewedBy")
+  requestedPredictiveInsights     PredictiveInsightSnapshot[]     @relation("PredictiveInsightRequestedBy")
+  feedbackPredictiveInsights      PredictiveInsightSnapshot[]     @relation("PredictiveInsightFeedbackBy")
   createdDeposits                 Deposit[]                       @relation("DepositCreatedByUser")
   createdRefunds                  Refund[]                        @relation("RefundCreatedByUser")
   createdClientCredits            ClientCredit[]                  @relation("ClientCreditCreatedByUser")
@@ -1189,6 +1213,44 @@ model ImageAnalysis {
   @@index([reviewedByUserId], map: "AnalisesImagem_usuario_revisao_id_idx")
   @@index([executionStatus, reviewStatus], map: "AnalisesImagem_status_execucao_status_revisao_idx")
   @@map("AnalisesImagem")
+}
+
+model PredictiveInsightSnapshot {
+  id                String                          @id @default(cuid()) @db.VarChar(191)
+  unitId            String                          @map("unidade_id") @db.VarChar(191)
+  requestedByUserId String?                         @map("usuario_solicitacao_id") @db.VarChar(191)
+  feedbackByUserId  String?                         @map("usuario_feedback_id") @db.VarChar(191)
+  kind              PredictiveInsightKind           @map("tipo_insight")
+  executionStatus   PredictiveInsightExecutionStatus @map("status_execucao")
+  visibility        PredictiveInsightVisibility     @default(INTERNAL_OPERATOR_AND_AUDIT) @map("visibilidade")
+  feedbackStatus    PredictiveInsightFeedbackStatus @default(PENDING) @map("status_feedback")
+  inferenceKey      String                          @map("chave_inferencia") @db.VarChar(191)
+  requestId         String?                         @map("request_id") @db.VarChar(191)
+  executionId       String?                         @map("execution_id") @db.VarChar(191)
+  snapshotDate      DateTime                        @map("data_snapshot")
+  historyWindowStart DateTime                       @map("janela_historica_inicio")
+  historyWindowEnd   DateTime                       @map("janela_historica_fim")
+  forecastWindowStart DateTime                      @map("janela_previsao_inicio")
+  forecastWindowEnd   DateTime                      @map("janela_previsao_fim")
+  resultSummary     String?                         @map("resumo_resultado") @db.Text
+  explanation       Json                            @map("explicacao_json")
+  signals           Json?                           @map("sinais_json")
+  recommendations   Json?                           @map("recomendacoes_json")
+  envelopeSnapshot  Json                            @map("snapshot_envelope_json")
+  feedbackNotes     String?                         @map("observacoes_feedback") @db.Text
+  feedbackAt        DateTime?                       @map("data_feedback")
+  createdAt         DateTime                        @default(now()) @map("data_criacao")
+  updatedAt         DateTime                        @updatedAt @map("data_atualizacao")
+  unit              Unit                            @relation(fields: [unitId], references: [id])
+  requestedBy       User?                           @relation("PredictiveInsightRequestedBy", fields: [requestedByUserId], references: [id])
+  feedbackBy        User?                           @relation("PredictiveInsightFeedbackBy", fields: [feedbackByUserId], references: [id])
+
+  @@unique([unitId, kind, snapshotDate], map: "InsightsPreditivos_unidade_id_tipo_data_snapshot_key")
+  @@index([unitId, kind, createdAt], map: "InsightsPreditivos_unidade_id_tipo_data_criacao_idx")
+  @@index([feedbackStatus, createdAt], map: "InsightsPreditivos_status_feedback_data_criacao_idx")
+  @@index([requestedByUserId], map: "InsightsPreditivos_usuario_solicitacao_id_idx")
+  @@index([feedbackByUserId], map: "InsightsPreditivos_usuario_feedback_id_idx")
+  @@map("InsightsPreditivos")
 }
 
 model Deposit {

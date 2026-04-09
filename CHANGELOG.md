@@ -46,6 +46,8 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O Bloco 4 da Fase 3 agora fecha o primeiro corte de analise preditiva e insights, com snapshots persistidos de previsao de demanda de agenda por unidade, rotas internas administrativas para geracao/listagem/feedback, secao minima em `/admin/agenda` e saida explicitamente mantida como recomendacao auditavel, sem automacao, provider real ou billing real.
+- O repositorio agora possui a suite minima reconhecivel e o checklist formal de saida do Bloco 4, com `npm run test:phase3:block4`, smoke tecnico proprio e gate conservador para abertura do Bloco 5 sem reavaliacao ampla dos blocos anteriores.
 - O Bloco 3 da Fase 3 agora fecha o primeiro corte assistivo de analise de imagem, com persistencia de `ImageAnalysis`, metadados de captura em `media assets`, rotas internas administrativas e UI minima em `documentos`, `report-cards` e `pets`, mantendo resultado assistivo, revisao humana obrigatoria, consentimento por finalidade e descarte por padrao do payload bruto.
 - O repositorio agora possui a suite minima reconhecivel e o checklist formal de saida do Bloco 3, com `npm run test:phase3:block3`, smoke tecnico proprio e gate conservador para abertura do Bloco 4 sem reavaliacao ampla dos Blocos 1 e 2.
 - O Bloco 2 da Fase 3 agora fecha a propagacao operacional do contexto multiunidade pelos modulos centrais (`appointments`, `finance`, `fiscal`, `inventory`, `messages`, `crm`, `employees`, `team-operations`, `services`, `waitlist`, `taxi-dog`, `pos`, `report-cards`, `documents`, `media` e `integration-events`), substituindo filtros cegos por `actor.unitId` por resolucao server-side do contexto ativo ou global autorizado sem abrir escrita estrutural cross-unit.
@@ -103,6 +105,7 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `docs/phase3-block4-test-suite.md` e `docs/phase3-block4-exit-checklist.md` como suite minima e checklist formal de saida do Bloco 4 para o Bloco 5.
 - `tests/server/phase3-block2-smoke.test.ts` como smoke reconhecivel do Bloco 2, cobrindo leituras operacionais multiunidade, bloqueio de escrita estrutural cross-unit e guardrails do portal do tutor.
 - `docs/phase3-block2-test-suite.md` e `docs/phase3-block2-exit-checklist.md` como suite minima e checklist formal de saida do Bloco 2 para o Bloco 3.
 - `server/jobs/ai.ts` como ponto unico inicial de scheduling logico da camada de IA, sem fila real de producao.
