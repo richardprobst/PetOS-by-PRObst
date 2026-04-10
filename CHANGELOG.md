@@ -182,6 +182,7 @@ Exemplo:
 - `scripts/sanitize-netlify-artifacts.mjs` e o comando `npm run netlify:artifacts:sanitize` para remover `.env*` empacotados indevidamente das functions do Netlify antes de um deploy manual.
 
 ### Fixed
+- As superficies administrativas que consomem persistencia de imagem e insight preditivo agora degradam de forma controlada quando o banco publicado esta com schema atrasado, evitando `500` bruto em `/admin/agenda`, `/admin/sistema` e leituras correlatas e expondo alerta explicito de migration pendente na governanca consolidada da Fase 3.
 - Ambiguidade documental que ainda sugeria fechamento incompleto do MVP mesmo apos a rodada manual bem-sucedida.
 - `eslint` passou a ignorar artefatos gerados em `.netlify`, evitando falso negativo de qualidade depois do link/deploy local via CLI.
 - O dominio de assinatura manual deixou de atribuir silenciosamente a assinatura ao operador interno como se ele fosse o signatario final do documento.

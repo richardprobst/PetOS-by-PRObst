@@ -3,6 +3,7 @@ import { afterEach, test } from 'node:test'
 import type { AuthenticatedUserData } from '../../../server/auth/types'
 import { prisma } from '../../../server/db/prisma'
 import { resetEnvironmentCacheForTests } from '../../../server/env'
+import { AppError } from '../../../server/http/errors'
 import { createAiInferenceRequest } from '../../../features/ai/domain'
 import { executeAiProviderAdapter } from '../../../server/integrations/ai/adapter'
 import { createInternalAppointmentDemandInsightAdapter } from '../../../features/insights/adapter'
@@ -83,6 +84,10 @@ function replaceMethod(target: object, key: string, value: unknown) {
 
     Reflect.deleteProperty(target, key)
   })
+}
+
+function createSchemaCompatibilityError(code: 'P2021' | 'P2022' = 'P2021') {
+  return Object.assign(new Error('Schema compatibility error'), { code })
 }
 
 async function withAiEnvironment<T>(
@@ -386,4 +391,38 @@ test('listPredictiveInsights respects the resolved multi-unit read context', asy
   assert.deepEqual(predictiveInsights, [])
   assert.equal(capturedUnitId, 'unit_branch')
   assert.equal(resolvePredictiveInsightReadUnitId(globalReadActor), 'unit_branch')
+})
+
+test('listPredictiveInsights degrades to an empty result when the predictive tables are not available yet', async () => {
+  replaceMethod(prisma as object, 'predictiveInsightSnapshot', {
+    findMany: async () => {
+      throw createSchemaCompatibilityError()
+    },
+  })
+
+  const predictiveInsights = await listPredictiveInsights(localActor, {
+    kind: 'APPOINTMENT_DEMAND_FORECAST',
+    limit: 5,
+  })
+
+  assert.deepEqual(predictiveInsights, [])
+})
+
+test('recordPredictiveInsightFeedback returns a controlled service-unavailable error when the predictive tables are missing', async () => {
+  replaceMethod(prisma as object, 'predictiveInsightSnapshot', {
+    findUnique: async () => {
+      throw createSchemaCompatibilityError()
+    },
+  })
+
+  await assert.rejects(
+    () =>
+      recordPredictiveInsightFeedback(localActor, 'insight_missing', {
+        feedbackStatus: 'ACKNOWLEDGED',
+      }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.status === 503 &&
+      /predictive insights storage is unavailable/i.test(error.message),
+  )
 })

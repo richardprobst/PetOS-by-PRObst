@@ -50,6 +50,10 @@ function replaceMethod(target: object, key: string, value: unknown) {
   })
 }
 
+function createSchemaCompatibilityError(code: 'P2021' | 'P2022' = 'P2021') {
+  return Object.assign(new Error('Schema compatibility error'), { code })
+}
+
 async function withAiEnvironment(
   overrides: Record<string, string | undefined>,
   callback: () => Promise<void>,
@@ -418,6 +422,54 @@ test('getPhase3GovernanceSnapshot reflects fail-closed governance when AI flags 
         ),
         true,
       )
+    },
+  )
+})
+
+test('getPhase3GovernanceSnapshot surfaces migration-pending storage as an explicit governance alert instead of crashing', async () => {
+  replaceMethod(prisma as object, 'imageAnalysis', {
+    count: async () => {
+      throw createSchemaCompatibilityError()
+    },
+    findFirst: async () => {
+      throw createSchemaCompatibilityError()
+    },
+  })
+
+  replaceMethod(prisma as object, 'predictiveInsightSnapshot', {
+    count: async () => {
+      throw createSchemaCompatibilityError()
+    },
+    findFirst: async () => {
+      throw createSchemaCompatibilityError()
+    },
+  })
+
+  replaceMethod(prisma as object, 'auditLog', {
+    count: async () => 0,
+    findFirst: async () => null,
+  })
+
+  await withAiEnvironment(
+    {
+      AI_ENABLED: 'true',
+      AI_IMAGE_ANALYSIS_BASE_QUOTA: '10',
+      AI_IMAGE_ANALYSIS_ENABLED: 'true',
+      AI_PREDICTIVE_INSIGHTS_BASE_QUOTA: '5',
+      AI_PREDICTIVE_INSIGHTS_ENABLED: 'true',
+    },
+    async () => {
+      const snapshot = await getPhase3GovernanceSnapshot(phase3Operator, {
+        now: new Date('2026-04-09T15:00:00.000Z'),
+      })
+      const alertKeys = new Set(snapshot.alerts.map((alert) => alert.key))
+
+      assert.equal(snapshot.imageAnalysis.storageStatus, 'MIGRATION_PENDING')
+      assert.equal(snapshot.predictiveInsights.storageStatus, 'MIGRATION_PENDING')
+      assert.equal(snapshot.phase.status, 'ATTENTION_REQUIRED')
+      assert.equal(alertKeys.has('IMAGE_STORAGE_UNAVAILABLE'), true)
+      assert.equal(alertKeys.has('PREDICTIVE_STORAGE_UNAVAILABLE'), true)
+      assert.equal(alertKeys.has('PREDICTIVE_SNAPSHOT_MISSING'), false)
     },
   )
 })

@@ -10,6 +10,11 @@ import {
   resolveScopedUnitId,
 } from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
+import {
+  createStorageUnavailableAppError,
+  isPrismaSchemaCompatibilityError,
+  withPrismaSchemaCompatibilityFallback,
+} from '@/server/db/prisma-schema-compat'
 import { AppError } from '@/server/http/errors'
 import { operationalStatusIds } from '@/features/appointments/constants'
 import { createAiInferenceRequest } from '@/features/ai/domain'
@@ -128,6 +133,10 @@ function assertCanRecordPredictiveInsightFeedback(actor: AuthenticatedUserData) 
     403,
     'Missing permission to record predictive insight feedback.',
   )
+}
+
+function createPredictiveInsightsStorageUnavailableError() {
+  return createStorageUnavailableAppError('predictive insights')
 }
 
 function getSnapshotDate(value?: Date) {
@@ -489,12 +498,22 @@ async function getPredictiveInsightByIdOrThrow(
   actor: AuthenticatedUserData,
   predictiveInsightId: string,
 ) {
-  const predictiveInsight = await prisma.predictiveInsightSnapshot.findUnique({
-    where: {
-      id: predictiveInsightId,
-    },
-    include: predictiveInsightDetailsInclude,
-  })
+  let predictiveInsight: PredictiveInsightSnapshotDetails | null
+
+  try {
+    predictiveInsight = await prisma.predictiveInsightSnapshot.findUnique({
+      where: {
+        id: predictiveInsightId,
+      },
+      include: predictiveInsightDetailsInclude,
+    })
+  } catch (error) {
+    if (isPrismaSchemaCompatibilityError(error)) {
+      throw createPredictiveInsightsStorageUnavailableError()
+    }
+
+    throw error
+  }
 
   if (!predictiveInsight) {
     throw new AppError('NOT_FOUND', 404, 'Predictive insight snapshot not found.')
@@ -527,16 +546,20 @@ export async function listPredictiveInsights(
         }
       : undefined
 
-  return prisma.predictiveInsightSnapshot.findMany({
-    where: {
-      ...(query.kind ? { kind: query.kind } : {}),
-      ...(snapshotDateFilter ? { snapshotDate: snapshotDateFilter } : {}),
-      unitId: scopedUnitId,
-    },
-    include: predictiveInsightDetailsInclude,
-    orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],
-    take: query.limit,
-  })
+  return withPrismaSchemaCompatibilityFallback(
+    () =>
+      prisma.predictiveInsightSnapshot.findMany({
+        where: {
+          ...(query.kind ? { kind: query.kind } : {}),
+          ...(snapshotDateFilter ? { snapshotDate: snapshotDateFilter } : {}),
+          unitId: scopedUnitId,
+        },
+        include: predictiveInsightDetailsInclude,
+        orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],
+        take: query.limit,
+      }),
+    () => [] as PredictiveInsightSnapshotDetails[],
+  )
 }
 
 export async function createPredictiveInsight(
@@ -558,38 +581,46 @@ export async function createPredictiveInsight(
     },
   )
 
-  return prisma.$transaction(async (tx) => {
-    const predictiveInsight = await persistPredictiveInsight(tx, actor, {
-      envelope: execution.envelope,
-      explanation,
-      kind: input.kind,
-      snapshotDate,
-    })
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const predictiveInsight = await persistPredictiveInsight(tx, actor, {
+        envelope: execution.envelope,
+        explanation,
+        kind: input.kind,
+        snapshotDate,
+      })
 
-    await writeAiExecutionAuditLogs(tx, {
-      actor,
-      envelope: execution.envelope,
-    })
-    await writeAuditLog(tx, {
-      action: 'predictive_insight.snapshot.generated',
-      details: {
-        executionStatus: predictiveInsight.executionStatus,
-        feedbackStatus: predictiveInsight.feedbackStatus,
-        forecastWindowEnd: predictiveInsight.forecastWindowEnd,
-        forecastWindowStart: predictiveInsight.forecastWindowStart,
-        historyWindowEnd: predictiveInsight.historyWindowEnd,
-        historyWindowStart: predictiveInsight.historyWindowStart,
-        kind: predictiveInsight.kind,
-        snapshotDate: predictiveInsight.snapshotDate,
-      },
-      entityId: predictiveInsight.id,
-      entityName: 'PredictiveInsightSnapshot',
-      unitId: predictiveInsight.unitId,
-      userId: actor.id,
-    })
+      await writeAiExecutionAuditLogs(tx, {
+        actor,
+        envelope: execution.envelope,
+      })
+      await writeAuditLog(tx, {
+        action: 'predictive_insight.snapshot.generated',
+        details: {
+          executionStatus: predictiveInsight.executionStatus,
+          feedbackStatus: predictiveInsight.feedbackStatus,
+          forecastWindowEnd: predictiveInsight.forecastWindowEnd,
+          forecastWindowStart: predictiveInsight.forecastWindowStart,
+          historyWindowEnd: predictiveInsight.historyWindowEnd,
+          historyWindowStart: predictiveInsight.historyWindowStart,
+          kind: predictiveInsight.kind,
+          snapshotDate: predictiveInsight.snapshotDate,
+        },
+        entityId: predictiveInsight.id,
+        entityName: 'PredictiveInsightSnapshot',
+        unitId: predictiveInsight.unitId,
+        userId: actor.id,
+      })
 
-    return predictiveInsight
-  })
+      return predictiveInsight
+    })
+  } catch (error) {
+    if (isPrismaSchemaCompatibilityError(error)) {
+      throw createPredictiveInsightsStorageUnavailableError()
+    }
+
+    throw error
+  }
 }
 
 export async function recordPredictiveInsightFeedback(
@@ -603,36 +634,44 @@ export async function recordPredictiveInsightFeedback(
     predictiveInsightId,
   )
 
-  return prisma.$transaction(async (tx) => {
-    const updated = await tx.predictiveInsightSnapshot.update({
-      where: {
-        id: predictiveInsight.id,
-      },
-      data: {
-        feedbackAt: new Date(),
-        feedbackByUserId: actor.id,
-        feedbackNotes: input.feedbackNotes ?? null,
-        feedbackStatus: input.feedbackStatus,
-      },
-      include: predictiveInsightDetailsInclude,
-    })
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.predictiveInsightSnapshot.update({
+        where: {
+          id: predictiveInsight.id,
+        },
+        data: {
+          feedbackAt: new Date(),
+          feedbackByUserId: actor.id,
+          feedbackNotes: input.feedbackNotes ?? null,
+          feedbackStatus: input.feedbackStatus,
+        },
+        include: predictiveInsightDetailsInclude,
+      })
 
-    await writeAuditLog(tx, {
-      action: 'predictive_insight.feedback.recorded',
-      details: {
-        feedbackStatus: updated.feedbackStatus,
-        notesPresent: Boolean(updated.feedbackNotes),
-        previousFeedbackStatus: predictiveInsight.feedbackStatus,
-        snapshotDate: updated.snapshotDate,
-      },
-      entityId: updated.id,
-      entityName: 'PredictiveInsightSnapshot',
-      unitId: updated.unitId,
-      userId: actor.id,
-    })
+      await writeAuditLog(tx, {
+        action: 'predictive_insight.feedback.recorded',
+        details: {
+          feedbackStatus: updated.feedbackStatus,
+          notesPresent: Boolean(updated.feedbackNotes),
+          previousFeedbackStatus: predictiveInsight.feedbackStatus,
+          snapshotDate: updated.snapshotDate,
+        },
+        entityId: updated.id,
+        entityName: 'PredictiveInsightSnapshot',
+        unitId: updated.unitId,
+        userId: actor.id,
+      })
 
-    return updated
-  })
+      return updated
+    })
+  } catch (error) {
+    if (isPrismaSchemaCompatibilityError(error)) {
+      throw createPredictiveInsightsStorageUnavailableError()
+    }
+
+    throw error
+  }
 }
 
 export async function getLatestAppointmentDemandInsight(
@@ -642,14 +681,18 @@ export async function getLatestAppointmentDemandInsight(
   assertCanViewPredictiveInsights(actor)
   const scopedUnitId = resolvePredictiveInsightReadUnitId(actor, requestedUnitId)
 
-  return prisma.predictiveInsightSnapshot.findFirst({
-    where: {
-      kind: 'APPOINTMENT_DEMAND_FORECAST',
-      unitId: scopedUnitId,
-    },
-    include: predictiveInsightDetailsInclude,
-    orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],
-  })
+  return withPrismaSchemaCompatibilityFallback(
+    () =>
+      prisma.predictiveInsightSnapshot.findFirst({
+        where: {
+          kind: 'APPOINTMENT_DEMAND_FORECAST',
+          unitId: scopedUnitId,
+        },
+        include: predictiveInsightDetailsInclude,
+        orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],
+      }),
+    () => null,
+  )
 }
 
 export function parsePredictiveInsightExplanation(input: unknown) {

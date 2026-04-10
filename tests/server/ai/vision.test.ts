@@ -13,6 +13,7 @@ import {
 import { createInternalAssistiveVisionAdapter } from '../../../features/ai/vision/adapter'
 import {
   createImageAnalysis,
+  listImageAnalyses,
   resolveImageAnalysisReadUnitId,
   reviewImageAnalysis,
 } from '../../../features/ai/vision/services'
@@ -144,6 +145,10 @@ function replaceMethod(target: object, key: string, value: unknown) {
 
     Reflect.deleteProperty(target, key)
   })
+}
+
+function createSchemaCompatibilityError(code: 'P2021' | 'P2022' = 'P2021') {
+  return Object.assign(new Error('Schema compatibility error'), { code })
 }
 
 test(
@@ -498,5 +503,44 @@ test(
   () => {
   assert.equal(resolveImageAnalysisReadUnitId(localActor), 'unit_local')
   assert.equal(resolveImageAnalysisReadUnitId(globalReadActor), 'unit_branch')
+  },
+)
+
+test(
+  'listImageAnalyses degrades to an empty result when the image-analysis tables are not available yet',
+  { concurrency: false },
+  async () => {
+  replaceMethod(prisma as object, 'imageAnalysis', {
+    findMany: async () => {
+      throw createSchemaCompatibilityError()
+    },
+  })
+
+  const analyses = await listImageAnalyses(localActor, {})
+
+  assert.deepEqual(analyses, [])
+  },
+)
+
+test(
+  'reviewImageAnalysis returns a controlled service-unavailable error when the image-analysis tables are missing',
+  { concurrency: false },
+  async () => {
+  replaceMethod(prisma as object, 'imageAnalysis', {
+    findUnique: async () => {
+      throw createSchemaCompatibilityError()
+    },
+  })
+
+  await assert.rejects(
+    () =>
+      reviewImageAnalysis(localActor, 'analysis_missing', {
+        decision: 'APPROVED',
+      }),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.status === 503 &&
+      /assistive image analysis storage is unavailable/i.test(error.message),
+  )
   },
 )

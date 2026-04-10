@@ -5,6 +5,11 @@ import { writeAuditLog } from '@/server/audit/logging'
 import { writeAiExecutionAuditLogs } from '@/server/audit/ai'
 import { assertPermission } from '@/server/authorization/access-control'
 import { prisma } from '@/server/db/prisma'
+import {
+  createStorageUnavailableAppError,
+  isPrismaSchemaCompatibilityError,
+  withPrismaSchemaCompatibilityFallback,
+} from '@/server/db/prisma-schema-compat'
 import { AppError } from '@/server/http/errors'
 import { createAiInferenceRequest } from '@/features/ai/domain'
 import type { AiExecutionEnvelope } from '@/features/ai/schemas'
@@ -68,6 +73,10 @@ type MediaAssetForAnalysis = Prisma.MediaAssetGetPayload<{
 type ImageAnalysisOrigin = 'ADMIN_API' | 'SERVER_ACTION'
 
 const internalVisionAdapter = createInternalAssistiveVisionAdapter()
+
+function createImageAnalysisStorageUnavailableError() {
+  return createStorageUnavailableAppError('assistive image analysis')
+}
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
@@ -429,27 +438,31 @@ export async function listImageAnalyses(
   assertPermission(actor, 'ai.imagem.visualizar')
   const unitId = resolveImageAnalysisReadUnitId(actor, query.unitId ?? null)
 
-  return prisma.imageAnalysis.findMany({
-    where: {
-      ...(unitId ? { unitId } : {}),
-      ...(query.appointmentId ? { appointmentId: query.appointmentId } : {}),
-      ...(query.kind ? { kind: query.kind } : {}),
-      ...(query.mediaAssetId
-        ? {
-            OR: [
-              { mediaAssetId: query.mediaAssetId },
-              { comparisonMediaAssetId: query.mediaAssetId },
-            ],
-          }
-        : {}),
-      ...(query.petId ? { petId: query.petId } : {}),
-      ...(query.reviewStatus ? { reviewStatus: query.reviewStatus } : {}),
-    },
-    include: imageAnalysisDetailsInclude,
-    orderBy: {
-      createdAt: 'desc',
-    },
-  })
+  return withPrismaSchemaCompatibilityFallback(
+    () =>
+      prisma.imageAnalysis.findMany({
+        where: {
+          ...(unitId ? { unitId } : {}),
+          ...(query.appointmentId ? { appointmentId: query.appointmentId } : {}),
+          ...(query.kind ? { kind: query.kind } : {}),
+          ...(query.mediaAssetId
+            ? {
+                OR: [
+                  { mediaAssetId: query.mediaAssetId },
+                  { comparisonMediaAssetId: query.mediaAssetId },
+                ],
+              }
+            : {}),
+          ...(query.petId ? { petId: query.petId } : {}),
+          ...(query.reviewStatus ? { reviewStatus: query.reviewStatus } : {}),
+        },
+        include: imageAnalysisDetailsInclude,
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+    () => [] as ImageAnalysisDetails[],
+  )
 }
 
 export async function createImageAnalysis(
@@ -513,12 +526,20 @@ export async function createImageAnalysis(
     },
   })
 
-  return persistImageAnalysis(actor, {
-    comparisonMediaAsset,
-    envelope: executionResult.envelope,
-    kind: input.kind,
-    primaryMediaAsset,
-  })
+  try {
+    return await persistImageAnalysis(actor, {
+      comparisonMediaAsset,
+      envelope: executionResult.envelope,
+      kind: input.kind,
+      primaryMediaAsset,
+    })
+  } catch (error) {
+    if (isPrismaSchemaCompatibilityError(error)) {
+      throw createImageAnalysisStorageUnavailableError()
+    }
+
+    throw error
+  }
 }
 
 export async function reviewImageAnalysis(
@@ -527,12 +548,22 @@ export async function reviewImageAnalysis(
   input: ReviewImageAnalysisInput,
 ) {
   assertPermission(actor, 'ai.imagem.revisar')
-  const imageAnalysis = await prisma.imageAnalysis.findUnique({
-    where: {
-      id: imageAnalysisId,
-    },
-    include: imageAnalysisDetailsInclude,
-  })
+  let imageAnalysis: ImageAnalysisDetails | null
+
+  try {
+    imageAnalysis = await prisma.imageAnalysis.findUnique({
+      where: {
+        id: imageAnalysisId,
+      },
+      include: imageAnalysisDetailsInclude,
+    })
+  } catch (error) {
+    if (isPrismaSchemaCompatibilityError(error)) {
+      throw createImageAnalysisStorageUnavailableError()
+    }
+
+    throw error
+  }
 
   if (!imageAnalysis) {
     throw new AppError('NOT_FOUND', 404, 'Image analysis not found.')
@@ -557,51 +588,61 @@ export async function reviewImageAnalysis(
   }
 
   const reviewedAt = new Date()
-  const updated = await prisma.$transaction(async (tx) => {
-    const updatedImageAnalysis = await tx.imageAnalysis.update({
-      where: {
-        id: imageAnalysisId,
-      },
-      data: {
-        reviewNotes: input.reviewNotes ?? null,
-        reviewStatus: input.decision,
-        reviewedAt,
-        reviewedByUserId: actor.id,
-      },
-      include: imageAnalysisDetailsInclude,
+  let updated: ImageAnalysisDetails
+
+  try {
+    updated = await prisma.$transaction(async (tx) => {
+      const updatedImageAnalysis = await tx.imageAnalysis.update({
+        where: {
+          id: imageAnalysisId,
+        },
+        data: {
+          reviewNotes: input.reviewNotes ?? null,
+          reviewStatus: input.decision,
+          reviewedAt,
+          reviewedByUserId: actor.id,
+        },
+        include: imageAnalysisDetailsInclude,
+      })
+
+      await writeAuditLog(tx, {
+        action: 'image_analysis.review',
+        details: {
+          decision: input.decision,
+          reviewNotes: input.reviewNotes ?? null,
+        },
+        entityId: updatedImageAnalysis.id,
+        entityName: 'ImageAnalysis',
+        unitId: updatedImageAnalysis.unitId,
+        userId: actor.id,
+      })
+
+      const envelope = parseVisionEnvelopeSnapshot(imageAnalysis.envelopeSnapshot)
+        .envelope as AiExecutionEnvelope
+
+      await writeAiExecutionAuditLogs(tx, {
+        actor,
+        envelope,
+        humanDecision: {
+          decidedAt: reviewedAt,
+          decidedByUserId: actor.id,
+          decisionReasonCode: input.decision,
+          decisionType: 'IMAGE_ANALYSIS_REVIEW',
+          justificationSummary:
+            input.reviewNotes ??
+            `Assistive image analysis ${input.decision.toLowerCase()} by operator review.`,
+        },
+      })
+
+      return updatedImageAnalysis
     })
+  } catch (error) {
+    if (isPrismaSchemaCompatibilityError(error)) {
+      throw createImageAnalysisStorageUnavailableError()
+    }
 
-    await writeAuditLog(tx, {
-      action: 'image_analysis.review',
-      details: {
-        decision: input.decision,
-        reviewNotes: input.reviewNotes ?? null,
-      },
-      entityId: updatedImageAnalysis.id,
-      entityName: 'ImageAnalysis',
-      unitId: updatedImageAnalysis.unitId,
-      userId: actor.id,
-    })
-
-    const envelope = parseVisionEnvelopeSnapshot(imageAnalysis.envelopeSnapshot)
-      .envelope as AiExecutionEnvelope
-
-    await writeAiExecutionAuditLogs(tx, {
-      actor,
-      envelope,
-      humanDecision: {
-        decidedAt: reviewedAt,
-        decidedByUserId: actor.id,
-        decisionReasonCode: input.decision,
-        decisionType: 'IMAGE_ANALYSIS_REVIEW',
-        justificationSummary:
-          input.reviewNotes ??
-          `Assistive image analysis ${input.decision.toLowerCase()} by operator review.`,
-      },
-    })
-
-    return updatedImageAnalysis
-  })
+    throw error
+  }
 
   return updated
 }

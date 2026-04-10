@@ -6,6 +6,7 @@ import type { AiQuotaEnvironment } from '@/features/ai/policy'
 import { getMultiUnitFoundationDiagnostics } from '@/features/multiunit/admin-diagnostics'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { prisma } from '@/server/db/prisma'
+import { isPrismaSchemaCompatibilityError } from '@/server/db/prisma-schema-compat'
 
 type GovernanceAlertSeverity = 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL'
 type GovernanceAlertSource =
@@ -33,6 +34,7 @@ export interface Phase3GovernanceImageSummary {
   latestReviewedAt: Date | null
   pendingHumanReview: number
   rejectedReviews: number
+  storageStatus: 'AVAILABLE' | 'MIGRATION_PENDING'
   totalSnapshots: number
 }
 
@@ -45,6 +47,7 @@ export interface Phase3GovernancePredictiveSummary {
   latestSnapshotDate: Date | null
   notUsefulFeedback: number
   pendingFeedback: number
+  storageStatus: 'AVAILABLE' | 'MIGRATION_PENDING'
   totalSnapshots: number
 }
 
@@ -64,7 +67,9 @@ export interface Phase3GovernanceAlert {
   key:
     | 'AI_GLOBAL_FAIL_CLOSED'
     | 'IMAGE_MODULE_GUARD_ACTIVE'
+    | 'IMAGE_STORAGE_UNAVAILABLE'
     | 'PREDICTIVE_MODULE_GUARD_ACTIVE'
+    | 'PREDICTIVE_STORAGE_UNAVAILABLE'
     | 'IMAGE_REVIEW_BACKLOG'
     | 'IMAGE_FAILURES_PRESENT'
     | 'PREDICTIVE_SNAPSHOT_MISSING'
@@ -246,6 +251,19 @@ function buildAlerts(input: {
     })
   }
 
+  if (input.imageAnalysis.storageStatus !== 'AVAILABLE') {
+    alerts.push({
+      actionRequired: true,
+      key: 'IMAGE_STORAGE_UNAVAILABLE',
+      nextStep: 'Aplicar Prisma migrations no ambiente antes de usar as superficies administrativas de imagem.',
+      severity: 'ERROR',
+      source: 'IMAGE_ANALYSIS',
+      summary:
+        'A persistencia do fluxo assistivo de imagem nao esta disponivel no schema atual do banco.',
+      title: 'Storage de imagem indisponivel no banco',
+    })
+  }
+
   if (
     predictiveFlagStatus !== 'ENABLED' ||
     predictiveModule?.current.status === 'BLOCKED'
@@ -262,7 +280,23 @@ function buildAlerts(input: {
     })
   }
 
-  if (input.imageAnalysis.pendingHumanReview > 0) {
+  if (input.predictiveInsights.storageStatus !== 'AVAILABLE') {
+    alerts.push({
+      actionRequired: true,
+      key: 'PREDICTIVE_STORAGE_UNAVAILABLE',
+      nextStep: 'Aplicar Prisma migrations no ambiente antes de usar as superficies administrativas de insight preditivo.',
+      severity: 'ERROR',
+      source: 'PREDICTIVE_INSIGHTS',
+      summary:
+        'A persistencia dos snapshots preditivos nao esta disponivel no schema atual do banco.',
+      title: 'Storage preditivo indisponivel no banco',
+    })
+  }
+
+  if (
+    input.imageAnalysis.storageStatus === 'AVAILABLE' &&
+    input.imageAnalysis.pendingHumanReview > 0
+  ) {
     alerts.push({
       actionRequired: true,
       key: 'IMAGE_REVIEW_BACKLOG',
@@ -275,8 +309,11 @@ function buildAlerts(input: {
   }
 
   if (
-    input.imageAnalysis.failedExecutions > 0 ||
-    input.imageAnalysis.blockedExecutions > 0
+    input.imageAnalysis.storageStatus === 'AVAILABLE' &&
+    (
+      input.imageAnalysis.failedExecutions > 0 ||
+      input.imageAnalysis.blockedExecutions > 0
+    )
   ) {
     alerts.push({
       actionRequired: true,
@@ -289,7 +326,10 @@ function buildAlerts(input: {
     })
   }
 
-  if (input.predictiveInsights.totalSnapshots === 0) {
+  if (
+    input.predictiveInsights.storageStatus === 'AVAILABLE' &&
+    input.predictiveInsights.totalSnapshots === 0
+  ) {
     alerts.push({
       actionRequired: true,
       key: 'PREDICTIVE_SNAPSHOT_MISSING',
@@ -302,7 +342,10 @@ function buildAlerts(input: {
     })
   }
 
-  if (input.predictiveInsights.notUsefulFeedback > 0) {
+  if (
+    input.predictiveInsights.storageStatus === 'AVAILABLE' &&
+    input.predictiveInsights.notUsefulFeedback > 0
+  ) {
     alerts.push({
       actionRequired: true,
       key: 'PREDICTIVE_NOT_USEFUL',
@@ -314,7 +357,10 @@ function buildAlerts(input: {
     })
   }
 
-  if (input.predictiveInsights.pendingFeedback > 0) {
+  if (
+    input.predictiveInsights.storageStatus === 'AVAILABLE' &&
+    input.predictiveInsights.pendingFeedback > 0
+  ) {
     alerts.push({
       actionRequired: false,
       key: 'PREDICTIVE_PENDING_FEEDBACK',
@@ -363,153 +409,192 @@ function buildAlerts(input: {
 }
 
 async function buildImageAnalysisSummary(): Promise<Phase3GovernanceImageSummary> {
-  const [
-    totalSnapshots,
-    blockedExecutions,
-    failedExecutions,
-    pendingHumanReview,
-    approvedReviews,
-    rejectedReviews,
-    latestCreated,
-    latestReviewed,
-  ] = await Promise.all([
-    prisma.imageAnalysis.count(),
-    prisma.imageAnalysis.count({
-      where: {
-        executionStatus: 'BLOCKED',
-      },
-    }),
-    prisma.imageAnalysis.count({
-      where: {
-        executionStatus: 'FAILED',
-      },
-    }),
-    prisma.imageAnalysis.count({
-      where: {
-        reviewStatus: 'PENDING_REVIEW',
-      },
-    }),
-    prisma.imageAnalysis.count({
-      where: {
-        reviewStatus: 'APPROVED',
-      },
-    }),
-    prisma.imageAnalysis.count({
-      where: {
-        reviewStatus: 'REJECTED',
-      },
-    }),
-    prisma.imageAnalysis.findFirst({
-      orderBy: {
-        createdAt: 'desc',
-      },
-      select: {
-        createdAt: true,
-      },
-    }),
-    prisma.imageAnalysis.findFirst({
-      where: {
-        reviewedAt: {
-          not: null,
+  try {
+    const [
+      totalSnapshots,
+      blockedExecutions,
+      failedExecutions,
+      pendingHumanReview,
+      approvedReviews,
+      rejectedReviews,
+      latestCreated,
+      latestReviewed,
+    ] = await Promise.all([
+      prisma.imageAnalysis.count(),
+      prisma.imageAnalysis.count({
+        where: {
+          executionStatus: 'BLOCKED',
         },
-      },
-      orderBy: {
-        reviewedAt: 'desc',
-      },
-      select: {
-        reviewedAt: true,
-      },
-    }),
-  ])
+      }),
+      prisma.imageAnalysis.count({
+        where: {
+          executionStatus: 'FAILED',
+        },
+      }),
+      prisma.imageAnalysis.count({
+        where: {
+          reviewStatus: 'PENDING_REVIEW',
+        },
+      }),
+      prisma.imageAnalysis.count({
+        where: {
+          reviewStatus: 'APPROVED',
+        },
+      }),
+      prisma.imageAnalysis.count({
+        where: {
+          reviewStatus: 'REJECTED',
+        },
+      }),
+      prisma.imageAnalysis.findFirst({
+        orderBy: {
+          createdAt: 'desc',
+        },
+        select: {
+          createdAt: true,
+        },
+      }),
+      prisma.imageAnalysis.findFirst({
+        where: {
+          reviewedAt: {
+            not: null,
+          },
+        },
+        orderBy: {
+          reviewedAt: 'desc',
+        },
+        select: {
+          reviewedAt: true,
+        },
+      }),
+    ])
 
-  return {
-    approvedReviews,
-    blockedExecutions,
-    failedExecutions,
-    latestCreatedAt: latestCreated?.createdAt ?? null,
-    latestReviewedAt: latestReviewed?.reviewedAt ?? null,
-    pendingHumanReview,
-    rejectedReviews,
-    totalSnapshots,
+    return {
+      approvedReviews,
+      blockedExecutions,
+      failedExecutions,
+      latestCreatedAt: latestCreated?.createdAt ?? null,
+      latestReviewedAt: latestReviewed?.reviewedAt ?? null,
+      pendingHumanReview,
+      rejectedReviews,
+      storageStatus: 'AVAILABLE',
+      totalSnapshots,
+    }
+  } catch (error) {
+    if (!isPrismaSchemaCompatibilityError(error)) {
+      throw error
+    }
+
+    return {
+      approvedReviews: 0,
+      blockedExecutions: 0,
+      failedExecutions: 0,
+      latestCreatedAt: null,
+      latestReviewedAt: null,
+      pendingHumanReview: 0,
+      rejectedReviews: 0,
+      storageStatus: 'MIGRATION_PENDING',
+      totalSnapshots: 0,
+    }
   }
 }
 
 async function buildPredictiveInsightSummary(): Promise<Phase3GovernancePredictiveSummary> {
-  const [
-    totalSnapshots,
-    blockedExecutions,
-    failedExecutions,
-    pendingFeedback,
-    acknowledgedFeedback,
-    actionPlannedFeedback,
-    notUsefulFeedback,
-    latestSnapshot,
-    latestFeedback,
-  ] = await Promise.all([
-    prisma.predictiveInsightSnapshot.count(),
-    prisma.predictiveInsightSnapshot.count({
-      where: {
-        executionStatus: 'BLOCKED',
-      },
-    }),
-    prisma.predictiveInsightSnapshot.count({
-      where: {
-        executionStatus: 'FAILED',
-      },
-    }),
-    prisma.predictiveInsightSnapshot.count({
-      where: {
-        feedbackStatus: 'PENDING',
-      },
-    }),
-    prisma.predictiveInsightSnapshot.count({
-      where: {
-        feedbackStatus: 'ACKNOWLEDGED',
-      },
-    }),
-    prisma.predictiveInsightSnapshot.count({
-      where: {
-        feedbackStatus: 'ACTION_PLANNED',
-      },
-    }),
-    prisma.predictiveInsightSnapshot.count({
-      where: {
-        feedbackStatus: 'NOT_USEFUL',
-      },
-    }),
-    prisma.predictiveInsightSnapshot.findFirst({
-      orderBy: {
-        snapshotDate: 'desc',
-      },
-      select: {
-        snapshotDate: true,
-      },
-    }),
-    prisma.predictiveInsightSnapshot.findFirst({
-      where: {
-        feedbackAt: {
-          not: null,
+  try {
+    const [
+      totalSnapshots,
+      blockedExecutions,
+      failedExecutions,
+      pendingFeedback,
+      acknowledgedFeedback,
+      actionPlannedFeedback,
+      notUsefulFeedback,
+      latestSnapshot,
+      latestFeedback,
+    ] = await Promise.all([
+      prisma.predictiveInsightSnapshot.count(),
+      prisma.predictiveInsightSnapshot.count({
+        where: {
+          executionStatus: 'BLOCKED',
         },
-      },
-      orderBy: {
-        feedbackAt: 'desc',
-      },
-      select: {
-        feedbackAt: true,
-      },
-    }),
-  ])
+      }),
+      prisma.predictiveInsightSnapshot.count({
+        where: {
+          executionStatus: 'FAILED',
+        },
+      }),
+      prisma.predictiveInsightSnapshot.count({
+        where: {
+          feedbackStatus: 'PENDING',
+        },
+      }),
+      prisma.predictiveInsightSnapshot.count({
+        where: {
+          feedbackStatus: 'ACKNOWLEDGED',
+        },
+      }),
+      prisma.predictiveInsightSnapshot.count({
+        where: {
+          feedbackStatus: 'ACTION_PLANNED',
+        },
+      }),
+      prisma.predictiveInsightSnapshot.count({
+        where: {
+          feedbackStatus: 'NOT_USEFUL',
+        },
+      }),
+      prisma.predictiveInsightSnapshot.findFirst({
+        orderBy: {
+          snapshotDate: 'desc',
+        },
+        select: {
+          snapshotDate: true,
+        },
+      }),
+      prisma.predictiveInsightSnapshot.findFirst({
+        where: {
+          feedbackAt: {
+            not: null,
+          },
+        },
+        orderBy: {
+          feedbackAt: 'desc',
+        },
+        select: {
+          feedbackAt: true,
+        },
+      }),
+    ])
 
-  return {
-    acknowledgedFeedback,
-    actionPlannedFeedback,
-    blockedExecutions,
-    failedExecutions,
-    latestFeedbackAt: latestFeedback?.feedbackAt ?? null,
-    latestSnapshotDate: latestSnapshot?.snapshotDate ?? null,
-    notUsefulFeedback,
-    pendingFeedback,
-    totalSnapshots,
+    return {
+      acknowledgedFeedback,
+      actionPlannedFeedback,
+      blockedExecutions,
+      failedExecutions,
+      latestFeedbackAt: latestFeedback?.feedbackAt ?? null,
+      latestSnapshotDate: latestSnapshot?.snapshotDate ?? null,
+      notUsefulFeedback,
+      pendingFeedback,
+      storageStatus: 'AVAILABLE',
+      totalSnapshots,
+    }
+  } catch (error) {
+    if (!isPrismaSchemaCompatibilityError(error)) {
+      throw error
+    }
+
+    return {
+      acknowledgedFeedback: 0,
+      actionPlannedFeedback: 0,
+      blockedExecutions: 0,
+      failedExecutions: 0,
+      latestFeedbackAt: null,
+      latestSnapshotDate: null,
+      notUsefulFeedback: 0,
+      pendingFeedback: 0,
+      storageStatus: 'MIGRATION_PENDING',
+      totalSnapshots: 0,
+    }
   }
 }
 
