@@ -81,6 +81,28 @@ export const configurationRegistry = [
   },
   {
     category: 'GENERAL',
+    criticalChange: false,
+    description: 'E-mail institucional principal exposto nas superficies publicas e administrativas.',
+    key: 'tenant.contact.support_email',
+    label: 'E-mail institucional',
+    mutability: 'ADMIN_EDITABLE',
+    scope: 'TENANT_GLOBAL',
+    source: 'SYSTEM_SETTING',
+    valueKind: 'STRING',
+  },
+  {
+    category: 'GENERAL',
+    criticalChange: false,
+    description: 'Telefone institucional principal exposto nas superficies publicas e administrativas.',
+    key: 'tenant.contact.support_phone',
+    label: 'Telefone institucional',
+    mutability: 'ADMIN_EDITABLE',
+    scope: 'TENANT_GLOBAL',
+    source: 'SYSTEM_SETTING',
+    valueKind: 'STRING',
+  },
+  {
+    category: 'GENERAL',
     criticalChange: true,
     description: 'Timezone default do runtime mantido em ambiente como referencia bloqueada.',
     environmentKey: 'DEFAULT_TIMEZONE',
@@ -260,6 +282,29 @@ export const configurationRegistry = [
   {
     category: 'AI',
     criticalChange: true,
+    description: 'Estado desejado administrativo do assistente virtual, separado do gate real por ambiente.',
+    fallbackValue: 'false',
+    key: 'ai.virtual_assistant.desired_enabled',
+    label: 'Assistente virtual desejado',
+    mutability: 'ADMIN_EDITABLE',
+    scope: 'SYSTEM_GLOBAL',
+    source: 'SYSTEM_SETTING',
+    valueKind: 'BOOLEAN',
+  },
+  {
+    category: 'AI',
+    criticalChange: true,
+    description: 'Quota desejada administrativa do assistente virtual, separada da quota real do runtime.',
+    key: 'ai.virtual_assistant.desired_base_quota',
+    label: 'Quota desejada do assistente virtual',
+    mutability: 'ADMIN_EDITABLE',
+    scope: 'SYSTEM_GLOBAL',
+    source: 'SYSTEM_SETTING',
+    valueKind: 'INTEGER',
+  },
+  {
+    category: 'AI',
+    criticalChange: true,
     description: 'Flag de runtime da camada assistiva do assistente virtual.',
     environmentKey: 'AI_VIRTUAL_ASSISTANT_ENABLED',
     key: 'ai.virtual_assistant.enabled',
@@ -284,6 +329,29 @@ export const configurationRegistry = [
   {
     category: 'AI',
     criticalChange: true,
+    description: 'Estado desejado administrativo da analise assistiva de imagem.',
+    fallbackValue: 'false',
+    key: 'ai.image_analysis.desired_enabled',
+    label: 'Analise de imagem desejada',
+    mutability: 'ADMIN_EDITABLE',
+    scope: 'SYSTEM_GLOBAL',
+    source: 'SYSTEM_SETTING',
+    valueKind: 'BOOLEAN',
+  },
+  {
+    category: 'AI',
+    criticalChange: true,
+    description: 'Quota desejada administrativa da analise assistiva de imagem.',
+    key: 'ai.image_analysis.desired_base_quota',
+    label: 'Quota desejada da analise de imagem',
+    mutability: 'ADMIN_EDITABLE',
+    scope: 'SYSTEM_GLOBAL',
+    source: 'SYSTEM_SETTING',
+    valueKind: 'INTEGER',
+  },
+  {
+    category: 'AI',
+    criticalChange: true,
     description: 'Flag da analise assistiva de imagem lida do runtime.',
     environmentKey: 'AI_IMAGE_ANALYSIS_ENABLED',
     key: 'ai.image_analysis.enabled',
@@ -292,6 +360,29 @@ export const configurationRegistry = [
     scope: 'SYSTEM_GLOBAL',
     source: 'ENVIRONMENT',
     valueKind: 'BOOLEAN',
+  },
+  {
+    category: 'AI',
+    criticalChange: true,
+    description: 'Estado desejado administrativo dos snapshots preditivos.',
+    fallbackValue: 'false',
+    key: 'ai.predictive_insights.desired_enabled',
+    label: 'Insights preditivos desejados',
+    mutability: 'ADMIN_EDITABLE',
+    scope: 'SYSTEM_GLOBAL',
+    source: 'SYSTEM_SETTING',
+    valueKind: 'BOOLEAN',
+  },
+  {
+    category: 'AI',
+    criticalChange: true,
+    description: 'Quota desejada administrativa dos snapshots preditivos.',
+    key: 'ai.predictive_insights.desired_base_quota',
+    label: 'Quota desejada dos insights preditivos',
+    mutability: 'ADMIN_EDITABLE',
+    scope: 'SYSTEM_GLOBAL',
+    source: 'SYSTEM_SETTING',
+    valueKind: 'INTEGER',
   },
   {
     category: 'AI',
@@ -360,4 +451,8 @@ export function getConfigurationScopeLabel(scope: ConfigurationScopeKey) {
 
 export function getConfigurationCategoryLabel(category: ConfigurationCategoryKey) {
   return configurationCategoryLabels[category]
+}
+
+export function getConfigurationRegistryDefinition(key: string) {
+  return configurationRegistry.find((definition) => definition.key === key) ?? null
 }

@@ -21,7 +21,7 @@ O schema atual cobre:
 - MVP operacional completo;
 - fundacao e blocos entregues da Fase 2;
 - baseline tecnica conservadora da Fase 3;
-- abertura fundacional da Fase 5 para configuracao central.
+- fechamento da Fase 5 para configuracao central, integracoes administrativas e white label.
 
 Isso significa que o schema ja contem:
 
@@ -74,15 +74,35 @@ Tabelas:
 
 - `SystemSetting`
 - `ConfigurationChange`
+- `ConfigurationApproval`
+- `ConfigurationPublish`
 
 Pontos importantes:
 
 - `SystemSetting` abre a fundacao de configuracao central com escopo, categoria, tipo de valor e trilha de atualizacao;
 - `ConfigurationChange` registra mudancas sensiveis e prepara publish, aprovacao e rollback dos blocos seguintes da Fase 5;
-- a fundacao atual ainda nao trata segredo como configuracao comum e nao substitui `env` para runtime critico;
-- o modelo foi aberto para centralizacao futura de white label, dominios e integracoes sem fork do produto.
+- `ConfigurationApproval` e `ConfigurationPublish` fecham a trilha de publish, aprovacao e rollback do modulo central;
+- a camada continua sem tratar segredo como configuracao comum e nao substitui `env` para runtime critico.
 
-### 3.4. Cliente, pet e ownership
+### 3.4. White label e integracoes administrativas
+
+Tabelas:
+
+- `TenantBranding`
+- `UnitBranding`
+- `BrandAsset`
+- `DomainBinding`
+- `IntegrationConnection`
+- `IntegrationSecret`
+
+Pontos importantes:
+
+- branding e dominio agora possuem runtime server-side por superficie;
+- a hierarquia e plataforma default -> tenant -> unidade;
+- segredo continua separado de configuracao comum e e armazenado cifrado;
+- publish do branding nao depende de fork por cliente nem de `.env` por identidade visual.
+
+### 3.5. Cliente, pet e ownership
 
 Tabelas:
 
@@ -96,7 +116,7 @@ Pontos importantes:
 - cliente e pet preservam ownership e visibilidade base por unidade;
 - leituras e mutacoes sensiveis precisam respeitar escopo server-side.
 
-### 3.5. Catalogo operacional e equipe
+### 3.6. Catalogo operacional e equipe
 
 Tabelas:
 
@@ -109,7 +129,7 @@ Pontos importantes:
 - funcionario guarda papel operacional, configuracao de comissao e dados base de jornada;
 - a comissao materializada fica vinculada aos itens efetivos do atendimento.
 
-### 3.6. Agenda e atendimento
+### 3.7. Agenda e atendimento
 
 Tabelas:
 
@@ -132,7 +152,7 @@ Pontos importantes:
 - `TutorPreCheckIn` adiciona a preparacao do tutor antes do atendimento;
 - capacidade, bloqueios, waitlist e Taxi Dog pertencem ao dominio operacional real da Fase 2.
 
-### 3.7. Comunicacao
+### 3.8. Comunicacao
 
 Tabelas:
 
@@ -149,7 +169,7 @@ Pontos importantes:
 - CRM e comunicacao ampliada preservam criterio auditavel de execucao;
 - um destinatario descartado por falta de consentimento ou destino continua rastreavel.
 
-### 3.8. Financeiro e fiscal
+### 3.9. Financeiro e fiscal
 
 Tabelas:
 
@@ -168,7 +188,7 @@ Pontos importantes:
 - eventos externos sustentam idempotencia, reconciliacao e reprocessamento controlado;
 - fiscal permanece no recorte minimo da Fase 2.
 
-### 3.9. Documentos, assinaturas e midia
+### 3.10. Documentos, assinaturas e midia
 
 Tabelas:
 
@@ -183,7 +203,7 @@ Pontos importantes:
 - acesso passa por permissao, ownership e vinculo com unidade, cliente, pet ou atendimento;
 - `MediaAsset` agora tambem sustenta analise de imagem.
 
-### 3.10. PDV e estoque
+### 3.11. PDV e estoque
 
 Tabelas:
 
@@ -200,7 +220,7 @@ Pontos importantes:
 - venda concluida fecha estoque e financeiro na mesma operacao;
 - o schema continua sem virar ERP amplo.
 
-### 3.11. Equipe, ponto e payroll
+### 3.12. Equipe, ponto e payroll
 
 Tabelas:
 
@@ -215,7 +235,7 @@ Pontos importantes:
 - isso nao representa modulo trabalhista completo;
 - a unidade continua sendo o escopo primario dessas entidades.
 
-### 3.12. Runtime, recovery e updater
+### 3.13. Runtime, recovery e updater
 
 Tabelas:
 

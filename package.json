@@ -26,7 +26,7 @@
     "test:phase3:block5": "node --import tsx --test --test-isolation=none tests/server/ai/*.test.ts tests/server/multiunit/*.test.ts tests/server/appointments/*.test.ts tests/server/documents/*.test.ts tests/server/tutor/*.test.ts tests/server/phase3-governance.test.ts tests/server/phase3-block*.test.ts",
     "test:phase3": "npm run test:phase3:block5",
     "test:phase4": "node --import tsx --test --test-isolation=none tests/server/assistant/*.test.ts tests/server/ai/*.test.ts tests/server/tutor/*.test.ts tests/server/phase4-smoke.test.ts",
-    "test:phase5:block1": "node --import tsx --test --test-isolation=none tests/server/configuration/*.test.ts",
+    "test:phase5:block1": "node --import tsx --test --test-isolation=none tests/server/configuration/*.test.ts tests/server/branding/*.test.ts tests/server/integrations-admin/*.test.ts tests/server/phase5-smoke.test.ts",
     "test:phase5": "npm run test:phase5:block1",
     "test:watch": "node --import tsx --test --test-isolation=none --watch tests/**/*.test.ts",
     "typecheck": "node -e \"require('node:fs').rmSync('.next/types',{ recursive: true, force: true })\" && next typegen && tsc --noEmit",

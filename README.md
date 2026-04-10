@@ -85,19 +85,21 @@ O repositorio tambem fechou a frente interna de **installer/updater assistido**,
 No estado atual do repositorio, o proximo passo recomendado volta a nao ser abrir nova frente ampla sem gate.
 O sistema entra em **validacao operacional guiada**, usando as baselines publicadas da Fase 3 e da Fase 4 para capturar gaps reais de uso antes de qualquer expansao posterior.
 
-Por decisao posterior do mantenedor, o repositorio agora tambem possui um plano formal para uma **Fase 5** focada em:
+Por decisao posterior do mantenedor, o repositorio tambem abriu e fechou uma **Fase 5** focada em:
 
 - centro administrativo unificado de configuracoes;
 - consolidacao de ajustes por unidade e por tenant;
 - governanca de integracoes;
-- e white label completo com resolucao server-side.
+- publicacao, aprovacao e rollback de snapshots administrativos;
+- white label completo com resolucao server-side.
 
-Nesta rodada, a Fase 5 foi efetivamente aberta no primeiro recorte:
+No estado atual, a Fase 5 entrega:
 
-- fundacao central de configuracao com `SystemSetting` e `ConfigurationChange`;
-- leitura consolidada server-side para `env`, `UnitSetting` e configuracao sistemica;
-- rota interna `/api/admin/settings/foundation`;
-- pagina administrativa inicial em `/admin/configuracoes`.
+- `SystemSetting`, `ConfigurationChange`, `TenantBranding`, `UnitBranding`, `BrandAsset`, `DomainBinding`, `IntegrationConnection`, `IntegrationSecret`, `ConfigurationApproval` e `ConfigurationPublish`;
+- leitura consolidada server-side entre `env`, `UnitSetting` e configuracao sistemica;
+- rotas internas `/api/admin/settings/foundation`, `/api/admin/settings/center`, `/api/admin/branding` e `/api/admin/integrations`;
+- modulo amplo em `/admin/configuracoes`;
+- branding publicado aplicado em layout raiz, login, publico, tutor e shell admin.
 
 ## Stack
 
@@ -200,6 +202,9 @@ Guia completo:
 - [PHASE3_PLAN.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PHASE3_PLAN.md)
 - [PHASE4_PLAN.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PHASE4_PLAN.md)
 - [PHASE5_PLAN.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/PHASE5_PLAN.md)
+- [docs/phase5-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase5-test-suite.md)
+- [docs/phase5-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase5-exit-checklist.md)
+- [docs/phase5-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase5-baseline.md)
 - [docs/phase3-decision-matrix.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-decision-matrix.md)
 - [docs/phase3-approval-board.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-approval-board.md)
 - [docs/phase3-block1-approval-round.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-approval-round.md)

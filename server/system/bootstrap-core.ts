@@ -268,6 +268,45 @@ const phase5FoundationPermissions = [
       'Permite editar configuracoes centralizadas, respeitando guardrails, escopo e auditoria da Fase 5.',
     name: 'configuracao.central.editar',
   },
+  {
+    description:
+      'Permite publicar configuracoes consolidadas e snapshots de white label no runtime.',
+    name: 'configuracao.publicar',
+  },
+  {
+    description:
+      'Permite aprovar ou rejeitar mudancas criticas antes da publicacao do runtime.',
+    name: 'configuracao.aprovar',
+  },
+  {
+    description: 'Permite rotacionar segredos administrativos protegidos pelo cofre logico.',
+    name: 'configuracao.segredo.editar',
+  },
+  {
+    description:
+      'Permite executar testes administrativos de conexoes externas e providers.',
+    name: 'configuracao.integracao.testar',
+  },
+  {
+    description: 'Permite consultar branding, assets e previews de white label.',
+    name: 'white_label.visualizar',
+  },
+  {
+    description: 'Permite editar identidade visual, textos publicos e assets de white label.',
+    name: 'white_label.editar',
+  },
+  {
+    description: 'Permite publicar snapshots de white label para o runtime.',
+    name: 'white_label.publicar',
+  },
+  {
+    description: 'Permite consultar bindings de dominio e superficies por hostname.',
+    name: 'dominio.visualizar',
+  },
+  {
+    description: 'Permite editar bindings de dominio e vinculos por superficie.',
+    name: 'dominio.editar',
+  },
 ] as const
 
 const permissions = [
@@ -340,8 +379,10 @@ const profiles = [
       'ai.insights.executar',
       'ai.insights.feedback',
       'configuracao.central.visualizar',
-      ],
-    },
+      'white_label.visualizar',
+      'dominio.visualizar',
+    ],
+  },
   {
     description: 'Atua na execucao do atendimento e no registro operacional.',
     name: 'Tosador',
@@ -490,6 +531,22 @@ function resolveDefaultSystemSettings(
       valueType: 'STRING' as const,
     },
     {
+      category: 'GENERAL' as const,
+      description: 'E-mail de suporte central usado por branding e comunicacao institucional.',
+      key: 'tenant.contact.support_email',
+      scope: 'TENANT_GLOBAL' as const,
+      valueText: input?.unitEmail ?? null,
+      valueType: 'STRING' as const,
+    },
+    {
+      category: 'GENERAL' as const,
+      description: 'Telefone de suporte central do tenant para superficies administrativas e publicas.',
+      key: 'tenant.contact.support_phone',
+      scope: 'TENANT_GLOBAL' as const,
+      valueText: input?.unitPhone ?? null,
+      valueType: 'STRING' as const,
+    },
+    {
       category: 'PORTAL' as const,
       description:
         'Modo operacional inicial do assistente virtual do tutor na Fase 4/Fase 5.',
@@ -497,6 +554,54 @@ function resolveDefaultSystemSettings(
       scope: 'TENANT_GLOBAL' as const,
       valueText: 'TRANSCRIPT_ONLY_ASSISTED',
       valueType: 'STRING' as const,
+    },
+    {
+      category: 'AI' as const,
+      description: 'Desejo administrativo inicial para o assistente virtual do tutor.',
+      key: 'ai.virtual_assistant.desired_enabled',
+      scope: 'SYSTEM_GLOBAL' as const,
+      valueText: environment.AI_VIRTUAL_ASSISTANT_ENABLED ? 'true' : 'false',
+      valueType: 'BOOLEAN' as const,
+    },
+    {
+      category: 'AI' as const,
+      description: 'Quota base desejada para o assistente virtual do tutor.',
+      key: 'ai.virtual_assistant.desired_base_quota',
+      scope: 'SYSTEM_GLOBAL' as const,
+      valueText: (environment.AI_VIRTUAL_ASSISTANT_BASE_QUOTA ?? 0).toString(),
+      valueType: 'INTEGER' as const,
+    },
+    {
+      category: 'AI' as const,
+      description: 'Desejo administrativo inicial para o modulo de analise de imagem.',
+      key: 'ai.image_analysis.desired_enabled',
+      scope: 'SYSTEM_GLOBAL' as const,
+      valueText: environment.AI_IMAGE_ANALYSIS_ENABLED ? 'true' : 'false',
+      valueType: 'BOOLEAN' as const,
+    },
+    {
+      category: 'AI' as const,
+      description: 'Quota base desejada para o modulo de analise de imagem.',
+      key: 'ai.image_analysis.desired_base_quota',
+      scope: 'SYSTEM_GLOBAL' as const,
+      valueText: (environment.AI_IMAGE_ANALYSIS_BASE_QUOTA ?? 0).toString(),
+      valueType: 'INTEGER' as const,
+    },
+    {
+      category: 'AI' as const,
+      description: 'Desejo administrativo inicial para o modulo de insights preditivos.',
+      key: 'ai.predictive_insights.desired_enabled',
+      scope: 'SYSTEM_GLOBAL' as const,
+      valueText: environment.AI_PREDICTIVE_INSIGHTS_ENABLED ? 'true' : 'false',
+      valueType: 'BOOLEAN' as const,
+    },
+    {
+      category: 'AI' as const,
+      description: 'Quota base desejada para o modulo de insights preditivos.',
+      key: 'ai.predictive_insights.desired_base_quota',
+      scope: 'SYSTEM_GLOBAL' as const,
+      valueText: (environment.AI_PREDICTIVE_INSIGHTS_BASE_QUOTA ?? 0).toString(),
+      valueType: 'INTEGER' as const,
     },
     {
       category: 'SECURITY_ACCESS' as const,

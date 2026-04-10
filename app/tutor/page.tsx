@@ -4,6 +4,7 @@ import { FeedbackMessage } from '@/components/ui/feedback-message'
 import { FormField } from '@/components/ui/form-field'
 import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { resolveBrandRuntimeForCurrentRequest } from '@/features/branding/services'
 import { signTutorDocumentAction } from '@/features/documents/actions'
 import { isDocumentSignaturePendingForTutor } from '@/features/documents/services'
 import { TutorVirtualAssistantPanel } from '@/features/assistant/components/tutor-virtual-assistant-panel'
@@ -179,18 +180,19 @@ function getJsonString(value: unknown, key: string) {
 export default async function TutorPage({ searchParams }: TutorPageProps) {
   const tutor = await requireTutorAreaUser('/tutor')
   const params = await searchParams
-  const [portal, services, assistantUsageSnapshot] = await Promise.all([
+  const [portal, services, assistantUsageSnapshot, brandRuntime] = await Promise.all([
     getTutorPortalOverview(tutor),
     listServices(tutor, { active: true }),
     getTutorAssistantUsageSnapshot(tutor),
+    resolveBrandRuntimeForCurrentRequest('TUTOR'),
   ])
 
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="Tutor"
-        title="Portal ampliado com jornada, pre-check-in, financeiro proprio e documentos protegidos."
-        description="O Bloco 5 amplia o portal do tutor em cima dos dominios ja entregues de documentos, financas e agenda, mantendo autorizacao rigorosa no servidor e sem transformar o tutor em operador administrativo."
+        title={brandRuntime.copy.tutorHeadline}
+        description={brandRuntime.copy.tutorDescription}
       />
 
       <ActionFlash message={params.message} status={params.status} />

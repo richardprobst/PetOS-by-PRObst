@@ -50,6 +50,7 @@ export const envSchema = z
     DIRECT_DATABASE_URL: z.string().min(1),
     NEXTAUTH_SECRET: z.string().min(1),
     NEXTAUTH_URL: z.string().url(),
+    CONFIGURATION_SECRET_MASTER_KEY: optionalString,
     INSTALLER_ENABLED: envBoolean.default(false),
     INSTALLER_BOOTSTRAP_TOKEN: optionalString,
     ADMIN_SEED_NAME: optionalString,

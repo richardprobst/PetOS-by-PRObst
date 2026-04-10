@@ -217,6 +217,54 @@ enum ConfigurationImpactLevel {
   CRITICAL
 }
 
+enum ConfigurationApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELED
+}
+
+enum DomainSurface {
+  PUBLIC_SITE
+  AUTH
+  TUTOR
+  ADMIN
+}
+
+enum DomainBindingStatus {
+  PENDING
+  VERIFIED
+  DISABLED
+}
+
+enum IntegrationConnectionStatus {
+  DISABLED
+  CONFIGURED
+  READY
+  ERROR
+}
+
+enum IntegrationHealthStatus {
+  NOT_CONFIGURED
+  PENDING_VALIDATION
+  READY
+  WARNING
+  ERROR
+}
+
+enum BrandAssetRole {
+  LOGO_PRIMARY
+  LOGO_MONO
+  FAVICON
+  PWA_ICON_192
+  PWA_ICON_512
+  LOGIN_IMAGE
+  OG_IMAGE
+  EMAIL_HEADER
+  DOCUMENT_HEADER
+  DOCUMENT_FOOTER
+}
+
 enum DepositStatus {
   PENDING
   CONFIRMED
@@ -440,6 +488,9 @@ model Unit {
   teamShifts               TeamShift[]
   timeClockEntries         TimeClockEntry[]
   payrollRuns              PayrollRun[]
+  unitBranding             UnitBranding?
+  domainBindings           DomainBinding[]
+  integrationConnections   IntegrationConnection[]
 
   @@map("Unidades")
 }
@@ -502,6 +553,15 @@ model User {
   resolvedRecoveryIncidents       RecoveryIncident[]              @relation("RecoveryIncidentResolvedByUser")
   startedUpdateExecutions         UpdateExecution[]               @relation("UpdateExecutionStartedByUser")
   completedUpdateExecutions       UpdateExecution[]               @relation("UpdateExecutionCompletedByUser")
+  updatedTenantBrandings          TenantBranding[]               @relation("TenantBrandingUpdatedByUser")
+  updatedUnitBrandings            UnitBranding[]                 @relation("UnitBrandingUpdatedByUser")
+  updatedBrandAssets              BrandAsset[]                   @relation("BrandAssetUpdatedByUser")
+  updatedDomainBindings           DomainBinding[]                @relation("DomainBindingUpdatedByUser")
+  updatedIntegrationConnections   IntegrationConnection[]        @relation("IntegrationConnectionUpdatedByUser")
+  rotatedIntegrationSecrets       IntegrationSecret[]            @relation("IntegrationSecretRotatedByUser")
+  requestedConfigurationApprovals ConfigurationApproval[]        @relation("ConfigurationApprovalRequestedByUser")
+  decidedConfigurationApprovals   ConfigurationApproval[]        @relation("ConfigurationApprovalDecidedByUser")
+  configurationPublishes          ConfigurationPublish[]         @relation("ConfigurationPublishPublishedByUser")
 
   @@index([unitId], map: "Usuarios_unidade_id_idx")
   @@map("Usuarios")
@@ -1739,6 +1799,207 @@ model ConfigurationChange {
   @@index([scope, category, createdAt], map: "MudancasConfiguracao_escopo_categoria_data_criacao_idx")
   @@index([key, createdAt], map: "MudancasConfiguracao_chave_data_criacao_idx")
   @@map("MudancasConfiguracao")
+}
+
+model TenantBranding {
+  id                   String       @id @default("default") @map("chave_branding") @db.VarChar(64)
+  updatedByUserId      String?      @map("atualizado_por_usuario_id") @db.VarChar(191)
+  publicName           String       @map("nome_publico") @db.VarChar(191)
+  shortName            String?      @map("nome_curto") @db.VarChar(64)
+  legalName            String?      @map("nome_juridico") @db.VarChar(191)
+  slug                 String       @unique(map: "BrandingTenant_slug_key") @map("slug_publico") @db.VarChar(120)
+  primaryDomain        String?      @map("dominio_principal") @db.VarChar(191)
+  supportEmail         String?      @map("email_suporte") @db.VarChar(191)
+  supportPhone         String?      @map("telefone_suporte") @db.VarChar(32)
+  publicTagline        String?      @map("tagline_publica") @db.Text
+  loginHeadline        String?      @map("titulo_login") @db.VarChar(191)
+  loginDescription     String?      @map("descricao_login") @db.Text
+  tutorHeadline        String?      @map("titulo_tutor") @db.VarChar(191)
+  tutorDescription     String?      @map("descricao_tutor") @db.Text
+  emailSignatureName   String?      @map("assinatura_email_nome") @db.VarChar(191)
+  emailFooterText      String?      @map("rodape_email") @db.Text
+  reportCardHeaderText String?      @map("cabecalho_report_card") @db.Text
+  reportCardFooterText String?      @map("rodape_report_card") @db.Text
+  themeJson            Json?        @map("tema_json")
+  active               Boolean      @default(true) @map("ativo")
+  createdAt            DateTime     @default(now()) @map("data_criacao")
+  updatedAt            DateTime     @updatedAt @map("data_atualizacao")
+  updatedBy            User?        @relation("TenantBrandingUpdatedByUser", fields: [updatedByUserId], references: [id])
+  unitBrandings        UnitBranding[]
+  assets               BrandAsset[]
+
+  @@index([updatedByUserId], map: "BrandingTenant_atualizado_por_usuario_id_idx")
+  @@map("BrandingTenant")
+}
+
+model UnitBranding {
+  id                         String         @id @default(cuid()) @db.VarChar(191)
+  unitId                     String         @unique(map: "BrandingUnidade_unidade_id_key") @map("unidade_id") @db.VarChar(191)
+  tenantBrandingId           String?        @map("branding_tenant_id") @db.VarChar(64)
+  updatedByUserId            String?        @map("atualizado_por_usuario_id") @db.VarChar(191)
+  publicNameOverride         String?        @map("nome_publico_override") @db.VarChar(191)
+  shortNameOverride          String?        @map("nome_curto_override") @db.VarChar(64)
+  supportEmailOverride       String?        @map("email_suporte_override") @db.VarChar(191)
+  supportPhoneOverride       String?        @map("telefone_suporte_override") @db.VarChar(32)
+  publicTaglineOverride      String?        @map("tagline_publica_override") @db.Text
+  loginHeadlineOverride      String?        @map("titulo_login_override") @db.VarChar(191)
+  loginDescriptionOverride   String?        @map("descricao_login_override") @db.Text
+  tutorHeadlineOverride      String?        @map("titulo_tutor_override") @db.VarChar(191)
+  tutorDescriptionOverride   String?        @map("descricao_tutor_override") @db.Text
+  emailSignatureNameOverride String?        @map("assinatura_email_nome_override") @db.VarChar(191)
+  emailFooterTextOverride    String?        @map("rodape_email_override") @db.Text
+  reportCardHeaderOverride   String?        @map("cabecalho_report_card_override") @db.Text
+  reportCardFooterOverride   String?        @map("rodape_report_card_override") @db.Text
+  themeOverridesJson         Json?          @map("tema_override_json")
+  active                     Boolean        @default(true) @map("ativo")
+  createdAt                  DateTime       @default(now()) @map("data_criacao")
+  updatedAt                  DateTime       @updatedAt @map("data_atualizacao")
+  unit                       Unit           @relation(fields: [unitId], references: [id])
+  tenantBranding             TenantBranding? @relation(fields: [tenantBrandingId], references: [id], onDelete: SetNull)
+  updatedBy                  User?          @relation("UnitBrandingUpdatedByUser", fields: [updatedByUserId], references: [id])
+  assets                     BrandAsset[]
+
+  @@index([tenantBrandingId], map: "BrandingUnidade_branding_tenant_id_idx")
+  @@index([updatedByUserId], map: "BrandingUnidade_atualizado_por_usuario_id_idx")
+  @@map("BrandingUnidade")
+}
+
+model BrandAsset {
+  id               String         @id @default(cuid()) @db.VarChar(191)
+  tenantBrandingId String?        @map("branding_tenant_id") @db.VarChar(64)
+  unitBrandingId   String?        @map("branding_unidade_id") @db.VarChar(191)
+  updatedByUserId  String?        @map("atualizado_por_usuario_id") @db.VarChar(191)
+  role             BrandAssetRole @map("papel_asset")
+  label            String?        @map("rotulo") @db.VarChar(191)
+  assetUrl         String         @map("asset_url") @db.VarChar(512)
+  altText          String?        @map("texto_alternativo") @db.VarChar(255)
+  active           Boolean        @default(true) @map("ativo")
+  createdAt        DateTime       @default(now()) @map("data_criacao")
+  updatedAt        DateTime       @updatedAt @map("data_atualizacao")
+  tenantBranding   TenantBranding? @relation(fields: [tenantBrandingId], references: [id], onDelete: SetNull)
+  unitBranding     UnitBranding?  @relation(fields: [unitBrandingId], references: [id], onDelete: SetNull)
+  updatedBy        User?          @relation("BrandAssetUpdatedByUser", fields: [updatedByUserId], references: [id])
+
+  @@index([tenantBrandingId, role], map: "BrandAssets_branding_tenant_id_papel_asset_idx")
+  @@index([unitBrandingId, role], map: "BrandAssets_branding_unidade_id_papel_asset_idx")
+  @@index([updatedByUserId], map: "BrandAssets_atualizado_por_usuario_id_idx")
+  @@map("BrandAssets")
+}
+
+model DomainBinding {
+  id              String              @id @default(cuid()) @db.VarChar(191)
+  unitId          String?             @map("unidade_id") @db.VarChar(191)
+  updatedByUserId String?             @map("atualizado_por_usuario_id") @db.VarChar(191)
+  hostname        String              @unique(map: "DominiosVinculados_hostname_key") @map("hostname") @db.VarChar(191)
+  surface         DomainSurface       @map("superficie")
+  status          DomainBindingStatus @default(PENDING) @map("status")
+  isPrimary       Boolean             @default(false) @map("principal")
+  lastVerifiedAt  DateTime?           @map("verificado_em")
+  notes           String?             @map("observacoes") @db.Text
+  createdAt       DateTime            @default(now()) @map("data_criacao")
+  updatedAt       DateTime            @updatedAt @map("data_atualizacao")
+  unit            Unit?               @relation(fields: [unitId], references: [id])
+  updatedBy       User?               @relation("DomainBindingUpdatedByUser", fields: [updatedByUserId], references: [id])
+
+  @@index([unitId, surface], map: "DominiosVinculados_unidade_id_superficie_idx")
+  @@index([updatedByUserId], map: "DominiosVinculados_atualizado_por_usuario_id_idx")
+  @@index([status, surface], map: "DominiosVinculados_status_superficie_idx")
+  @@map("DominiosVinculados")
+}
+
+model IntegrationConnection {
+  id              String                    @id @default(cuid()) @db.VarChar(191)
+  unitId          String?                   @map("unidade_id") @db.VarChar(191)
+  updatedByUserId String?                   @map("atualizado_por_usuario_id") @db.VarChar(191)
+  providerKey     String                    @map("provedor_chave") @db.VarChar(120)
+  displayName     String                    @map("nome_exibicao") @db.VarChar(191)
+  scope           ConfigurationScope        @map("escopo")
+  status          IntegrationConnectionStatus @default(DISABLED) @map("status")
+  healthStatus    IntegrationHealthStatus   @default(NOT_CONFIGURED) @map("status_health")
+  configJson      Json?                     @map("config_json")
+  environmentJson Json?                     @map("ambiente_json")
+  lastTestedAt    DateTime?                 @map("testado_em")
+  lastError       String?                   @map("ultimo_erro") @db.Text
+  active          Boolean                   @default(true) @map("ativo")
+  createdAt       DateTime                  @default(now()) @map("data_criacao")
+  updatedAt       DateTime                  @updatedAt @map("data_atualizacao")
+  unit            Unit?                     @relation(fields: [unitId], references: [id])
+  updatedBy       User?                     @relation("IntegrationConnectionUpdatedByUser", fields: [updatedByUserId], references: [id])
+  secrets         IntegrationSecret[]
+
+  @@unique([scope, unitId, providerKey], map: "ConexoesIntegracao_escopo_unidade_id_provedor_chave_key")
+  @@index([updatedByUserId], map: "ConexoesIntegracao_atualizado_por_usuario_id_idx")
+  @@index([healthStatus, status], map: "ConexoesIntegracao_status_health_status_idx")
+  @@index([unitId], map: "ConexoesIntegracao_unidade_id_idx")
+  @@map("ConexoesIntegracao")
+}
+
+model IntegrationSecret {
+  id              String                @id @default(cuid()) @db.VarChar(191)
+  connectionId    String                @map("conexao_integracao_id") @db.VarChar(191)
+  rotatedByUserId String?               @map("rotacionado_por_usuario_id") @db.VarChar(191)
+  secretKey       String                @map("segredo_chave") @db.VarChar(120)
+  encryptedValue  String                @map("valor_cifrado") @db.Text
+  valueMask       String                @map("valor_mascarado") @db.VarChar(64)
+  active          Boolean               @default(true) @map("ativo")
+  rotatedAt       DateTime              @default(now()) @map("rotacionado_em")
+  createdAt       DateTime              @default(now()) @map("data_criacao")
+  updatedAt       DateTime              @updatedAt @map("data_atualizacao")
+  connection      IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  rotatedBy       User?                 @relation("IntegrationSecretRotatedByUser", fields: [rotatedByUserId], references: [id])
+
+  @@unique([connectionId, secretKey], map: "SegredosIntegracao_conexao_integracao_id_segredo_chave_key")
+  @@index([rotatedByUserId], map: "SegredosIntegracao_rotacionado_por_usuario_id_idx")
+  @@index([connectionId], map: "SegredosIntegracao_conexao_integracao_id_idx")
+  @@map("SegredosIntegracao")
+}
+
+model ConfigurationApproval {
+  id              String                      @id @default(cuid()) @db.VarChar(191)
+  requestedByUserId String?                   @map("solicitado_por_usuario_id") @db.VarChar(191)
+  decidedByUserId String?                     @map("decidido_por_usuario_id") @db.VarChar(191)
+  status          ConfigurationApprovalStatus @default(PENDING) @map("status")
+  impactLevel     ConfigurationImpactLevel    @default(LOW) @map("nivel_impacto")
+  summary         String?                     @map("resumo") @db.Text
+  reason          String?                     @map("motivo") @db.Text
+  snapshotJson    Json                        @map("snapshot_json")
+  diffJson        Json?                       @map("diff_json")
+  requestedAt     DateTime                    @default(now()) @map("solicitado_em")
+  decidedAt       DateTime?                   @map("decidido_em")
+  createdAt       DateTime                    @default(now()) @map("data_criacao")
+  updatedAt       DateTime                    @updatedAt @map("data_atualizacao")
+  requestedBy     User?                       @relation("ConfigurationApprovalRequestedByUser", fields: [requestedByUserId], references: [id])
+  decidedBy       User?                       @relation("ConfigurationApprovalDecidedByUser", fields: [decidedByUserId], references: [id])
+  publishes       ConfigurationPublish[]
+
+  @@index([requestedByUserId], map: "AprovacoesConfiguracao_solicitado_por_usuario_id_idx")
+  @@index([decidedByUserId], map: "AprovacoesConfiguracao_decidido_por_usuario_id_idx")
+  @@index([status, requestedAt], map: "AprovacoesConfiguracao_status_solicitado_em_idx")
+  @@map("AprovacoesConfiguracao")
+}
+
+model ConfigurationPublish {
+  id                String                @id @default(cuid()) @db.VarChar(191)
+  publishedByUserId String?               @map("publicado_por_usuario_id") @db.VarChar(191)
+  approvalId        String?               @map("aprovacao_configuracao_id") @db.VarChar(191)
+  rollbackOfPublishId String?             @map("rollback_da_publicacao_id") @db.VarChar(191)
+  version           Int                   @map("versao")
+  snapshotHash      String                @map("snapshot_hash") @db.VarChar(191)
+  summary           String?               @map("resumo") @db.Text
+  snapshotJson      Json                  @map("snapshot_json")
+  createdAt         DateTime              @default(now()) @map("data_criacao")
+  updatedAt         DateTime              @updatedAt @map("data_atualizacao")
+  publishedBy       User?                 @relation("ConfigurationPublishPublishedByUser", fields: [publishedByUserId], references: [id])
+  approval          ConfigurationApproval? @relation(fields: [approvalId], references: [id], onDelete: SetNull)
+  rollbackOfPublish ConfigurationPublish? @relation("ConfigurationPublishRollbackChain", fields: [rollbackOfPublishId], references: [id], onDelete: SetNull)
+  rollbackPublishes ConfigurationPublish[] @relation("ConfigurationPublishRollbackChain")
+
+  @@unique([version], map: "PublicacoesConfiguracao_versao_key")
+  @@index([publishedByUserId], map: "PublicacoesConfiguracao_publicado_por_usuario_id_idx")
+  @@index([approvalId], map: "PublicacoesConfiguracao_aprovacao_configuracao_id_idx")
+  @@index([rollbackOfPublishId], map: "PublicacoesConfiguracao_rollback_da_publicacao_id_idx")
+  @@index([createdAt], map: "PublicacoesConfiguracao_data_criacao_idx")
+  @@map("PublicacoesConfiguracao")
 }
 
 model SystemRuntimeState {

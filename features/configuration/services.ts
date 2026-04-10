@@ -150,10 +150,15 @@ export function getConfigurationFoundationPermissions() {
 
 export async function getConfigurationFoundationSnapshot(
   actor: AuthenticatedUserData,
+  options?: {
+    requestedUnitId?: string | null
+  },
 ): Promise<ConfigurationFoundationSnapshot> {
   assertCanReadConfigurationFoundation(actor)
 
-  const context = resolveActorUnitSessionContext(actor)
+  const context = resolveActorUnitSessionContext(actor, {
+    requestedUnitId: options?.requestedUnitId,
+  })
   const diagnosticUnitId =
     context.status === 'RESOLVED'
       ? context.activeUnitId ?? actor.unitId

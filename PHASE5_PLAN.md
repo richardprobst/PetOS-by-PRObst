@@ -6,6 +6,13 @@
 
 Esta fase nao existia no `PetOS_PRD.md` original.
 
+Status atual do repositorio:
+
+- fase implementada e fechada;
+- centro administrativo ativo em `/admin/configuracoes`;
+- runtime de white label publicado de forma server-side;
+- governanca de publish, approval e rollback entregue.
+
 Ela passa a existir por decisao explicita do mantenedor para cobrir:
 
 - centro administrativo unificado de configuracoes;

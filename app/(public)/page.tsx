@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { FeedbackMessage } from '@/components/ui/feedback-message'
 import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { resolveBrandRuntimeForCurrentRequest } from '@/features/branding/services'
 
 const deliveredAreas = [
   'Shell publico com entrada para areas protegidas do MVP',
@@ -15,15 +16,17 @@ const currentLimits = [
   'O portal do tutor continua basico e nao inclui recursos avancados de Fase 2.',
 ]
 
-export default function PublicHomePage() {
+export default async function PublicHomePage() {
+  const brandRuntime = await resolveBrandRuntimeForCurrentRequest('PUBLIC_SITE')
+
   return (
     <main className="pb-16 pt-10 md:pb-24 md:pt-16">
       <section className="app-shell grid gap-10 lg:grid-cols-[1.4fr_0.9fr] lg:items-end">
         <div className="space-y-8">
           <PageHeader
             eyebrow="MVP"
-            title="Base operacional do PetOS implementada para cadastro, agenda, atendimento, financeiro basico e portal do tutor."
-            description="A entrada publica agora aponta para fluxos reais do MVP. O sistema ja usa autenticacao server-side, validacao com Zod, Prisma, auditoria base e rotas administrativas e do tutor."
+            title={`${brandRuntime.identity.publicName} com operacao, agenda, financeiro, portal do tutor e superficies assistivas em uma base unica.`}
+            description={brandRuntime.copy.publicTagline}
             actions={
               <>
                 <Link className="ui-button-primary" href="/admin">

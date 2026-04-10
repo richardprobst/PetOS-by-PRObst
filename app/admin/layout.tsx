@@ -1,6 +1,13 @@
+/* eslint-disable @next/next/no-img-element */
 import type { Route } from 'next'
 import Link from 'next/link'
+import type { CSSProperties } from 'react'
 import { SignOutButton } from '@/features/auth/components/sign-out-button'
+import {
+  buildBrandCssVariables,
+  getBrandBodyClassName,
+  resolveBrandRuntimeForCurrentRequest,
+} from '@/features/branding/services'
 import { StatusBadge } from '@/components/ui/status-badge'
 import {
   getPrimaryProfile,
@@ -24,7 +31,7 @@ const adminNavigation: Array<{
   {
     href: '/admin/configuracoes',
     label: 'Configuracoes',
-    permission: 'configuracao.visualizar',
+    permission: 'configuracao.central.visualizar',
   },
   { href: '/admin/sistema', label: 'Sistema', permission: 'sistema.runtime.visualizar' },
   { href: '/admin/agenda', label: 'Agenda', permission: 'agendamento.visualizar' },
@@ -84,20 +91,35 @@ export default async function AdminLayout({
       item.permission === null ||
       (internalUser !== null && hasPermission(internalUser, item.permission)),
   )
+  const brandRuntime = await resolveBrandRuntimeForCurrentRequest('ADMIN', {
+    preferLive: true,
+    unitId: multiUnitContext?.activeUnitId ?? internalUser?.unitId ?? null,
+  })
 
   return (
-    <div className="min-h-screen py-4 md:py-6">
+    <div
+      className={`min-h-screen py-4 md:py-6 ${getBrandBodyClassName(brandRuntime)}`}
+      style={buildBrandCssVariables(brandRuntime) as CSSProperties}
+    >
       <div className="app-shell grid min-h-[calc(100vh-2rem)] overflow-hidden rounded-[2rem] border border-[color:var(--line)] bg-[rgba(255,252,247,0.72)] shadow-[var(--shadow-soft)] md:grid-cols-[260px_1fr]">
         <aside className="border-b border-[color:var(--line)] bg-[rgba(20,28,28,0.96)] px-5 py-6 text-white md:border-b-0 md:border-r md:border-[color:rgba(255,255,255,0.08)] md:px-6">
           <Link className="inline-flex items-center gap-3" href="/">
-            <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(255,255,255,0.12)] font-mono text-sm uppercase tracking-[0.16em]">
-              PO
-            </span>
+            {brandRuntime.assets.logoMonochromeUrl ? (
+              <img
+                alt={brandRuntime.identity.publicName}
+                className="h-11 w-11 rounded-full border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.12)] object-contain p-2"
+                src={brandRuntime.assets.logoMonochromeUrl}
+              />
+            ) : (
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(255,255,255,0.12)] font-mono text-sm uppercase tracking-[0.16em]">
+                {brandRuntime.identity.shortName.slice(0, 2)}
+              </span>
+            )}
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-[rgba(255,255,255,0.56)]">
                 Shell admin
               </p>
-              <p className="mt-1 text-base font-semibold">Operacao interna</p>
+              <p className="mt-1 text-base font-semibold">{brandRuntime.identity.publicName}</p>
             </div>
           </Link>
 
@@ -137,7 +159,7 @@ export default async function AdminLayout({
             <div>
               <p className="section-label">Area administrativa</p>
               <p className="mt-2 text-sm text-[color:var(--foreground-soft)]">
-                Acesso protegido para equipe interna com fluxos reais do MVP.
+                {brandRuntime.copy.loginDescription}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <StatusBadge tone={getRuntimeTone(runtime.lifecycleState)}>

@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import type {
   ConfigurationCategory,
   ConfigurationChangeType,
@@ -9,21 +10,8 @@ import { writeAuditLog, type AuditWriter } from '@/server/audit/logging'
 type ConfigurationChangeWriter = AuditWriter & {
   configurationChange: {
     create(args: {
-      data: {
-        afterValue?: unknown
-        beforeValue?: unknown
-        category: ConfigurationCategory
-        changeType: ConfigurationChangeType
-        changedByUserId?: string | null
-        impactLevel: ConfigurationImpactLevel
-        key: string
-        requestId?: string | null
-        scope: ConfigurationScope
-        summary?: string | null
-        systemSettingId?: string | null
-        unitId?: string | null
-      }
-    }): Promise<unknown>
+      data: Prisma.ConfigurationChangeUncheckedCreateInput
+    }): PromiseLike<unknown>
   }
 }
 
@@ -57,6 +45,12 @@ function redactIfSensitive(value: unknown, sensitive: boolean) {
   }
 }
 
+function toNullableJsonValue(value: unknown) {
+  return value === null || value === undefined
+    ? Prisma.JsonNull
+    : (value as Prisma.InputJsonValue)
+}
+
 export async function writeConfigurationChange(
   writer: ConfigurationChangeWriter,
   input: WriteConfigurationChangeInput,
@@ -67,8 +61,8 @@ export async function writeConfigurationChange(
 
   await writer.configurationChange.create({
     data: {
-      afterValue,
-      beforeValue,
+      afterValue: toNullableJsonValue(afterValue),
+      beforeValue: toNullableJsonValue(beforeValue),
       category: input.category,
       changeType: input.changeType,
       changedByUserId: input.changedByUserId ?? null,

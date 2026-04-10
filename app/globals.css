@@ -46,6 +46,22 @@ body {
   color: var(--foreground);
 }
 
+.brand-font-system {
+  font-family: system-ui, sans-serif;
+}
+
+.brand-font-serif {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+}
+
+.brand-font-friendly {
+  font-family: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.brand-font-manrope {
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
 a {
   color: inherit;
   text-decoration: none;

@@ -87,11 +87,13 @@ Obrigatorias:
 
 - `NEXTAUTH_SECRET`
 - `NEXTAUTH_URL`
+- `CONFIGURATION_SECRET_MASTER_KEY` (recomendado quando a Fase 5 estiver ativa)
 
 Observacoes:
 
 - `NEXTAUTH_SECRET` precisa ser forte e aleatorio;
 - `NEXTAUTH_URL` deve refletir a URL publica efetiva do ambiente.
+- `CONFIGURATION_SECRET_MASTER_KEY` deve ter pelo menos 32 caracteres e passa a ser a chave preferida para cifrar segredos administrativos da Fase 5.
 
 ### 3.4. Setup inicial e updater
 

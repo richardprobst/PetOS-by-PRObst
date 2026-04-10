@@ -191,6 +191,15 @@ Permissoes:
 
 - `configuracao.central.visualizar`
 - `configuracao.central.editar`
+- `configuracao.publicar`
+- `configuracao.aprovar`
+- `configuracao.segredo.editar`
+- `configuracao.integracao.testar`
+- `white_label.visualizar`
+- `white_label.editar`
+- `white_label.publicar`
+- `dominio.visualizar`
+- `dominio.editar`
 
 ## 5. Mapa de perfis para familias
 
@@ -210,6 +219,7 @@ Recebe principalmente:
 - CRM;
 - parte de PDV e estoque;
 - leitura legada de configuracao administrativa simples;
+- leitura do centro consolidado de configuracoes e do white label;
 - leitura de runtime;
 - escalas, ponto e leitura de folha;
 - IA assistiva e insights sem revisao de imagem.

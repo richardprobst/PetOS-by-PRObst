@@ -1,26 +1,29 @@
 import type { MetadataRoute } from 'next'
+import { resolveBrandRuntimeForCurrentRequest } from '@/features/branding/services'
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const runtime = await resolveBrandRuntimeForCurrentRequest('TUTOR')
+
   return {
-    name: 'PetOS Tutor',
-    short_name: 'PetOS',
-    description: 'Portal do tutor do PetOS com perfil, pets, agenda e notificacoes basicas.',
+    name: `${runtime.identity.publicName} Tutor`,
+    short_name: runtime.identity.shortName,
+    description: runtime.copy.tutorDescription,
     start_url: '/tutor',
     scope: '/tutor',
     display: 'standalone',
-    background_color: '#f8f5ef',
-    theme_color: '#1f2a2a',
+    background_color: runtime.theme.backgroundStrongColor,
+    theme_color: runtime.theme.primaryColor,
     lang: 'pt-BR',
     categories: ['business', 'lifestyle'],
     icons: [
       {
-        src: '/icons/petos-192.svg',
+        src: runtime.assets.pwaIcon192Url ?? runtime.assets.logoPrimaryUrl ?? '/icons/petos-192.svg',
         sizes: '192x192',
         type: 'image/svg+xml',
         purpose: 'any',
       },
       {
-        src: '/icons/petos-512.svg',
+        src: runtime.assets.pwaIcon512Url ?? runtime.assets.logoPrimaryUrl ?? '/icons/petos-512.svg',
         sizes: '512x512',
         type: 'image/svg+xml',
         purpose: 'maskable',
