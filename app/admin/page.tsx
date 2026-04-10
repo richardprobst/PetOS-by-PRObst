@@ -31,6 +31,9 @@ export default async function AdminPage() {
   const canViewCommunication = hasPermission(actor, 'template_mensagem.visualizar')
   const canViewCommissions = hasPermission(actor, 'comissao.visualizar')
   const canViewReportCards = hasPermission(actor, 'report_card.visualizar')
+  const canViewConfigurationCenter =
+    hasPermission(actor, 'configuracao.visualizar') ||
+    hasPermission(actor, 'configuracao.central.visualizar')
   const canViewSystem = hasPermission(actor, 'sistema.runtime.visualizar')
 
   const [
@@ -63,6 +66,9 @@ export default async function AdminPage() {
     canViewServices ? { area: 'Servicos', count: services.length, href: '/admin/servicos' } : null,
     canViewEmployees ? { area: 'Equipe', count: employees.length, href: '/admin/equipe' } : null,
     canViewAppointments ? { area: 'Agenda', count: appointments.length, href: '/admin/agenda' } : null,
+    canViewConfigurationCenter
+      ? { area: 'Configuracoes', count: 1, href: '/admin/configuracoes' }
+      : null,
     canViewSystem ? { area: 'Sistema', count: 1, href: '/admin/sistema' } : null,
     canViewFinancial
       ? { area: 'Financeiro', count: financialTransactions.length, href: '/admin/financeiro' }

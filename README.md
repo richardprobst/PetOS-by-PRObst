@@ -92,6 +92,13 @@ Por decisao posterior do mantenedor, o repositorio agora tambem possui um plano 
 - governanca de integracoes;
 - e white label completo com resolucao server-side.
 
+Nesta rodada, a Fase 5 foi efetivamente aberta no primeiro recorte:
+
+- fundacao central de configuracao com `SystemSetting` e `ConfigurationChange`;
+- leitura consolidada server-side para `env`, `UnitSetting` e configuracao sistemica;
+- rota interna `/api/admin/settings/foundation`;
+- pagina administrativa inicial em `/admin/configuracoes`.
+
 ## Stack
 
 - Next.js 15 com App Router
@@ -165,6 +172,8 @@ Guia completo:
 - `npm run test:phase3:block5`
 - `npm run test:phase3`
 - `npm run test:phase4`
+- `npm run test:phase5:block1`
+- `npm run test:phase5`
 - `npm run check:all`
 - `npm run db:up`
 - `npm run db:down`

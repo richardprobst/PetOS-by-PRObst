@@ -19,6 +19,7 @@ type BootstrapDatabaseClient = Pick<
   | 'operationalStatus'
   | 'permission'
   | 'profilePermission'
+  | 'systemSetting'
   | 'unit'
   | 'unitSetting'
   | 'user'
@@ -256,9 +257,23 @@ const systemOperationPermissions = [
   },
 ] as const
 
+const phase5FoundationPermissions = [
+  {
+    description:
+      'Permite consultar o centro administrativo consolidado de configuracoes e a fundacao da Fase 5.',
+    name: 'configuracao.central.visualizar',
+  },
+  {
+    description:
+      'Permite editar configuracoes centralizadas, respeitando guardrails, escopo e auditoria da Fase 5.',
+    name: 'configuracao.central.editar',
+  },
+] as const
+
 const permissions = [
   ...mvpPermissions,
   ...systemOperationPermissions,
+  ...phase5FoundationPermissions,
   ...phase2FoundationPermissions,
   ...phase2TutorPortalPermissions,
   ...phase2CrmPermissions,
@@ -321,9 +336,10 @@ const profiles = [
         'report_card.visualizar',
         'ai.imagem.visualizar',
         'ai.imagem.executar',
-        'ai.insights.visualizar',
-        'ai.insights.executar',
-        'ai.insights.feedback',
+      'ai.insights.visualizar',
+      'ai.insights.executar',
+      'ai.insights.feedback',
+      'configuracao.central.visualizar',
       ],
     },
   {
@@ -446,6 +462,78 @@ function resolveDefaultUnitSettings(
       value:
         environment[setting.envVarName as keyof Environment]?.toString() ?? setting.defaultValue,
     })),
+  ] as const
+}
+
+function resolveDefaultSystemSettings(
+  environment: Environment,
+  input?: InitialUnitBootstrapInput,
+) {
+  const companyName = input?.companyName?.trim() || 'PetOS'
+  const publicName = input?.unitName?.trim() || companyName
+
+  return [
+    {
+      category: 'GENERAL' as const,
+      description: 'Nome juridico principal da conta/tenant semeado no bootstrap inicial.',
+      key: 'tenant.identity.company_name',
+      scope: 'TENANT_GLOBAL' as const,
+      valueText: companyName,
+      valueType: 'STRING' as const,
+    },
+    {
+      category: 'GENERAL' as const,
+      description: 'Nome publico principal da conta/tenant usado como fallback administrativo.',
+      key: 'tenant.identity.public_name',
+      scope: 'TENANT_GLOBAL' as const,
+      valueText: publicName,
+      valueType: 'STRING' as const,
+    },
+    {
+      category: 'PORTAL' as const,
+      description:
+        'Modo operacional inicial do assistente virtual do tutor na Fase 4/Fase 5.',
+      key: 'portal.tutor.assistant_experience_mode',
+      scope: 'TENANT_GLOBAL' as const,
+      valueText: 'TRANSCRIPT_ONLY_ASSISTED',
+      valueType: 'STRING' as const,
+    },
+    {
+      category: 'SECURITY_ACCESS' as const,
+      description:
+        'Define se mudancas criticas de configuracao exigem trilha reforcada de aprovacao antes de publicar.',
+      key: 'security.configuration.approval_required_for_critical_changes',
+      scope: 'SYSTEM_GLOBAL' as const,
+      valueText: 'true',
+      valueType: 'BOOLEAN' as const,
+    },
+    {
+      category: 'WHITE_LABEL' as const,
+      description:
+        'Nome publico de marca usado como base inicial para a fundacao de white label.',
+      key: 'branding.public.brand_name',
+      scope: 'PUBLIC_BRAND' as const,
+      valueText: companyName,
+      valueType: 'STRING' as const,
+    },
+    {
+      category: 'GENERAL' as const,
+      description:
+        'Timezone default do runtime, mantido em leitura server-side a partir do ambiente ate a abertura completa do editor administrativo.',
+      key: 'system.runtime.default_timezone_reference',
+      scope: 'SYSTEM_GLOBAL' as const,
+      valueText: environment.DEFAULT_TIMEZONE,
+      valueType: 'STRING' as const,
+    },
+    {
+      category: 'FINANCE_FISCAL' as const,
+      description:
+        'Moeda default do runtime, mantida em leitura server-side a partir do ambiente ate a abertura completa do editor administrativo.',
+      key: 'system.runtime.default_currency_reference',
+      scope: 'SYSTEM_GLOBAL' as const,
+      valueText: environment.DEFAULT_CURRENCY,
+      valueType: 'STRING' as const,
+    },
   ] as const
 }
 
@@ -663,6 +751,51 @@ export async function ensureDefaultMessageTemplates(client: BootstrapDatabaseCli
   }
 }
 
+export async function ensureInitialSystemSettings(
+  client: BootstrapDatabaseClient,
+  environment: Environment,
+  input?: InitialUnitBootstrapInput,
+) {
+  for (const setting of resolveDefaultSystemSettings(environment, input)) {
+    const existingSetting = await client.systemSetting.findFirst({
+      where: {
+        key: setting.key,
+        scope: setting.scope,
+        unitId: null,
+      },
+    })
+
+    if (existingSetting) {
+      await client.systemSetting.update({
+        where: {
+          id: existingSetting.id,
+        },
+        data: {
+          active: true,
+          category: setting.category,
+          description: setting.description,
+          valueText: setting.valueText,
+          valueType: setting.valueType,
+        },
+      })
+
+      continue
+    }
+
+    await client.systemSetting.create({
+      data: {
+        active: true,
+        category: setting.category,
+        description: setting.description,
+        key: setting.key,
+        scope: setting.scope,
+        valueText: setting.valueText,
+        valueType: setting.valueType,
+      },
+    })
+  }
+}
+
 export async function ensureClientCommunicationPreferences(client: BootstrapDatabaseClient) {
   const clients = await client.client.findMany({
     include: {
@@ -760,6 +893,7 @@ export async function bootstrapCorePetOS(
   await ensureProfiles(client)
 
   const unit = await ensureInitialUnit(client, environment, input.unit)
+  await ensureInitialSystemSettings(client, environment, input.unit)
 
   await ensureDefaultMessageTemplates(client, unit.id)
 

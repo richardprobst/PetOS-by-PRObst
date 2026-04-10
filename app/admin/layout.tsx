@@ -21,6 +21,11 @@ const adminNavigation: Array<{
   permission: string | null
 }> = [
   { href: '/admin', label: 'Visao geral', permission: null },
+  {
+    href: '/admin/configuracoes',
+    label: 'Configuracoes',
+    permission: 'configuracao.visualizar',
+  },
   { href: '/admin/sistema', label: 'Sistema', permission: 'sistema.runtime.visualizar' },
   { href: '/admin/agenda', label: 'Agenda', permission: 'agendamento.visualizar' },
   { href: '/admin/clientes', label: 'Clientes', permission: 'cliente.visualizar' },

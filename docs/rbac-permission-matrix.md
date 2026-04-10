@@ -185,6 +185,13 @@ Permissoes:
 - `ai.insights.executar`
 - `ai.insights.feedback`
 
+### 4.9. Fundacao de configuracao central da Fase 5
+
+Permissoes:
+
+- `configuracao.central.visualizar`
+- `configuracao.central.editar`
+
 ## 5. Mapa de perfis para familias
 
 ### 5.1. Administrador
@@ -202,6 +209,7 @@ Recebe principalmente:
 - documentos e midia;
 - CRM;
 - parte de PDV e estoque;
+- leitura legada de configuracao administrativa simples;
 - leitura de runtime;
 - escalas, ponto e leitura de folha;
 - IA assistiva e insights sem revisao de imagem.
@@ -266,6 +274,7 @@ Ler em conjunto com:
 
 - `docs/architecture.md`
 - `docs/internal-api-catalog.md`
+- `PHASE5_PLAN.md`
 - `docs/phase3-maintenance-guide.md`
 - `server/system/bootstrap-core.ts`
 - `server/foundation/phase2.ts`

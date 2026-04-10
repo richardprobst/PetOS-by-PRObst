@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- A Fase 5 foi aberta no repositorio com o primeiro recorte funcional: nova fundacao de configuracao central (`SystemSetting` e `ConfigurationChange`), rota interna `/api/admin/settings/foundation`, pagina administrativa inicial em `/admin/configuracoes`, permissao `configuracao.central.*` e leitura consolidada server-side entre ambiente, `UnitSetting` e configuracao sistemica.
 - O repositorio agora possui um plano formal de Fase 5 para abrir um centro administrativo unificado de configuracoes e um white label completo, com taxonomia de escopo, segregacao entre configuracao comum e segredos, dominios customizados, branding por tenant/unidade e backlog amplo de implementacao sem misturar essa frente ao runtime atual.
 - A Fase 4 agora ganhou um recorte explicito de validacao operacional guiada do assistente virtual, com snapshot administrativo de status, alertas, cobertura de voz, cobertura do fluxo de agenda e proximos passos em `/admin/sistema`, sem abrir provider real, memoria conversacional persistida ou novo painel operacional.
 - A Fase 4 agora ganhou uma rodada curta de hardening do assistente virtual do tutor, com intent adicional para `report cards`, parsing deterministico de referencias como dia da semana/periodo do dia, historico minimo e telemetria de uso derivados de `AuditLog`, e leitura administrativa minima do uso do assistente em `/admin/sistema`, sem abrir provider real, audio bruto persistido ou memoria conversacional livre.

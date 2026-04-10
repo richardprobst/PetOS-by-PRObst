@@ -172,6 +172,51 @@ enum PredictiveInsightFeedbackStatus {
   NOT_USEFUL
 }
 
+enum ConfigurationScope {
+  SYSTEM_GLOBAL
+  TENANT_GLOBAL
+  UNIT
+  PUBLIC_BRAND
+  INTEGRATION_SECRET
+}
+
+enum ConfigurationCategory {
+  GENERAL
+  OPERATION
+  COMMUNICATION
+  FINANCE_FISCAL
+  INTEGRATIONS
+  AI
+  PORTAL
+  SECURITY_ACCESS
+  WHITE_LABEL
+  DOMAINS
+}
+
+enum ConfigurationValueType {
+  STRING
+  BOOLEAN
+  INTEGER
+  DECIMAL
+  JSON
+}
+
+enum ConfigurationChangeType {
+  CREATED
+  UPDATED
+  DELETED
+  PUBLISHED
+  ROLLED_BACK
+  SYSTEM_SYNC
+}
+
+enum ConfigurationImpactLevel {
+  LOW
+  MODERATE
+  HIGH
+  CRITICAL
+}
+
 enum DepositStatus {
   PENDING
   CONFIRMED
@@ -365,6 +410,8 @@ model Unit {
   createdAt                DateTime                  @default(now()) @map("data_criacao")
   updatedAt                DateTime                  @updatedAt @map("data_atualizacao")
   users                    User[]
+  systemSettings           SystemSetting[]
+  configurationChanges     ConfigurationChange[]
   services                 Service[]
   employees                Employee[]
   appointments             Appointment[]
@@ -412,6 +459,8 @@ model User {
   client                          Client?
   employee                        Employee?
   profiles                        UserProfile[]
+  updatedSystemSettings           SystemSetting[]                 @relation("SystemSettingUpdatedByUser")
+  configurationChanges            ConfigurationChange[]           @relation("ConfigurationChangeChangedByUser")
   auditLogs                       AuditLog[]
   financialTransactions           FinancialTransaction[]          @relation("FinancialTransactionCreatedBy")
   messageLogs                     MessageLog[]                    @relation("SentByUser")
@@ -1638,6 +1687,58 @@ model UnitSetting {
   @@unique([unitId, key], map: "ConfiguracoesUnidade_unidade_id_chave_key")
   @@index([unitId], map: "ConfiguracoesUnidade_unidade_id_idx")
   @@map("ConfiguracoesUnidade")
+}
+
+model SystemSetting {
+  id              String                 @id @default(cuid()) @db.VarChar(191)
+  unitId          String?                @map("unidade_id") @db.VarChar(191)
+  updatedByUserId String?                @map("atualizado_por_usuario_id") @db.VarChar(191)
+  key             String                 @map("chave") @db.VarChar(191)
+  scope           ConfigurationScope     @map("escopo")
+  category        ConfigurationCategory  @map("categoria")
+  valueType       ConfigurationValueType @map("tipo_valor")
+  valueText       String?                @map("valor_texto") @db.Text
+  valueJson       Json?                  @map("valor_json")
+  description     String?                @map("descricao") @db.Text
+  active          Boolean                @default(true) @map("ativo")
+  createdAt       DateTime               @default(now()) @map("data_criacao")
+  updatedAt       DateTime               @updatedAt @map("data_atualizacao")
+  unit            Unit?                  @relation(fields: [unitId], references: [id])
+  updatedBy       User?                  @relation("SystemSettingUpdatedByUser", fields: [updatedByUserId], references: [id])
+  changes         ConfigurationChange[]
+
+  @@unique([scope, unitId, key], map: "ConfiguracoesSistema_escopo_unidade_id_chave_key")
+  @@index([category, scope], map: "ConfiguracoesSistema_categoria_escopo_idx")
+  @@index([unitId], map: "ConfiguracoesSistema_unidade_id_idx")
+  @@index([updatedByUserId], map: "ConfiguracoesSistema_atualizado_por_usuario_id_idx")
+  @@map("ConfiguracoesSistema")
+}
+
+model ConfigurationChange {
+  id              String                  @id @default(cuid()) @db.VarChar(191)
+  systemSettingId String?                 @map("configuracao_sistema_id") @db.VarChar(191)
+  unitId          String?                 @map("unidade_id") @db.VarChar(191)
+  changedByUserId String?                 @map("usuario_autor_id") @db.VarChar(191)
+  changeType      ConfigurationChangeType @map("tipo_mudanca")
+  scope           ConfigurationScope      @map("escopo")
+  category        ConfigurationCategory   @map("categoria")
+  key             String                  @map("chave") @db.VarChar(191)
+  impactLevel     ConfigurationImpactLevel @default(LOW) @map("nivel_impacto")
+  requestId       String?                 @map("request_id") @db.VarChar(191)
+  summary         String?                 @map("resumo") @db.Text
+  beforeValue     Json?                   @map("antes_json")
+  afterValue      Json?                   @map("depois_json")
+  createdAt       DateTime                @default(now()) @map("data_criacao")
+  systemSetting   SystemSetting?          @relation(fields: [systemSettingId], references: [id], onDelete: SetNull)
+  unit            Unit?                   @relation(fields: [unitId], references: [id])
+  changedBy       User?                   @relation("ConfigurationChangeChangedByUser", fields: [changedByUserId], references: [id])
+
+  @@index([systemSettingId], map: "MudancasConfiguracao_configuracao_sistema_id_idx")
+  @@index([unitId, createdAt], map: "MudancasConfiguracao_unidade_id_data_criacao_idx")
+  @@index([changedByUserId], map: "MudancasConfiguracao_usuario_autor_id_idx")
+  @@index([scope, category, createdAt], map: "MudancasConfiguracao_escopo_categoria_data_criacao_idx")
+  @@index([key, createdAt], map: "MudancasConfiguracao_chave_data_criacao_idx")
+  @@map("MudancasConfiguracao")
 }
 
 model SystemRuntimeState {

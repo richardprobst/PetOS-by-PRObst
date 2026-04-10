@@ -41,6 +41,7 @@ Rotas:
 
 - `/api/health`
 - `/api/setup/preflight`
+- `/api/admin/settings/foundation`
 - `/api/admin/system/phase3-foundation-diagnostics`
 - `/api/admin/system/phase3-governance`
 - `/api/admin/system/update-preflight`
@@ -52,6 +53,7 @@ Uso:
 
 - healthcheck;
 - setup inicial;
+- fundacao central de configuracao da Fase 5;
 - diagnostico administrativo da fundacao;
 - governanca consolidada da Fase 3;
 - operacao e trilha do updater.

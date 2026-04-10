@@ -20,7 +20,8 @@ O schema atual cobre:
 
 - MVP operacional completo;
 - fundacao e blocos entregues da Fase 2;
-- baseline tecnica conservadora da Fase 3.
+- baseline tecnica conservadora da Fase 3;
+- abertura fundacional da Fase 5 para configuracao central.
 
 Isso significa que o schema ja contem:
 
@@ -31,6 +32,7 @@ Isso significa que o schema ja contem:
 - runtime state, recovery e update controlado;
 - analise de imagem assistiva;
 - snapshots de insight preditivo;
+- configuracoes sistemicas centralizadas e trilha dedicada de mudanca;
 - trilhas de auditoria e ownership por unidade.
 
 ## 3. Blocos principais do modelo
@@ -63,9 +65,24 @@ Pontos importantes:
 
 - a unidade e o eixo basico de escopo operacional;
 - configuracoes por unidade guardam janelas, tolerancias, retencao, politicas e parametros de operacao;
-- a baseline atual usa isso em agenda, documentos, CRM, estoque, payroll, IA e runtime.
+- a baseline atual usa isso em agenda, documentos, CRM, estoque, payroll, IA e runtime;
+- a Fase 5 passa a complementar `UnitSetting` com configuracao sistemica centralizada, sem substituir o escopo por unidade.
 
-### 3.3. Cliente, pet e ownership
+### 3.3. Configuracao sistemica e governanca
+
+Tabelas:
+
+- `SystemSetting`
+- `ConfigurationChange`
+
+Pontos importantes:
+
+- `SystemSetting` abre a fundacao de configuracao central com escopo, categoria, tipo de valor e trilha de atualizacao;
+- `ConfigurationChange` registra mudancas sensiveis e prepara publish, aprovacao e rollback dos blocos seguintes da Fase 5;
+- a fundacao atual ainda nao trata segredo como configuracao comum e nao substitui `env` para runtime critico;
+- o modelo foi aberto para centralizacao futura de white label, dominios e integracoes sem fork do produto.
+
+### 3.4. Cliente, pet e ownership
 
 Tabelas:
 
@@ -79,7 +96,7 @@ Pontos importantes:
 - cliente e pet preservam ownership e visibilidade base por unidade;
 - leituras e mutacoes sensiveis precisam respeitar escopo server-side.
 
-### 3.4. Catalogo operacional e equipe
+### 3.5. Catalogo operacional e equipe
 
 Tabelas:
 
@@ -92,7 +109,7 @@ Pontos importantes:
 - funcionario guarda papel operacional, configuracao de comissao e dados base de jornada;
 - a comissao materializada fica vinculada aos itens efetivos do atendimento.
 
-### 3.5. Agenda e atendimento
+### 3.6. Agenda e atendimento
 
 Tabelas:
 
@@ -115,7 +132,7 @@ Pontos importantes:
 - `TutorPreCheckIn` adiciona a preparacao do tutor antes do atendimento;
 - capacidade, bloqueios, waitlist e Taxi Dog pertencem ao dominio operacional real da Fase 2.
 
-### 3.6. Comunicacao
+### 3.7. Comunicacao
 
 Tabelas:
 
@@ -132,7 +149,7 @@ Pontos importantes:
 - CRM e comunicacao ampliada preservam criterio auditavel de execucao;
 - um destinatario descartado por falta de consentimento ou destino continua rastreavel.
 
-### 3.7. Financeiro e fiscal
+### 3.8. Financeiro e fiscal
 
 Tabelas:
 
@@ -151,7 +168,7 @@ Pontos importantes:
 - eventos externos sustentam idempotencia, reconciliacao e reprocessamento controlado;
 - fiscal permanece no recorte minimo da Fase 2.
 
-### 3.8. Documentos, assinaturas e midia
+### 3.9. Documentos, assinaturas e midia
 
 Tabelas:
 
@@ -166,7 +183,7 @@ Pontos importantes:
 - acesso passa por permissao, ownership e vinculo com unidade, cliente, pet ou atendimento;
 - `MediaAsset` agora tambem sustenta analise de imagem.
 
-### 3.9. PDV e estoque
+### 3.10. PDV e estoque
 
 Tabelas:
 
@@ -183,7 +200,7 @@ Pontos importantes:
 - venda concluida fecha estoque e financeiro na mesma operacao;
 - o schema continua sem virar ERP amplo.
 
-### 3.10. Equipe, ponto e payroll
+### 3.11. Equipe, ponto e payroll
 
 Tabelas:
 
@@ -198,7 +215,7 @@ Pontos importantes:
 - isso nao representa modulo trabalhista completo;
 - a unidade continua sendo o escopo primario dessas entidades.
 
-### 3.11. Runtime, recovery e updater
+### 3.12. Runtime, recovery e updater
 
 Tabelas:
 
@@ -214,7 +231,7 @@ Pontos importantes:
 - `UpdateExecution` registra update controlado com preflight, lock, recovery e retentativa;
 - `UpdateExecutionStep` registra cada passo do update de forma persistida.
 
-### 3.12. IA assistiva e insights da Fase 3
+### 3.13. IA assistiva e insights da Fase 3
 
 Tabelas:
 
@@ -228,7 +245,7 @@ Pontos importantes:
 - ambas preservam vinculo com unidade, autoria e envelope snapshot;
 - a baseline atual nao depende de provider real para existir.
 
-### 3.13. Report cards e auditoria
+### 3.14. Report cards e auditoria
 
 Tabelas:
 
@@ -304,6 +321,16 @@ Enums relevantes:
 - `PredictiveInsightVisibility`
 - `PredictiveInsightFeedbackStatus`
 
+### 4.6. Fase 5
+
+Enums relevantes:
+
+- `ConfigurationScope`
+- `ConfigurationCategory`
+- `ConfigurationValueType`
+- `ConfigurationChangeType`
+- `ConfigurationImpactLevel`
+
 ## 5. Relacoes criticas
 
 Relacoes que continuam centrais para manutencao:
@@ -312,6 +339,9 @@ Relacoes que continuam centrais para manutencao:
 - `User` 1:1 `Employee`
 - `Client` 1:N `Pet`
 - `Unit` 1:N quase todos os dominios operacionais
+- `Unit` 1:N `UnitSetting`
+- `Unit` 1:N `SystemSetting`
+- `Unit` 1:N `ConfigurationChange`
 - `Appointment` 1:N `AppointmentService`
 - `Appointment` 1:N `AppointmentStatusHistory`
 - `Appointment` 1:1 `AppointmentCheckIn`
@@ -325,6 +355,7 @@ Relacoes que continuam centrais para manutencao:
 - `Unit` 1:N `ImageAnalysis`
 - `Unit` 1:N `PredictiveInsightSnapshot`
 - `UpdateExecution` 1:N `UpdateExecutionStep`
+- `SystemSetting` 1:N `ConfigurationChange`
 - `AccessProfile` N:N `Permission` via `ProfilePermission`
 - `User` N:N `AccessProfile` via `UserProfile`
 
@@ -334,7 +365,8 @@ Relacoes que continuam centrais para manutencao:
 - JSON fica restrito a snapshots, payloads auditaveis e metadados, nao a relacoes centrais;
 - unidade continua como eixo estrutural de escopo;
 - storage externo continua sendo a estrategia para binarios;
-- IA usa persistencia de snapshot e envelope, nao payload bruto irrestrito.
+- IA usa persistencia de snapshot e envelope, nao payload bruto irrestrito;
+- Fase 5 separa configuracao sistemica, trilha de mudanca e segredo, em vez de tratar tudo como `UnitSetting`.
 
 ## 7. O que ainda nao significa no schema
 
@@ -346,6 +378,8 @@ O schema atual nao deve ser interpretado como entrega de:
 - multiunidade irrestrita;
 - modulo trabalhista amplo;
 - ERP fiscal ou comercial completo.
+- white label completo publicado;
+- cofres de segredo completos para integracoes administraveis.
 
 O schema foi preparado e expandido no recorte aprovado, mas a semantica do produto continua dependente das regras de dominio e dos gates de fase.
 

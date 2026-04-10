@@ -127,6 +127,14 @@ function createInstallerServicesStub(overrides?: {
     profilePermission: {
       upsert: async () => undefined,
     },
+    systemSetting: {
+      create: async ({ data }: { data: Record<string, unknown> }) => data,
+      findFirst: async () => null,
+      update: async ({ data, where }: { data: Record<string, unknown>; where: { id: string } }) => ({
+        ...data,
+        id: where.id,
+      }),
+    },
     systemRuntimeState: {
       findUnique: async () => overrides?.runtimeState ?? null,
       upsert: async ({ create, update }: { create: Record<string, unknown>; update: Record<string, unknown> }) => ({
