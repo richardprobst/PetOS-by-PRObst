@@ -66,3 +66,13 @@ O script registra `warning` quando identificar:
 ## Observacao importante
 
 `MIGRATION_PENDING` nao derruba mais a interface, mas continua sendo um bloqueio para operacao plena de branding, dominios e integracoes. Para remover esse alerta no host publicado, ainda e necessario executar `prisma migrate deploy` no ambiente de producao.
+
+## Resultado observado no host publicado
+
+Rodada validada em `2026-04-10` contra `https://petos.desi.pet`:
+
+- `GO COM RESSALVAS` para shell admin e centro administrativo;
+- login administrativo funcionando;
+- `/admin`, `/admin/configuracoes`, `/admin/sistema` e APIs centrais respondendo `200`;
+- compatibilidade com o admin legado validada para centro, branding e integracoes;
+- pendencia remanescente: storage da Fase 5 ainda em `MIGRATION_PENDING` no host publicado.
