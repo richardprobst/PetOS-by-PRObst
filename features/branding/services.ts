@@ -33,9 +33,14 @@ const CONFIGURATION_VIEW_PERMISSIONS = [
 const WHITE_LABEL_EDIT_PERMISSIONS = [
   'white_label.editar',
   'configuracao.central.editar',
+  'configuracao.editar',
 ]
 
-const DOMAIN_EDIT_PERMISSIONS = ['dominio.editar', 'configuracao.central.editar']
+const DOMAIN_EDIT_PERMISSIONS = [
+  'dominio.editar',
+  'configuracao.central.editar',
+  'configuracao.editar',
+]
 
 type TenantBrandingRecord = Prisma.TenantBrandingGetPayload<Record<string, never>>
 type UnitBrandingRecord = Prisma.UnitBrandingGetPayload<Record<string, never>>

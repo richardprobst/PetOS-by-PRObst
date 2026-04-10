@@ -142,3 +142,18 @@ test('phase 5 white label permissions preserve legacy admin compatibility', () =
   assert.equal(canEditWhiteLabel(legacyAdmin), true)
   assert.equal(canPublishWhiteLabel(legacyAdmin), true)
 })
+
+test('phase 5 white label permissions accept the legacy configuracao.editar alias', () => {
+  const legacyEditor: AuthenticatedUserData = {
+    active: true,
+    email: 'config@petos.app',
+    id: 'legacy_editor',
+    name: 'Config Editor',
+    permissions: ['configuracao.editar'],
+    profiles: ['Recepcionista'],
+    unitId: 'unit_local',
+    userType: 'ADMIN',
+  }
+
+  assert.equal(canEditWhiteLabel(legacyEditor), true)
+})
