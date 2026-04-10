@@ -36,6 +36,7 @@
     "db:logs": "docker compose logs -f mysql",
     "ops:preflight": "tsx scripts/operational-readiness.ts --mode=local --skip-db",
     "ops:check": "tsx scripts/operational-readiness.ts",
+    "ops:validate:phase5": "node scripts/phase5-operational-validation.mjs",
     "ops:preflight:staging": "tsx scripts/operational-readiness.ts --mode=staging --skip-db",
     "ops:check:staging": "tsx scripts/operational-readiness.ts --mode=staging",
     "ops:preflight:staging:file": "tsx scripts/operational-readiness.ts --mode=staging --env-file=.env.staging --skip-db",

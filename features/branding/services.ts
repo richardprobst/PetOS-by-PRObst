@@ -21,6 +21,7 @@ import {
   type BrandRuntimeSnapshot,
   type BrandThemeConfig,
 } from './domain'
+import { hasPhase5PermissionCompatibility } from '@/features/configuration/permission-compat'
 
 const CONFIGURATION_VIEW_PERMISSIONS = [
   'configuracao.central.visualizar',
@@ -120,28 +121,22 @@ export interface BrandingAdminSnapshot {
 }
 
 export function canViewWhiteLabel(actor: AuthenticatedUserData) {
-  return CONFIGURATION_VIEW_PERMISSIONS.some((permission) =>
-    hasPermission(actor, permission),
-  )
+  return hasPhase5PermissionCompatibility(actor, CONFIGURATION_VIEW_PERMISSIONS)
 }
 
 export function canEditWhiteLabel(actor: AuthenticatedUserData) {
-  return WHITE_LABEL_EDIT_PERMISSIONS.some((permission) =>
-    hasPermission(actor, permission),
-  )
+  return hasPhase5PermissionCompatibility(actor, WHITE_LABEL_EDIT_PERMISSIONS)
 }
 
 export function canEditDomainBindings(actor: AuthenticatedUserData) {
-  return DOMAIN_EDIT_PERMISSIONS.some((permission) =>
-    hasPermission(actor, permission),
-  )
+  return hasPhase5PermissionCompatibility(actor, DOMAIN_EDIT_PERMISSIONS)
 }
 
 export function canPublishWhiteLabel(actor: AuthenticatedUserData) {
-  return (
-    hasPermission(actor, 'white_label.publicar') ||
-    hasPermission(actor, 'configuracao.publicar')
-  )
+  return hasPhase5PermissionCompatibility(actor, [
+    'white_label.publicar',
+    'configuracao.publicar',
+  ])
 }
 
 export async function getBrandingAdminSnapshot(

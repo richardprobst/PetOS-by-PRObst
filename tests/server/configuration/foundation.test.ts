@@ -316,6 +316,7 @@ test('getConfigurationFoundationSnapshot enforces configuration permission befor
           getConfigurationFoundationSnapshot({
             ...configurationOperator,
             permissions: ['agendamento.visualizar'],
+            profiles: ['Recepcionista'],
           }),
         (error) =>
           error instanceof AppError &&

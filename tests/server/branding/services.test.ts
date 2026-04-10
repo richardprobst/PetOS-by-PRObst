@@ -3,8 +3,11 @@ import test from 'node:test'
 import {
   buildBrandRuntimeFromSerializableState,
   buildBrandCssVariables,
+  canEditWhiteLabel,
+  canPublishWhiteLabel,
   getBrandBodyClassName,
 } from '../../../features/branding/services'
+import type { AuthenticatedUserData } from '../../../server/auth/types'
 
 test('buildBrandRuntimeFromSerializableState merges tenant, unit and domain overrides', () => {
   const runtime = buildBrandRuntimeFromSerializableState(
@@ -122,4 +125,20 @@ test('buildBrandCssVariables and getBrandBodyClassName expose runtime theme toke
 
   assert.equal(variables['--accent'], runtime.theme.primaryColor)
   assert.equal(getBrandBodyClassName(runtime), 'brand-font-manrope')
+})
+
+test('phase 5 white label permissions preserve legacy admin compatibility', () => {
+  const legacyAdmin: AuthenticatedUserData = {
+    active: true,
+    email: 'admin@petos.app',
+    id: 'user_admin',
+    name: 'Administrador',
+    permissions: [],
+    profiles: ['Administrador'],
+    unitId: 'unit_local',
+    userType: 'ADMIN',
+  }
+
+  assert.equal(canEditWhiteLabel(legacyAdmin), true)
+  assert.equal(canPublishWhiteLabel(legacyAdmin), true)
 })

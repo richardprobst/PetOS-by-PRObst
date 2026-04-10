@@ -5,6 +5,7 @@ import {
   canPublishConfiguration,
   getConfigurationCenterSnapshot,
 } from '../../../features/configuration/management'
+import { canEditConfigurationFoundation } from '../../../features/configuration/services'
 import type { AuthenticatedUserData } from '../../../server/auth/types'
 import { AppError } from '../../../server/http/errors'
 
@@ -27,13 +28,26 @@ const adminActor: AuthenticatedUserData = {
 test('configuration center permission helpers expose publish and approval gates', () => {
   assert.equal(canPublishConfiguration(adminActor), true)
   assert.equal(canApproveConfiguration(adminActor), true)
+  assert.equal(canEditConfigurationFoundation(adminActor), true)
   assert.equal(
     canPublishConfiguration({
       ...adminActor,
       permissions: ['configuracao.central.visualizar'],
+      profiles: ['Recepcionista'],
     }),
     false,
   )
+})
+
+test('phase 5 compatibility keeps legacy admin profile authorized before RBAC reseed', () => {
+  const legacyAdmin = {
+    ...adminActor,
+    permissions: [],
+  }
+
+  assert.equal(canEditConfigurationFoundation(legacyAdmin), true)
+  assert.equal(canPublishConfiguration(legacyAdmin), true)
+  assert.equal(canApproveConfiguration(legacyAdmin), true)
 })
 
 test('getConfigurationCenterSnapshot fails closed without read permission', async () => {
@@ -42,6 +56,7 @@ test('getConfigurationCenterSnapshot fails closed without read permission', asyn
       getConfigurationCenterSnapshot({
         ...adminActor,
         permissions: [],
+        profiles: ['Recepcionista'],
       }),
     (error: unknown) => {
       assert.ok(error instanceof AppError)

@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { listAppointments } from '@/features/appointments/services'
 import { listClients } from '@/features/clients/services'
 import { listCommissionSummaries } from '@/features/commissions/services'
+import { canReadConfigurationFoundation } from '@/features/configuration/services'
 import { listEmployees } from '@/features/employees/services'
 import { listFinancialTransactions } from '@/features/finance/services'
 import { listMessageLogs } from '@/features/messages/services'
@@ -32,8 +33,7 @@ export default async function AdminPage() {
   const canViewCommissions = hasPermission(actor, 'comissao.visualizar')
   const canViewReportCards = hasPermission(actor, 'report_card.visualizar')
   const canViewConfigurationCenter =
-    hasPermission(actor, 'configuracao.visualizar') ||
-    hasPermission(actor, 'configuracao.central.visualizar')
+    canReadConfigurationFoundation(actor)
   const canViewSystem = hasPermission(actor, 'sistema.runtime.visualizar')
 
   const [

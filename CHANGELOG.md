@@ -46,6 +46,8 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- A homologacao operacional da Fase 5 ganhou um smoke autenticado reproduzivel em `npm run ops:validate:phase5`, validando shell admin, centro administrativo, branding e integracoes no ambiente publicado sem depender de navegador manual.
+- A Fase 5 deixou de depender de um reseed imediato de RBAC para administradores legados: o perfil `Administrador` agora recebe compatibilidade operacional para leitura, edicao, teste, publicacao e aprovacao do modulo de configuracoes ate a sincronizacao completa do banco.
 - A Fase 5 agora fica fechada no repositorio: `/admin/configuracoes` passou a centralizar configuracoes gerais, ajustes por unidade, administracao da IA, integracoes, segredos, branding, dominios, publish, approval e rollback, enquanto o runtime publicado passou a aplicar o white label server-side em layout raiz, login, publico, tutor, shell admin e manifest PWA.
 - O schema da Fase 5 foi concluido com `TenantBranding`, `UnitBranding`, `BrandAsset`, `DomainBinding`, `IntegrationConnection`, `IntegrationSecret`, `ConfigurationApproval` e `ConfigurationPublish`, incluindo migration dedicada e fundacao para segredos cifrados e snapshots publicados.
 - A Fase 5 agora possui superficie interna reconhecivel com `/api/admin/settings/center`, `/api/admin/branding` e `/api/admin/integrations`, alem de suite minima propria em `npm run test:phase5`, baseline documental e checklist formal de saida.

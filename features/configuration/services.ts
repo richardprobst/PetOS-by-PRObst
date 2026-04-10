@@ -27,6 +27,7 @@ import {
   type ConfigurationRegistryDefinition,
   type ConfigurationScopeKey,
 } from './domain'
+import { hasPhase5PermissionCompatibility } from './permission-compat'
 
 const CONFIGURATION_FOUNDATION_PERMISSIONS = [
   'configuracao.central.visualizar',
@@ -134,14 +135,14 @@ type SystemSettingRecord = Prisma.SystemSettingGetPayload<Record<string, never>>
 type ConfigurationChangeRecord = Prisma.ConfigurationChangeGetPayload<Record<string, never>>
 
 export function canReadConfigurationFoundation(actor: AuthenticatedUserData) {
-  return hasAnyPermission(actor, [...CONFIGURATION_FOUNDATION_PERMISSIONS])
+  return hasPhase5PermissionCompatibility(actor, CONFIGURATION_FOUNDATION_PERMISSIONS)
 }
 
 export function canEditConfigurationFoundation(actor: AuthenticatedUserData) {
-  return (
-    hasPermission(actor, 'configuracao.central.editar') ||
-    hasPermission(actor, 'configuracao.editar')
-  )
+  return hasPhase5PermissionCompatibility(actor, [
+    'configuracao.central.editar',
+    'configuracao.editar',
+  ])
 }
 
 export function getConfigurationFoundationPermissions() {

@@ -6,6 +6,8 @@ Para a baseline da Fase 2, use tambem [docs/phase2-smoke-checklist.md](/C:/Users
 
 Para a rodada conservadora do assistente virtual do tutor, use tambem [docs/phase4-operational-validation.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase4-operational-validation.md).
 
+Para a homologacao operacional do centro administrativo de configuracoes e white label, use tambem [docs/phase5-operational-validation.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase5-operational-validation.md).
+
 ## Pre-requisitos do ambiente
 
 - [ ] `.env.local` configurado com `DATABASE_URL`, `DIRECT_DATABASE_URL`, `NEXTAUTH_SECRET` e `NEXTAUTH_URL`

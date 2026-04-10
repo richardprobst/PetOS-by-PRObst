@@ -8,6 +8,7 @@ import {
   getBrandBodyClassName,
   resolveBrandRuntimeForCurrentRequest,
 } from '@/features/branding/services'
+import { canReadConfigurationFoundation } from '@/features/configuration/services'
 import { StatusBadge } from '@/components/ui/status-badge'
 import {
   getPrimaryProfile,
@@ -87,9 +88,21 @@ export default async function AdminLayout({
     ? resolveActorUnitSessionContext(internalUser)
     : null
   const visibleNavigation = adminNavigation.filter(
-    (item) =>
-      item.permission === null ||
-      (internalUser !== null && hasPermission(internalUser, item.permission)),
+    (item) => {
+      if (item.permission === null) {
+        return true
+      }
+
+      if (internalUser === null) {
+        return false
+      }
+
+      if (item.href === '/admin/configuracoes') {
+        return canReadConfigurationFoundation(internalUser)
+      }
+
+      return hasPermission(internalUser, item.permission)
+    },
   )
   const brandRuntime = await resolveBrandRuntimeForCurrentRequest('ADMIN', {
     preferLive: true,

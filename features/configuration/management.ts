@@ -37,6 +37,7 @@ import {
   type ConfigurationFoundationEntrySnapshot,
   type ConfigurationFoundationSnapshot,
 } from './services'
+import { hasPhase5PermissionCompatibility } from './permission-compat'
 
 type SystemSettingRecord = Prisma.SystemSettingGetPayload<Record<string, never>>
 type UnitSettingRecord = Prisma.UnitSettingGetPayload<Record<string, never>>
@@ -167,14 +168,14 @@ const AI_ACTUAL_DESIRED_MAP = [
 ] as const
 
 export function canPublishConfiguration(actor: AuthenticatedUserData) {
-  return (
-    hasPermission(actor, 'configuracao.publicar') ||
-    hasPermission(actor, 'white_label.publicar')
-  )
+  return hasPhase5PermissionCompatibility(actor, [
+    'configuracao.publicar',
+    'white_label.publicar',
+  ])
 }
 
 export function canApproveConfiguration(actor: AuthenticatedUserData) {
-  return hasPermission(actor, 'configuracao.aprovar')
+  return hasPhase5PermissionCompatibility(actor, ['configuracao.aprovar'])
 }
 
 export async function getConfigurationCenterSnapshot(

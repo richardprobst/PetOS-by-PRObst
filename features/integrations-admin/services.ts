@@ -30,6 +30,7 @@ import {
   encryptAdministrativeSecret,
   getIntegrationSecretMasterKeySource,
 } from './secrets'
+import { hasPhase5PermissionCompatibility } from '@/features/configuration/permission-compat'
 
 const CONFIGURATION_READ_PERMISSIONS = [
   'configuracao.central.visualizar',
@@ -88,23 +89,19 @@ export interface IntegrationSerializableSnapshot {
 }
 
 export function canReadIntegrationAdministration(actor: AuthenticatedUserData) {
-  return CONFIGURATION_READ_PERMISSIONS.some((permission) =>
-    hasPermission(actor, permission),
-  )
+  return hasPhase5PermissionCompatibility(actor, CONFIGURATION_READ_PERMISSIONS)
 }
 
 export function canEditIntegrationAdministration(actor: AuthenticatedUserData) {
-  return CONFIGURATION_EDIT_PERMISSIONS.some((permission) =>
-    hasPermission(actor, permission),
-  )
+  return hasPhase5PermissionCompatibility(actor, CONFIGURATION_EDIT_PERMISSIONS)
 }
 
 export function canEditIntegrationSecrets(actor: AuthenticatedUserData) {
-  return hasPermission(actor, 'configuracao.segredo.editar')
+  return hasPhase5PermissionCompatibility(actor, ['configuracao.segredo.editar'])
 }
 
 export function canTestIntegrationConnections(actor: AuthenticatedUserData) {
-  return hasPermission(actor, 'configuracao.integracao.testar')
+  return hasPhase5PermissionCompatibility(actor, ['configuracao.integracao.testar'])
 }
 
 export async function getIntegrationAdminSnapshot(
