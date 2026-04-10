@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O repositorio agora possui um plano formal de Fase 5 para abrir um centro administrativo unificado de configuracoes e um white label completo, com taxonomia de escopo, segregacao entre configuracao comum e segredos, dominios customizados, branding por tenant/unidade e backlog amplo de implementacao sem misturar essa frente ao runtime atual.
 - A Fase 4 agora ganhou um recorte explicito de validacao operacional guiada do assistente virtual, com snapshot administrativo de status, alertas, cobertura de voz, cobertura do fluxo de agenda e proximos passos em `/admin/sistema`, sem abrir provider real, memoria conversacional persistida ou novo painel operacional.
 - A Fase 4 agora ganhou uma rodada curta de hardening do assistente virtual do tutor, com intent adicional para `report cards`, parsing deterministico de referencias como dia da semana/periodo do dia, historico minimo e telemetria de uso derivados de `AuditLog`, e leitura administrativa minima do uso do assistente em `/admin/sistema`, sem abrir provider real, audio bruto persistido ou memoria conversacional livre.
 - O repositorio agora fecha uma Fase 4 conservadora para o item de roadmap "assistente virtual por voz", limitada ao portal do tutor, com consultas proprias, agendamento assistido por confirmacao explicita, operacao transcript-only no servidor e reutilizacao integral da fundacao de IA fail-closed.
