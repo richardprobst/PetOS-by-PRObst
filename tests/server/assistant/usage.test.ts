@@ -177,6 +177,17 @@ test('buildTutorAssistantAdminDiagnosticsFromAuditLogs preserves scope and filte
   assert.equal(diagnostics.scope.diagnosticUnitId, 'unit_tutor')
   assert.equal(diagnostics.summary.totalLast30Days, 2)
   assert.equal(diagnostics.summary.answeredLast30Days, 2)
+  assert.equal(diagnostics.operationalValidation.status, 'EARLY_USAGE')
+  assert.equal(
+    diagnostics.operationalValidation.voiceCoverageStatus,
+    'NOT_OBSERVED',
+  )
+  assert.equal(
+    diagnostics.operationalValidation.alerts.some(
+      (alert) => alert.key === 'assistant.voice-not-observed',
+    ),
+    true,
+  )
   assert.deepEqual(diagnostics.topIntents, [
     {
       count: 2,
@@ -184,4 +195,76 @@ test('buildTutorAssistantAdminDiagnosticsFromAuditLogs preserves scope and filte
     },
   ])
   assert.equal(diagnostics.recentInteractions.every((item) => item.intent === 'QUERY_REPORT_CARDS'), true)
+})
+
+test('buildTutorAssistantAdminDiagnosticsFromAuditLogs raises attention when block and clarification rates are too high', () => {
+  const diagnostics = buildTutorAssistantAdminDiagnosticsFromAuditLogs(
+    [
+      createAssistantAuditLog({
+        action: 'ai.execution.blocked',
+        id: 'log_blocked_a',
+        inferenceKey: 'voice.tutor.query.finance.interpret.v1',
+        intent: 'QUERY_FINANCE_SUMMARY',
+        occurredAt: '2026-04-08T15:00:00.000Z',
+      }),
+      createAssistantAuditLog({
+        action: 'ai.execution.blocked',
+        id: 'log_blocked_b',
+        inferenceKey: 'voice.tutor.query.documents.interpret.v1',
+        intent: 'QUERY_PENDING_DOCUMENTS',
+        occurredAt: '2026-04-07T15:00:00.000Z',
+      }),
+      createAssistantAuditLog({
+        channel: 'TEXT',
+        id: 'log_unknown_a',
+        inferenceKey: 'voice.tutor.unknown.interpret.v1',
+        intent: 'UNKNOWN',
+        occurredAt: '2026-04-06T15:00:00.000Z',
+        replyPreview: 'Ainda nao consegui interpretar esse pedido com seguranca.',
+      }),
+      createAssistantAuditLog({
+        channel: 'TEXT',
+        id: 'log_unknown_b',
+        inferenceKey: 'voice.tutor.unknown.interpret.v1',
+        intent: 'UNKNOWN',
+        occurredAt: '2026-04-05T15:00:00.000Z',
+        replyPreview: 'Ainda nao consegui interpretar esse pedido com seguranca.',
+      }),
+      createAssistantAuditLog({
+        channel: 'TEXT',
+        id: 'log_help',
+        inferenceKey: 'voice.tutor.help.interpret.v1',
+        intent: 'HELP',
+        occurredAt: '2026-04-04T15:00:00.000Z',
+        replyPreview: 'Posso ajudar com agenda, financeiro e documentos.',
+        responseStatus: 'ANSWERED',
+      }),
+    ],
+    {
+      activeUnitId: 'unit_tutor',
+      contextType: 'LOCAL',
+      diagnosticUnitId: 'unit_tutor',
+      globalReadAccess: false,
+      status: 'RESOLVED',
+    },
+    {
+      now: new Date('2026-04-09T12:00:00.000Z'),
+    },
+  )
+
+  assert.equal(diagnostics.operationalValidation.status, 'ATTENTION_REQUIRED')
+  assert.equal(diagnostics.operationalValidation.blockRatePercent, 40)
+  assert.equal(diagnostics.operationalValidation.clarificationRatePercent, 40)
+  assert.equal(
+    diagnostics.operationalValidation.alerts.some(
+      (alert) => alert.key === 'assistant.high-block-rate',
+    ),
+    true,
+  )
+  assert.equal(
+    diagnostics.operationalValidation.alerts.some(
+      (alert) => alert.key === 'assistant.high-clarification-rate',
+    ),
+    true,
+  )
 })

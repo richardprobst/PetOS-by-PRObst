@@ -99,12 +99,15 @@ function getAiDiagnosticTone(value: string | null | undefined) {
     case 'LOCAL':
     case 'RESOLVED':
     case 'AVAILABLE':
+    case 'OBSERVED':
     case 'READY':
       return 'success' as const
     case 'DECLARED':
+    case 'EARLY_USAGE':
     case 'ESTIMATED':
     case 'GLOBAL_AUTHORIZED':
     case 'NOT_APPLICABLE':
+    case 'PARTIAL':
     case 'QUEUED':
     case 'READY_WITH_GUARDRAILS':
     case 'RUNNING':
@@ -124,6 +127,8 @@ function getAiDiagnosticTone(value: string | null | undefined) {
     case 'MISSING':
     case 'NOT_CONFIGURED':
     case 'NOT_EVALUATED':
+    case 'NOT_OBSERVED':
+    case 'NO_ACTIVITY':
     case 'WARNING':
       return 'warning' as const
     case 'ATTENTION_REQUIRED':
@@ -758,7 +763,7 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
         {canReadFoundationDiagnostics && assistantDiagnostics ? (
           <div className="mt-4 space-y-6">
             <FeedbackMessage
-              description="Esta leitura permanece minima e administrativa. Ela reutiliza a trilha auditavel do assistente, sem reter audio bruto nem abrir um painel operacional proprio."
+              description="Esta leitura permanece minima e administrativa. Ela reutiliza a trilha auditavel do assistente para apoiar a homologacao guiada da Fase 4, sem reter audio bruto nem abrir um painel operacional proprio."
               title="Uso validavel sem ampliar escopo"
               tone="info"
             />
@@ -816,6 +821,100 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                   bloqueios {assistantDiagnostics.summary.blockedLast30Days} / confirmacoes {assistantDiagnostics.summary.confirmationsLast30Days}
                 </p>
               </article>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              <article className="rounded-[1.5rem] border border-[color:var(--line)] bg-white/55 p-5">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Validacao operacional
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <StatusBadge
+                    tone={getAiDiagnosticTone(
+                      assistantDiagnostics.operationalValidation.status,
+                    )}
+                  >
+                    {assistantDiagnostics.operationalValidation.status}
+                  </StatusBadge>
+                  <StatusBadge
+                    tone={getAiDiagnosticTone(
+                      assistantDiagnostics.operationalValidation.voiceCoverageStatus,
+                    )}
+                  >
+                    voz {assistantDiagnostics.operationalValidation.voiceCoverageStatus}
+                  </StatusBadge>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  {assistantDiagnostics.operationalValidation.statusSummary}
+                </p>
+                <div className="mt-4 space-y-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                  <p>
+                    agenda exercitada{' '}
+                    <strong className="text-[color:var(--foreground)]">
+                      {assistantDiagnostics.operationalValidation.scheduleIntentCoverageLast30Days}
+                    </strong>{' '}
+                    vez(es) nos ultimos 30 dias
+                  </p>
+                  <p>
+                    ultima interacao{' '}
+                    <strong className="text-[color:var(--foreground)]">
+                      {assistantDiagnostics.summary.lastInteractionAt
+                        ? assistantDiagnostics.summary.lastInteractionAt.toLocaleString('pt-BR')
+                        : 'nao registrada'}
+                    </strong>
+                  </p>
+                </div>
+              </article>
+
+              <article className="rounded-[1.5rem] border border-[color:var(--line)] bg-white/55 p-5">
+                <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                  Taxas de risco
+                </p>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/60 p-4">
+                    <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                      Bloqueio
+                    </p>
+                    <p className="mt-3 text-3xl font-semibold text-[color:var(--foreground)]">
+                      {assistantDiagnostics.operationalValidation.blockRatePercent}%
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                      guardrail sobre {assistantDiagnostics.summary.totalLast30Days} interacao(oes)
+                    </p>
+                  </article>
+
+                  <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/60 p-4">
+                    <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground-soft)]">
+                      Esclarecimento
+                    </p>
+                    <p className="mt-3 text-3xl font-semibold text-[color:var(--foreground)]">
+                      {assistantDiagnostics.operationalValidation.clarificationRatePercent}%
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                      pedidos para esclarecer no recorte atual
+                    </p>
+                  </article>
+                </div>
+              </article>
+            </div>
+
+            <div className="space-y-3">
+              {assistantDiagnostics.operationalValidation.alerts.length > 0 ? (
+                assistantDiagnostics.operationalValidation.alerts.map((alert) => (
+                  <FeedbackMessage
+                    description={`${alert.summary} Proximo passo: ${alert.nextStep}`}
+                    key={alert.key}
+                    title={alert.title}
+                    tone={getPhase3GovernanceAlertTone(alert.severity)}
+                  />
+                ))
+              ) : (
+                <FeedbackMessage
+                  description="Nao ha alertas abertos neste escopo. O recorte continua limitado e deve permanecer sob validacao guiada, sem tratar o assistente como copiloto autonomo."
+                  title="Sem alertas adicionais"
+                  tone="success"
+                />
+              )}
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[0.72fr_1.28fr]">

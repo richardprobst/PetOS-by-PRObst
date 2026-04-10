@@ -60,7 +60,8 @@ Nesta rodada, a Fase 4 tambem ficou endurecida para validacao operacional:
 
 - o portal do tutor agora mostra historico minimo do assistente sem memoria conversacional persistida;
 - o parser deterministico passou a entender `report cards` e referencias simples de dia da semana/periodo do dia;
-- `/admin/sistema` ganhou leitura minima do uso do assistente por escopo administrativo atual.
+- `/admin/sistema` ganhou leitura minima do uso do assistente por escopo administrativo atual;
+- a Fase 4 agora possui um runbook proprio de validacao operacional, com status, alertas e proximos passos derivados da auditoria existente.
 
 A documentacao de desenvolvimento agora tambem esta sincronizada com esse estado atual, incluindo:
 
@@ -201,6 +202,7 @@ Guia completo:
 - [docs/phase4-test-suite.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase4-test-suite.md)
 - [docs/phase4-exit-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase4-exit-checklist.md)
 - [docs/phase4-baseline.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase4-baseline.md)
+- [docs/phase4-operational-validation.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase4-operational-validation.md)
 - [docs/phase3-block1-sprint1-plan.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-sprint1-plan.md)
 - [docs/phase3-block1-sprint1-exit-gate.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase3-block1-sprint1-exit-gate.md)
 - [docs/architecture.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/architecture.md)

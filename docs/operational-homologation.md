@@ -1,12 +1,12 @@
 # Operational Homologation
 
-Data da ultima revisao: 2026-04-07
+Data da ultima revisao: 2026-04-09
 
 ## Objetivo
 
 Este documento marca a fase seguinte ao rollout tecnico bem-sucedido do PetOS no host real.
 
-Nesta etapa, o objetivo nao e abrir nova feature nem antecipar Fase 3.
+Nesta etapa, o objetivo nao e abrir nova feature nem antecipar nova fase ampla.
 O objetivo e usar o sistema publicado em [https://petos.desi.pet](https://petos.desi.pet) para:
 
 - configurar a operacao real;
@@ -24,6 +24,8 @@ Esta fase parte do seguinte estado:
 - banco, auth e area administrativa funcionando;
 - baseline do MVP validado preservada;
 - baseline tecnica da Fase 2 concluida no repositorio;
+- baseline tecnica da Fase 3 concluida no repositorio;
+- baseline conservadora da Fase 4 concluida no repositorio;
 - camada installer/updater fechada, mas sem virar motor principal de deploy nesse host.
 
 ## O que esta em escopo nesta fase
@@ -33,6 +35,7 @@ Esta fase parte do seguinte estado:
 - configuracao de unidade, servicos, equipe e parametros usados no dia a dia;
 - homologacao guiada dos fluxos do MVP;
 - homologacao dos modulos da Fase 2 que realmente serao usados agora;
+- validacao operacional guiada das baselines conservadoras da Fase 3 e da Fase 4 quando elas forem colocadas em uso real;
 - registro de gaps reais;
 - correcoes pequenas, localizadas e justificadas quando um gap bloquear uso real.
 
@@ -43,6 +46,15 @@ Esta fase parte do seguinte estado:
 - trocar arquitetura;
 - transformar o updater interno em motor principal de upgrade hospedado;
 - inventar automacoes novas sem necessidade operacional imediata.
+
+## Rodadas complementares ja abertas
+
+Quando a baseline tecnica ja estiver fechada e aprovada no repositorio, a homologacao pode ganhar trilhas especificas e ainda assim continuar conservadora.
+
+Hoje isso inclui:
+
+- Fase 3: diagnosticos e governanca minima em `/admin/sistema`;
+- Fase 4: validacao operacional do assistente virtual do tutor em [docs/phase4-operational-validation.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase4-operational-validation.md).
 
 ## Ordem recomendada de homologacao
 
@@ -105,6 +117,14 @@ Use como referencia:
 - validar agendamento permitido;
 - validar historico, documentos e dados financeiros permitidos;
 - confirmar que nao existe vazamento de dados de outro cliente.
+
+Quando a Fase 4 estiver habilitada no ambiente:
+
+- validar o assistente virtual do tutor no recorte transcript-only;
+- validar uma consulta propria por texto;
+- validar um caso por voz no navegador homologado;
+- validar um fluxo assistido de agendamento com confirmacao explicita;
+- confirmar a leitura administrativa minima dessa rodada em `/admin/sistema`.
 
 ## Como registrar gaps reais
 

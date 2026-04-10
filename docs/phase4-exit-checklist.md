@@ -16,6 +16,7 @@ Ler em conjunto com:
 - [PHASE4_PLAN.md](../PHASE4_PLAN.md)
 - [docs/phase4-test-suite.md](./phase4-test-suite.md)
 - [docs/phase4-baseline.md](./phase4-baseline.md)
+- [docs/phase4-operational-validation.md](./phase4-operational-validation.md)
 - [docs/environment-contract.md](./environment-contract.md)
 
 ## Itens obrigatorios de fechamento
@@ -27,6 +28,7 @@ Ler em conjunto com:
 - [x] consultas proprias de agenda, financeiro, waitlist, documentos e report cards estao cobertas
 - [x] agendamento opera em modo assistido com rascunho e confirmacao explicita
 - [x] historico minimo e telemetria de uso estao disponiveis sem audio bruto
+- [x] validacao operacional minima esta documentada e visivel em `/admin/sistema`
 
 ### Integracao com a fundacao existente
 
@@ -42,6 +44,7 @@ Ler em conjunto com:
 - [x] `POST /api/tutor/virtual-assistant` existe e continua protegido por auth do tutor
 - [x] `/tutor` exibe o painel minimo do assistente virtual
 - [x] `/admin/sistema` exibe leitura administrativa minima do uso do assistente
+- [x] `/admin/sistema` exibe status, alertas e proximos passos da validacao operacional minima
 - [x] o contrato da API nao exige nem persiste audio bruto
 - [x] o backend continua validando ownership e criacao do atendimento
 
@@ -74,6 +77,7 @@ O fechamento desta fase nao significa:
 - script: `npm run test:phase4`
 - documento da suite: [docs/phase4-test-suite.md](./phase4-test-suite.md)
 - smoke central: [tests/server/phase4-smoke.test.ts](../tests/server/phase4-smoke.test.ts)
+- runbook operacional: [docs/phase4-operational-validation.md](./phase4-operational-validation.md)
 
 ### Artefatos principais
 

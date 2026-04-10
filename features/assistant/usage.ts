@@ -9,10 +9,13 @@ import {
   tutorAssistantChannelSchema,
   tutorAssistantInteractionSummarySchema,
   tutorAssistantIntentSchema,
+  tutorAssistantOperationalValidationSnapshotSchema,
   tutorAssistantResponseStatusSchema,
   tutorAssistantUsageSnapshotSchema,
   type TutorAssistantIntent,
   type TutorAssistantInteractionSummary,
+  type TutorAssistantOperationalValidationAlert,
+  type TutorAssistantOperationalValidationSnapshot,
   type TutorAssistantUsageSnapshot,
 } from './schemas'
 
@@ -29,6 +32,7 @@ type AssistantAuditRecord = Pick<
 
 export interface TutorAssistantAdminDiagnostics {
   generatedAt: Date
+  operationalValidation: TutorAssistantOperationalValidationSnapshot
   recentInteractions: TutorAssistantInteractionSummary[]
   scope: {
     activeUnitId: string | null
@@ -259,6 +263,160 @@ function createUsageSummary(
   }
 }
 
+function roundPercent(count: number, total: number) {
+  if (total <= 0) {
+    return 0
+  }
+
+  return Math.round((count / total) * 100)
+}
+
+function createOperationalValidationAlert(
+  input: TutorAssistantOperationalValidationAlert,
+) {
+  return input
+}
+
+function createOperationalValidationSnapshot(
+  interactions: TutorAssistantInteractionSummary[],
+  summary: TutorAssistantUsageSnapshot['summary'],
+  now: Date,
+) {
+  const last30DaysStart = subtractDays(now, 30)
+  const recent30Days = interactions.filter(
+    (interaction) => interaction.occurredAt >= last30DaysStart,
+  )
+  const scheduleIntentCoverageLast30Days = recent30Days.filter(
+    (interaction) => interaction.intent === 'SCHEDULE_APPOINTMENT',
+  ).length
+  const blockRatePercent = roundPercent(
+    summary.blockedLast30Days,
+    summary.totalLast30Days,
+  )
+  const clarificationRatePercent = roundPercent(
+    summary.needsClarificationLast30Days,
+    summary.totalLast30Days,
+  )
+  const alerts: TutorAssistantOperationalValidationAlert[] = []
+
+  if (summary.totalLast30Days === 0) {
+    alerts.push(
+      createOperationalValidationAlert({
+        key: 'assistant.no-activity',
+        nextStep:
+          'Executar o smoke manual da Fase 4 no portal do tutor e confirmar pelo menos um fluxo de consulta e um fluxo assistido de agenda.',
+        severity: 'WARNING',
+        summary:
+          'Nao houve interacoes do assistente nos ultimos 30 dias neste escopo administrativo.',
+        title: 'Sem uso observado',
+      }),
+    )
+  }
+
+  if (summary.totalLast30Days > 0 && summary.totalLast30Days < 5) {
+    alerts.push(
+      createOperationalValidationAlert({
+        key: 'assistant.early-usage',
+        nextStep:
+          'Manter a homologacao guiada e coletar mais interacoes antes de considerar o recorte validado em uso real.',
+        severity: 'INFO',
+        summary:
+          'O assistente ainda esta em uso inicial e a amostra recente segue pequena para conclusao operacional.',
+        title: 'Uso ainda inicial',
+      }),
+    )
+  }
+
+  if (blockRatePercent >= 35) {
+    alerts.push(
+      createOperationalValidationAlert({
+        key: 'assistant.high-block-rate',
+        nextStep:
+          'Revisar flags, quota e gates do modulo VIRTUAL_ASSISTANT antes de ampliar o uso com tutores reais.',
+        severity: 'ERROR',
+        summary: `A taxa de bloqueio recente chegou a ${blockRatePercent}% e indica degradacao relevante do recorte.`,
+        title: 'Bloqueio acima do tolerado',
+      }),
+    )
+  }
+
+  if (clarificationRatePercent >= 40) {
+    alerts.push(
+      createOperationalValidationAlert({
+        key: 'assistant.high-clarification-rate',
+        nextStep:
+          'Revisar intents, mensagens de ajuda e parser deterministico antes de tratar o fluxo como operacionalmente estavel.',
+        severity: 'WARNING',
+        summary: `A taxa de pedidos de esclarecimento recente chegou a ${clarificationRatePercent}% neste escopo.`,
+        title: 'Esclarecimento acima do esperado',
+      }),
+    )
+  }
+
+  if (summary.totalLast30Days > 0 && summary.voiceInteractionsLast30Days === 0) {
+    alerts.push(
+      createOperationalValidationAlert({
+        key: 'assistant.voice-not-observed',
+        nextStep:
+          'Executar a trilha de voz no navegador homologado para confirmar que o recorte transcript-only continua valido sem audio bruto no servidor.',
+        severity: 'INFO',
+        summary:
+          'Ainda nao houve interacoes por voz nos ultimos 30 dias neste escopo.',
+        title: 'Canal de voz ainda nao validado',
+      }),
+    )
+  }
+
+  if (summary.totalLast30Days > 0 && scheduleIntentCoverageLast30Days === 0) {
+    alerts.push(
+      createOperationalValidationAlert({
+        key: 'assistant.schedule-path-not-observed',
+        nextStep:
+          'Rodar pelo menos um caso assistido de agendamento com confirmacao explicita para validar o caminho de maior risco do recorte.',
+        severity: 'INFO',
+        summary:
+          'Nao houve interacoes de agendamento assistido nos ultimos 30 dias neste escopo.',
+        title: 'Fluxo de agenda ainda nao exercitado',
+      }),
+    )
+  }
+
+  const status =
+    summary.totalLast30Days === 0
+      ? 'NO_ACTIVITY'
+      : blockRatePercent >= 35 || clarificationRatePercent >= 40
+        ? 'ATTENTION_REQUIRED'
+        : summary.totalLast30Days < 5 || summary.voiceInteractionsLast30Days === 0
+          ? 'EARLY_USAGE'
+          : 'READY_WITH_GUARDRAILS'
+
+  const statusSummary =
+    status === 'NO_ACTIVITY'
+      ? 'Ainda nao existe evidencia minima de uso real do assistente neste escopo.'
+      : status === 'ATTENTION_REQUIRED'
+        ? 'O recorte esta ativo, mas os sinais recentes ainda exigem ajuste antes de ampliar a homologacao.'
+        : status === 'EARLY_USAGE'
+          ? 'O recorte esta operando, porem ainda precisa de mais uso guiado para consolidar a validacao.'
+          : 'O recorte mostra uso recente e permanece pronto para validacao guiada com guardrails.'
+
+  const voiceCoverageStatus =
+    summary.voiceInteractionsLast30Days === 0
+      ? 'NOT_OBSERVED'
+      : summary.voiceInteractionsLast30Days === summary.totalLast30Days
+        ? 'OBSERVED'
+        : 'PARTIAL'
+
+  return tutorAssistantOperationalValidationSnapshotSchema.parse({
+    alerts,
+    blockRatePercent,
+    clarificationRatePercent,
+    scheduleIntentCoverageLast30Days,
+    status,
+    statusSummary,
+    voiceCoverageStatus,
+  })
+}
+
 function dedupeAuditLogs(logs: AssistantAuditRecord[]) {
   return [...new Map(logs.map((entry) => [entry.id, entry])).values()]
 }
@@ -354,6 +512,11 @@ export function buildTutorAssistantAdminDiagnosticsFromAuditLogs(
 
   return {
     generatedAt: options.now ?? new Date(),
+    operationalValidation: createOperationalValidationSnapshot(
+      allInteractions,
+      usageSnapshot.summary,
+      options.now ?? new Date(),
+    ),
     recentInteractions: recent30Days,
     scope: input,
     summary: {

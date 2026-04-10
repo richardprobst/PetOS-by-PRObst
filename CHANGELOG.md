@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- A Fase 4 agora ganhou um recorte explicito de validacao operacional guiada do assistente virtual, com snapshot administrativo de status, alertas, cobertura de voz, cobertura do fluxo de agenda e proximos passos em `/admin/sistema`, sem abrir provider real, memoria conversacional persistida ou novo painel operacional.
 - A Fase 4 agora ganhou uma rodada curta de hardening do assistente virtual do tutor, com intent adicional para `report cards`, parsing deterministico de referencias como dia da semana/periodo do dia, historico minimo e telemetria de uso derivados de `AuditLog`, e leitura administrativa minima do uso do assistente em `/admin/sistema`, sem abrir provider real, audio bruto persistido ou memoria conversacional livre.
 - O repositorio agora fecha uma Fase 4 conservadora para o item de roadmap "assistente virtual por voz", limitada ao portal do tutor, com consultas proprias, agendamento assistido por confirmacao explicita, operacao transcript-only no servidor e reutilizacao integral da fundacao de IA fail-closed.
 - A fundacao de IA passou a reconhecer o novo modulo `VIRTUAL_ASSISTANT`, com flag dedicada, quota propria por modulo, contrato provider-neutral, gating server-side, auditoria coerente com o envelope e sem abrir provider real, billing real ou armazenamento de audio bruto.
@@ -113,6 +114,7 @@ Exemplo:
 - O pipeline de importacao GitHub da Hostinger passou a tratar o toolchain critico de build como dependencias normais do app, evitando falhas de deploy quando o host instala pacotes em modo focado em producao antes de executar `npm run build`.
 
 ### Added
+- `docs/phase4-operational-validation.md` como runbook da rodada de homologacao guiada da Fase 4, conectando smoke manual, leitura administrativa minima e classificacao de gaps do assistente virtual.
 - `features/assistant/usage.ts` como modulo de historico/telemetria minima do assistente virtual, reaproveitando a trilha de auditoria existente para o portal do tutor e para a leitura administrativa de sistema.
 - `PHASE4_PLAN.md`, `docs/phase4-test-suite.md`, `docs/phase4-exit-checklist.md` e `docs/phase4-baseline.md` como plano, suite reconhecivel, gate formal de saida e baseline documental da Fase 4.
 - `docs/decisions/015-virtual-assistant-transcript-only-confirmation-first.md` como ADR do primeiro corte do assistente virtual.

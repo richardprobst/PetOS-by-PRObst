@@ -94,6 +94,63 @@ export type TutorAssistantUsageSnapshot = z.infer<
   typeof tutorAssistantUsageSnapshotSchema
 >
 
+export const tutorAssistantOperationalValidationStatusSchema = z.enum([
+  'NO_ACTIVITY',
+  'EARLY_USAGE',
+  'READY_WITH_GUARDRAILS',
+  'ATTENTION_REQUIRED',
+])
+
+export type TutorAssistantOperationalValidationStatus = z.infer<
+  typeof tutorAssistantOperationalValidationStatusSchema
+>
+
+export const tutorAssistantOperationalValidationVoiceCoverageSchema = z.enum([
+  'NOT_OBSERVED',
+  'PARTIAL',
+  'OBSERVED',
+])
+
+export type TutorAssistantOperationalValidationVoiceCoverage = z.infer<
+  typeof tutorAssistantOperationalValidationVoiceCoverageSchema
+>
+
+export const tutorAssistantOperationalValidationAlertSeveritySchema = z.enum([
+  'INFO',
+  'WARNING',
+  'ERROR',
+])
+
+export type TutorAssistantOperationalValidationAlertSeverity = z.infer<
+  typeof tutorAssistantOperationalValidationAlertSeveritySchema
+>
+
+export const tutorAssistantOperationalValidationAlertSchema = z.object({
+  key: z.string().trim().min(1),
+  nextStep: z.string().trim().min(1),
+  severity: tutorAssistantOperationalValidationAlertSeveritySchema,
+  summary: z.string().trim().min(1),
+  title: z.string().trim().min(1),
+})
+
+export type TutorAssistantOperationalValidationAlert = z.infer<
+  typeof tutorAssistantOperationalValidationAlertSchema
+>
+
+export const tutorAssistantOperationalValidationSnapshotSchema = z.object({
+  alerts: z.array(tutorAssistantOperationalValidationAlertSchema).default([]),
+  blockRatePercent: z.number().min(0).max(100),
+  clarificationRatePercent: z.number().min(0).max(100),
+  scheduleIntentCoverageLast30Days: z.number().int().nonnegative(),
+  status: tutorAssistantOperationalValidationStatusSchema,
+  statusSummary: z.string().trim().min(1),
+  voiceCoverageStatus: tutorAssistantOperationalValidationVoiceCoverageSchema,
+})
+
+export type TutorAssistantOperationalValidationSnapshot = z.infer<
+  typeof tutorAssistantOperationalValidationSnapshotSchema
+>
+
 export const tutorAssistantInterpretRequestSchema = z.object({
   channel: tutorAssistantChannelSchema.default('TEXT'),
   transcript: z.string().trim().min(1).max(500),

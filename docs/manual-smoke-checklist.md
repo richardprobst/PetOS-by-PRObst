@@ -4,6 +4,8 @@ Checklist objetiva usada na validacao manual do MVP em ambiente real e mantida c
 
 Para a baseline da Fase 2, use tambem [docs/phase2-smoke-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase2-smoke-checklist.md).
 
+Para a rodada conservadora do assistente virtual do tutor, use tambem [docs/phase4-operational-validation.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/phase4-operational-validation.md).
+
 ## Pre-requisitos do ambiente
 
 - [ ] `.env.local` configurado com `DATABASE_URL`, `DIRECT_DATABASE_URL`, `NEXTAUTH_SECRET` e `NEXTAUTH_URL`
@@ -56,6 +58,9 @@ Para a baseline da Fase 2, use tambem [docs/phase2-smoke-checklist.md](/C:/Users
 - [ ] autenticar como tutor e abrir `/tutor`
 - [ ] confirmar exibicao de dados proprios, pets, historico e agendamentos permitidos
 - [ ] confirmar que o tutor nao visualiza dados de outro cliente
+- [ ] validar o assistente virtual por texto com consulta propria e resposta coerente
+- [ ] validar o assistente virtual por voz no navegador homologado, sem upload de audio bruto ao servidor
+- [ ] validar um rascunho assistido de agendamento seguido de confirmacao explicita
 - [ ] acessar `manifest.webmanifest` e verificar carregamento sem erro
 - [ ] validar instalabilidade basica do PWA no navegador-alvo
 - [ ] confirmar carregamento de `sw.js`

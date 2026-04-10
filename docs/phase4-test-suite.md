@@ -34,6 +34,7 @@ Ele existe para deixar explicito:
 - resposta de ajuda dentro do recorte aprovado;
 - bloqueio rapido quando o modulo estiver desligado por flag;
 - historico minimo e telemetria de uso derivados de `AuditLog`.
+- snapshot administrativo de validacao operacional com status, alertas e proximos passos.
 
 ### Fundacao de IA reutilizada
 
@@ -49,6 +50,7 @@ Ele existe para deixar explicito:
 - confirmacao de agendamento continua separada da interpretacao;
 - o primeiro corte permanece restrito a consultas proprias e agendamento assistido;
 - o portal agora consegue exibir historico minimo do assistente sem memoria conversacional persistida;
+- `/admin/sistema` agora consegue derivar prontidao operacional minima sem abrir painel novo nem mutacao;
 - os testes do tutor continuam protegendo o ownership do portal.
 
 ## Invariantes protegidos
@@ -74,3 +76,4 @@ Ele existe para deixar explicito:
 - [PHASE4_PLAN.md](../PHASE4_PLAN.md)
 - [docs/phase4-exit-checklist.md](./phase4-exit-checklist.md)
 - [docs/phase4-baseline.md](./phase4-baseline.md)
+- [docs/phase4-operational-validation.md](./phase4-operational-validation.md)

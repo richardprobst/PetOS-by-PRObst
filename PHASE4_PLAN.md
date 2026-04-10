@@ -55,6 +55,7 @@ Entregar o primeiro corte controlado do assistente virtual do PetOS, reutilizand
 - painel minimo no portal do tutor;
 - historico minimo e telemetria de uso derivados da auditoria existente, sem audio bruto;
 - leitura administrativa minima do uso do assistente em `/admin/sistema`;
+- snapshot minimo de validacao operacional com alertas e proximos passos em `/admin/sistema`;
 - suite reconhecivel da fase;
 - checklist formal de saida e baseline documental da fase.
 
@@ -90,7 +91,8 @@ Entregar o primeiro corte controlado do assistente virtual do PetOS, reutilizand
 - suite `npm run test:phase4`;
 - [docs/phase4-test-suite.md](./docs/phase4-test-suite.md);
 - [docs/phase4-exit-checklist.md](./docs/phase4-exit-checklist.md);
-- [docs/phase4-baseline.md](./docs/phase4-baseline.md).
+- [docs/phase4-baseline.md](./docs/phase4-baseline.md);
+- [docs/phase4-operational-validation.md](./docs/phase4-operational-validation.md).
 
 ## 7. Gate de validacao
 
