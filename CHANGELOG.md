@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O deploy automatico da Hostinger ganhou autocura para o artefato `node_modules/.prisma/client/query_compiler_bg.wasm`: `postinstall` e o bootstrap de runtime agora restauram esse `.wasm` a partir de um fallback versionado quando o host o omite no `prisma generate`.
 - O bootstrap de runtime da Hostinger passou a dar precedencia ao `.builds/config/.env` sobre variaveis antigas injetadas pelo painel, evitando que o app suba com `DATABASE_URL` e URLs stale apos redeploy.
 - O bootstrap de runtime do PetOS passou a ter um `server.js` versionado na raiz, capaz de carregar o `.builds/config/.env` da Hostinger e delegar para o servidor standalone, reduzindo dependencia de processo manual no host.
 - O runtime do Prisma passou a usar `engineType = "client"` com `@prisma/adapter-mariadb`, reduzindo dependencia do engine Rust/Tokio em hosts compartilhados e mitigando falhas de thread no deploy direto da Hostinger.

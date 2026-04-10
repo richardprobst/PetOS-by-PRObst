@@ -26,6 +26,7 @@ Observacoes:
 - o projeto ja esta configurado com `output: 'standalone'` em [next.config.ts](/C:/Users/casaprobst/PetOS-by-PRObst-main/next.config.ts)
 - o `start` sobe o bootstrap versionado em [server.js](/C:/Users/casaprobst/PetOS-by-PRObst-main/server.js), que carrega o `.builds/config/.env` da Hostinger quando existir e delega para o servidor standalone gerado pelo build
 - no host compartilhado, o `.builds/config/.env` passou a ter precedencia explicita sobre variaveis antigas injetadas pelo painel, evitando que o runtime fique preso a `DATABASE_URL` ou `NEXTAUTH_URL` stale apos um redeploy
+- o `postinstall` e o bootstrap de runtime tambem restauram `node_modules/.prisma/client/query_compiler_bg.wasm` a partir de um fallback versionado, protegendo o deploy automatico da Hostinger contra a ausencia intermitente desse artefato do Prisma
 - [scripts/start-standalone.mjs](/C:/Users/casaprobst/PetOS-by-PRObst-main/scripts/start-standalone.mjs) ficou alinhado com o mesmo bootstrap de runtime, evitando divergencia entre `npm start`, processo manual e boot automatico do host
 - `postinstall` ja executa `prisma generate`, reduzindo fragilidade no primeiro deploy
 - o build ja foi validado sem `.env.local`, entao a importacao via GitHub nao depende de segredo local da maquina

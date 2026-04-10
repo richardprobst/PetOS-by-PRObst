@@ -1,6 +1,9 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { loadEnvConfig } = require('@next/env')
+const {
+  ensurePrismaQueryCompilerArtifact,
+} = require('./server/db/prisma-query-compiler.js')
 
 function stripWrappingQuotes(value) {
   if (
@@ -109,6 +112,7 @@ function resolveRuntimeEntrypoint(projectRoot = __dirname) {
 
 function startRuntime(projectRoot = __dirname) {
   bootstrapRuntimeEnvironment(projectRoot, process.env)
+  ensurePrismaQueryCompilerArtifact(projectRoot)
   const runtimeEntrypoint = resolveRuntimeEntrypoint(projectRoot)
 
   require(runtimeEntrypoint)

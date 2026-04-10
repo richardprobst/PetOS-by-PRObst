@@ -11,7 +11,7 @@
   "packageManager": "npm@11.4.2",
   "scripts": {
     "dev": "next dev",
-    "postinstall": "prisma generate",
+    "postinstall": "npm run prisma:generate",
     "build": "node scripts/clean-path.mjs .next && next build",
     "start": "node scripts/start-standalone.mjs",
     "start:legacy": "next start",
@@ -43,7 +43,7 @@
     "ops:check:staging:file": "tsx scripts/operational-readiness.ts --mode=staging --env-file=.env.staging",
     "prisma:check": "npm run prisma:validate && npm run prisma:generate",
     "prisma:bootstrap": "npm run prisma:generate && npm run prisma:migrate:deploy && npm run prisma:seed",
-    "prisma:generate": "prisma generate",
+    "prisma:generate": "prisma generate && node scripts/ensure-prisma-query-compiler.mjs",
     "prisma:validate": "prisma validate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
