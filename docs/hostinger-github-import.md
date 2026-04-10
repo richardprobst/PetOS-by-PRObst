@@ -24,7 +24,8 @@ Se a Hostinger pedir os campos manualmente, use:
 Observacoes:
 
 - o projeto ja esta configurado com `output: 'standalone'` em [next.config.ts](/C:/Users/casaprobst/PetOS-by-PRObst-main/next.config.ts)
-- o `start` ja sobe o servidor standalone gerado pelo build em [scripts/start-standalone.mjs](/C:/Users/casaprobst/PetOS-by-PRObst-main/scripts/start-standalone.mjs)
+- o `start` sobe o bootstrap versionado em [server.js](/C:/Users/casaprobst/PetOS-by-PRObst-main/server.js), que carrega o `.builds/config/.env` da Hostinger quando existir e delega para o servidor standalone gerado pelo build
+- [scripts/start-standalone.mjs](/C:/Users/casaprobst/PetOS-by-PRObst-main/scripts/start-standalone.mjs) ficou alinhado com o mesmo bootstrap de runtime, evitando divergencia entre `npm start`, processo manual e boot automatico do host
 - `postinstall` ja executa `prisma generate`, reduzindo fragilidade no primeiro deploy
 - o build ja foi validado sem `.env.local`, entao a importacao via GitHub nao depende de segredo local da maquina
 - dependencias criticas de build (`prisma`, `tailwindcss`, `postcss`, `autoprefixer`, `typescript`, `eslint` e tipagens de TypeScript/React) ficam em `dependencies` de proposito, para nao quebrar em hosts compartilhados que executam o build com install focado em producao

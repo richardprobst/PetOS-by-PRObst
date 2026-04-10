@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O bootstrap de runtime do PetOS passou a ter um `server.js` versionado na raiz, capaz de carregar o `.builds/config/.env` da Hostinger e delegar para o servidor standalone, reduzindo dependencia de processo manual no host.
 - O runtime do Prisma passou a usar `engineType = "client"` com `@prisma/adapter-mariadb`, reduzindo dependencia do engine Rust/Tokio em hosts compartilhados e mitigando falhas de thread no deploy direto da Hostinger.
 - O endpoint `GET /api/health` e o smoke `npm run ops:validate:phase5` agora expõem um fingerprint explícito de deploy, permitindo provar objetivamente se a Hostinger já está executando o commit mais novo durante a homologação operacional.
 - A homologacao operacional da Fase 5 ganhou um smoke autenticado reproduzivel em `npm run ops:validate:phase5`, validando shell admin, centro administrativo, branding e integracoes no ambiente publicado sem depender de navegador manual.
