@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O endpoint `GET /api/health` e o smoke `npm run ops:validate:phase5` agora expõem um fingerprint explícito de deploy, permitindo provar objetivamente se a Hostinger já está executando o commit mais novo durante a homologação operacional.
 - A homologacao operacional da Fase 5 ganhou um smoke autenticado reproduzivel em `npm run ops:validate:phase5`, validando shell admin, centro administrativo, branding e integracoes no ambiente publicado sem depender de navegador manual.
 - A Fase 5 deixou de depender de um reseed imediato de RBAC para administradores legados: o perfil `Administrador` agora recebe compatibilidade operacional para leitura, edicao, teste, publicacao e aprovacao do modulo de configuracoes ate a sincronizacao completa do banco.
 - A rodada de homologacao operacional da Fase 5 no host publicado passou a ficar registrada como `GO COM RESSALVAS`: o centro administrativo responde sem erro e o admin legado navega corretamente, mas o ambiente ainda expõe `MIGRATION_PENDING` para as tabelas novas da fase ate executar `prisma migrate deploy`.

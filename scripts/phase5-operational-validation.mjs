@@ -156,6 +156,33 @@ async function assertJsonRoute(pathname) {
   return payload
 }
 
+async function assertHealthRoute() {
+  const response = await fetch(new URL('/api/health', baseUrl), {
+    headers: createHeaders(),
+  })
+
+  if (response.status !== 200) {
+    registerFailure(`Expected /api/health to return 200, received ${response.status}.`)
+    return null
+  }
+
+  const payload = await response.json()
+  const fingerprint =
+    payload?.deployment?.id ??
+    response.headers.get('x-petos-deploy-fingerprint') ??
+    null
+
+  if (!fingerprint) {
+    registerWarning(
+      'The published health route did not expose a deploy fingerprint. Runtime freshness cannot be proven from the response.',
+    )
+    return payload
+  }
+
+  printStep(`/api/health returned 200 with deploy fingerprint ${fingerprint}.`)
+  return payload
+}
+
 function inspectConfigurationCenter(adminHtml, settingsCenterPayload) {
   if (!adminHtml.includes('/admin/configuracoes')) {
     registerFailure('The admin shell did not expose the /admin/configuracoes navigation entry.')
@@ -201,6 +228,7 @@ async function main() {
   await authenticate()
   printStep('Credential login completed successfully.')
 
+  await assertHealthRoute()
   const adminHtml = await assertHtmlPage('/admin')
   const settingsHtml = await assertHtmlPage('/admin/configuracoes')
   await assertHtmlPage('/admin/sistema')

@@ -6,6 +6,7 @@ import {
   deriveReadinessStatus,
 } from '../../../server/readiness/database'
 import { collectSystemRuntimeSnapshot } from '../../../server/system/runtime-state'
+import { deployFingerprint } from '../../../server/system/deploy-fingerprint'
 import { logError, logWarn, serializeErrorForLogs } from '../../../server/observability/logger'
 import { buildHttpRequestContext, resolveRequestId } from '../../../server/observability/request'
 
@@ -75,6 +76,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         checks,
+        deployment: deployFingerprint,
         lifecycle: {
           currentInstalledVersion: runtime.currentInstalledVersion,
           installerEnabled: runtime.installerEnabled,
@@ -89,6 +91,7 @@ export async function GET(request: Request) {
       {
         headers: {
           ...noStoreHeaders,
+          'x-petos-deploy-fingerprint': deployFingerprint.id,
           'x-request-id': requestId,
         },
         status: status === 'ok' ? 200 : 503,
@@ -116,6 +119,7 @@ export async function GET(request: Request) {
       {
         headers: {
           ...noStoreHeaders,
+          'x-petos-deploy-fingerprint': deployFingerprint.id,
           'x-request-id': requestId,
         },
         status: 503,
