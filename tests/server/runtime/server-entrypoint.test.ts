@@ -5,6 +5,10 @@ import path from 'node:path'
 import { afterEach, test } from 'node:test'
 
 const runtimeBootstrap = require('../../../server.js') as {
+  bootstrapRuntimeEnvironment: (
+    projectRoot?: string,
+    targetEnv?: Record<string, string | undefined>,
+  ) => Record<string, string | undefined>
   loadRuntimeEnvFile: (filePath: string, targetEnv?: Record<string, string | undefined>) => boolean
   resolveRuntimeEntrypoint: (projectRoot?: string) => string
   resolveRuntimeEnvCandidates: (projectRoot?: string) => string[]
@@ -90,4 +94,32 @@ test('resolveRuntimeEnvCandidates includes Hostinger build env and local nodejs 
     path.join(projectRoot, '.builds', 'config', '.env'),
     path.join(projectRoot, '..', 'public_html', '.builds', 'config', '.env'),
   ])
+})
+
+test('bootstrapRuntimeEnvironment lets the Hostinger runtime env file override stale injected values', () => {
+  const projectRoot = createTempProjectRoot()
+  const runtimeEnv = path.join(projectRoot, '.builds', 'config', '.env')
+  const originalCwd = process.cwd()
+  const targetEnv: Record<string, string | undefined> = {
+    DATABASE_URL: 'mysql://stale-user:stale-pass@stale-host:3306/stale_db',
+    NEXTAUTH_URL: 'https://stale.example.com',
+  }
+
+  fs.mkdirSync(path.dirname(runtimeEnv), { recursive: true })
+  fs.writeFileSync(
+    runtimeEnv,
+    [
+      "DATABASE_URL='mysql://fresh-user:fresh-pass@127.0.0.1:3306/petos'",
+      "NEXTAUTH_URL='https://petos.desi.pet'",
+    ].join('\n'),
+  )
+
+  try {
+    runtimeBootstrap.bootstrapRuntimeEnvironment(projectRoot, targetEnv)
+  } finally {
+    process.chdir(originalCwd)
+  }
+
+  assert.equal(targetEnv.DATABASE_URL, 'mysql://fresh-user:fresh-pass@127.0.0.1:3306/petos')
+  assert.equal(targetEnv.NEXTAUTH_URL, 'https://petos.desi.pet')
 })

@@ -13,7 +13,11 @@ function stripWrappingQuotes(value) {
   return value
 }
 
-function loadRuntimeEnvFile(filePath, targetEnv = process.env) {
+function loadRuntimeEnvFile(
+  filePath,
+  targetEnv = process.env,
+  options = { overrideExisting: false },
+) {
   if (!fs.existsSync(filePath)) {
     return false
   }
@@ -39,7 +43,11 @@ function loadRuntimeEnvFile(filePath, targetEnv = process.env) {
     const key = withoutExport.slice(0, separatorIndex).trim()
     const rawValue = withoutExport.slice(separatorIndex + 1).trim()
 
-    if (!key || targetEnv[key] !== undefined) {
+    if (!key) {
+      continue
+    }
+
+    if (!options.overrideExisting && targetEnv[key] !== undefined) {
       continue
     }
 
@@ -60,7 +68,9 @@ function bootstrapRuntimeEnvironment(projectRoot = __dirname, targetEnv = proces
   process.chdir(projectRoot)
 
   for (const candidate of resolveRuntimeEnvCandidates(projectRoot)) {
-    loadRuntimeEnvFile(candidate, targetEnv)
+    loadRuntimeEnvFile(candidate, targetEnv, {
+      overrideExisting: true,
+    })
   }
 
   loadEnvConfig(projectRoot, false)
