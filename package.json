@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "next dev",
     "postinstall": "npm run prisma:generate",
-    "build": "node scripts/clean-path.mjs .next && next build",
+    "build": "node scripts/clean-path.mjs .next && next build && node scripts/prepare-standalone-runtime.mjs",
     "start": "node scripts/start-standalone.mjs",
     "start:legacy": "next start",
     "start:standalone": "node scripts/start-standalone.mjs",
