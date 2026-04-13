@@ -5,7 +5,6 @@ import type {
   IntegrationHealthStatus,
 } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
-import { hasPermission } from '@/server/authorization/access-control'
 import {
   createLocalUnitOwnershipBinding,
   evaluateActorMultiUnitScope,
@@ -21,7 +20,6 @@ import { AppError } from '@/server/http/errors'
 import { writeAuditLog } from '@/server/audit/logging'
 import {
   getIntegrationCatalogEntry,
-  integrationCatalog,
   maskSecretValue,
   type IntegrationConnectionSnapshot,
   type IntegrationProviderKey,
@@ -35,8 +33,6 @@ import { hasPhase5PermissionCompatibility } from '@/features/configuration/permi
 const CONFIGURATION_READ_PERMISSIONS = [
   'configuracao.central.visualizar',
   'configuracao.visualizar',
-  'white_label.visualizar',
-  'dominio.visualizar',
 ]
 
 const CONFIGURATION_EDIT_PERMISSIONS = [
@@ -244,6 +240,23 @@ export async function upsertIntegrationConnection(
               unitId: resolvedUnitId,
             },
           })
+
+      if (input.connectionId && !existingConnection) {
+        throw new AppError('NOT_FOUND', 404, 'Integration connection not found.')
+      }
+
+      if (existingConnection) {
+        assertCanEditIntegrationScope(
+          actor,
+          existingConnection.scope,
+          existingConnection.unitId,
+        )
+        assertExistingIntegrationScopeMatchesTarget(
+          existingConnection,
+          input.scope,
+          resolvedUnitId,
+        )
+      }
 
       const data = {
         active: input.status !== 'DISABLED',
@@ -549,6 +562,22 @@ function assertCanEditIntegrationScope(
       'User is not allowed to manage an integration on another unit in the current context.',
     )
   }
+}
+
+function assertExistingIntegrationScopeMatchesTarget(
+  connection: Pick<IntegrationConnectionRecord, 'scope' | 'unitId'>,
+  targetScope: ConfigurationScope,
+  targetUnitId: string | null,
+) {
+  if (connection.scope === targetScope && (connection.unitId ?? null) === targetUnitId) {
+    return
+  }
+
+  throw new AppError(
+    'CONFLICT',
+    409,
+    'Existing integration connections cannot be reassigned to another scope.',
+  )
 }
 
 function buildAccessibleIntegrationWhere(

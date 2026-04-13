@@ -19,9 +19,36 @@ const legacyAdminActor: AuthenticatedUserData = {
   userType: 'ADMIN',
 }
 
+const whiteLabelViewer: AuthenticatedUserData = {
+  active: true,
+  email: 'white-label@petos.app',
+  id: 'white_label_viewer',
+  name: 'White Label Viewer',
+  permissions: ['white_label.visualizar'],
+  profiles: ['Gerente'],
+  unitId: 'unit_local',
+  userType: 'ADMIN',
+}
+
+const domainViewer: AuthenticatedUserData = {
+  active: true,
+  email: 'domain@petos.app',
+  id: 'domain_viewer',
+  name: 'Domain Viewer',
+  permissions: ['dominio.visualizar'],
+  profiles: ['Gerente'],
+  unitId: 'unit_local',
+  userType: 'ADMIN',
+}
+
 test('phase 5 integration permissions preserve legacy admin compatibility', () => {
   assert.equal(canReadIntegrationAdministration(legacyAdminActor), true)
   assert.equal(canEditIntegrationAdministration(legacyAdminActor), true)
   assert.equal(canEditIntegrationSecrets(legacyAdminActor), true)
   assert.equal(canTestIntegrationConnections(legacyAdminActor), true)
+})
+
+test('integration administration read is not granted by white label or domain visibility alone', () => {
+  assert.equal(canReadIntegrationAdministration(whiteLabelViewer), false)
+  assert.equal(canReadIntegrationAdministration(domainViewer), false)
 })

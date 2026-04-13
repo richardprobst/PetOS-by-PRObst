@@ -1,5 +1,4 @@
-import { getCurrentAuthUser } from '@/server/auth/session'
-import { AppError } from '@/server/http/errors'
+import { requireAuthenticatedApiUser } from '@/server/authorization/api-access'
 import { routeErrorResponse } from '@/server/http/responses'
 import { getMediaBinaryForActor } from '@/features/documents/services'
 
@@ -11,11 +10,7 @@ interface RouteContext {
 
 export async function GET(request: Request, context: RouteContext) {
   try {
-    const actor = await getCurrentAuthUser()
-
-    if (!actor) {
-      throw new AppError('UNAUTHORIZED', 401, 'Authentication required.')
-    }
+    const actor = await requireAuthenticatedApiUser()
 
     const { mediaAssetId } = await context.params
     const { content, fileName, mediaAsset } = await getMediaBinaryForActor(actor, mediaAssetId)

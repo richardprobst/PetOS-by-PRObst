@@ -11,9 +11,11 @@ const eslintConfig = defineConfig([
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
   globalIgnores([
     '.next/**',
+    '.playwright-cli/**',
     '.netlify/**',
     'out/**',
     'build/**',
+    'tmp/**',
     'next-env.d.ts',
   ]),
 ])

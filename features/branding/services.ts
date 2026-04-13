@@ -45,6 +45,15 @@ const DOMAIN_EDIT_PERMISSIONS = [
 type TenantBrandingRecord = Prisma.TenantBrandingGetPayload<Record<string, never>>
 type UnitBrandingRecord = Prisma.UnitBrandingGetPayload<Record<string, never>>
 type BrandAssetRecord = Prisma.BrandAssetGetPayload<Record<string, never>>
+type BrandAssetScopedRecord = Prisma.BrandAssetGetPayload<{
+  include: {
+    unitBranding: {
+      select: {
+        unitId: true
+      }
+    }
+  }
+}>
 type DomainBindingRecord = Prisma.DomainBindingGetPayload<Record<string, never>>
 type ConfigurationPublishRecord = Prisma.ConfigurationPublishGetPayload<Record<string, never>>
 
@@ -150,16 +159,20 @@ export async function getBrandingAdminSnapshot(
 ): Promise<BrandingAdminSnapshot> {
   assertCanViewWhiteLabel(actor)
 
-  const selectedUnitId = requestedUnitId ?? actor.unitId ?? null
+  const scope = resolveBrandingReadScope(actor, requestedUnitId ?? null)
   const liveState = await captureLiveBrandingState()
+  const filteredLiveState = filterSerializableBrandingState(
+    liveState.serializable,
+    scope.visibleUnitIds,
+  )
   const latestPublished = await getLatestConfigurationPublish()
 
   return {
-    liveRuntime: buildBrandRuntimeFromSerializableState(liveState.serializable, {
-      hostname: selectedUnitId ? null : getFallbackHostname(),
+    liveRuntime: buildBrandRuntimeFromSerializableState(filteredLiveState, {
+      hostname: scope.selectedUnitId ? null : getFallbackHostname(),
       source: 'LIVE',
       surface: 'ADMIN',
-      unitId: selectedUnitId,
+      unitId: scope.selectedUnitId,
     }),
     permissions: {
       canEditDomains: canEditDomainBindings(actor),
@@ -170,11 +183,11 @@ export async function getBrandingAdminSnapshot(
       ? resolvePublishedBrandRuntime(latestPublished, {
           hostname: getFallbackHostname(),
           surface: 'PUBLIC_SITE',
-          unitId: selectedUnitId,
+          unitId: scope.selectedUnitId,
         })
       : null,
     publishedVersion: latestPublished?.version ?? null,
-    serializableLiveState: liveState.serializable,
+    serializableLiveState: filteredLiveState,
     storage: liveState.storage,
   }
 }
@@ -382,9 +395,10 @@ export async function saveBrandAsset(
   },
 ) {
   assertCanEditWhiteLabel(actor)
+  const targetUnitId = normalizeOptionalUnitId(input.unitId)
 
-  if (input.unitId) {
-    assertCanWriteUnitScopedBranding(actor, input.unitId)
+  if (targetUnitId) {
+    assertCanWriteUnitScopedBranding(actor, targetUnitId)
   }
 
   const assetUrl = input.assetUrl?.trim()
@@ -397,17 +411,17 @@ export async function saveBrandAsset(
     return await prisma.$transaction(async (tx) => {
       let unitBrandingId: string | null = null
 
-      if (input.unitId) {
+      if (targetUnitId) {
         const unitBranding = await tx.unitBranding.upsert({
           where: {
-            unitId: input.unitId,
+            unitId: targetUnitId,
           },
           update: {
             active: true,
             updatedByUserId: actor.id,
           },
           create: {
-            unitId: input.unitId,
+            unitId: targetUnitId,
             updatedByUserId: actor.id,
           },
         })
@@ -415,23 +429,44 @@ export async function saveBrandAsset(
         unitBrandingId = unitBranding.id
       }
 
-      const existingAsset =
-        input.assetId
-          ? await tx.brandAsset.findUnique({
-              where: {
-                id: input.assetId,
+      const existingAsset: BrandAssetScopedRecord | null = input.assetId
+        ? await tx.brandAsset.findUnique({
+            where: {
+              id: input.assetId,
+            },
+            include: {
+              unitBranding: {
+                select: {
+                  unitId: true,
+                },
               },
-            })
-          : await tx.brandAsset.findFirst({
-              where: {
-                role: input.role,
-                tenantBrandingId: input.unitId ? null : 'default',
-                unitBrandingId,
+            },
+          })
+        : await tx.brandAsset.findFirst({
+            where: {
+              role: input.role,
+              tenantBrandingId: targetUnitId ? null : 'default',
+              unitBrandingId,
+            },
+            orderBy: {
+              updatedAt: 'desc',
+            },
+            include: {
+              unitBranding: {
+                select: {
+                  unitId: true,
+                },
               },
-              orderBy: {
-                updatedAt: 'desc',
-              },
-            })
+            },
+          })
+
+      if (input.assetId && !existingAsset) {
+        throw new AppError('NOT_FOUND', 404, 'Brand asset not found.')
+      }
+
+      if (existingAsset) {
+        assertCanMutateExistingBrandAsset(actor, existingAsset, targetUnitId)
+      }
 
       const data = {
         active: input.active,
@@ -439,7 +474,7 @@ export async function saveBrandAsset(
         assetUrl,
         label: input.label ?? null,
         role: input.role,
-        tenantBrandingId: input.unitId ? null : 'default',
+        tenantBrandingId: targetUnitId ? null : 'default',
         unitBrandingId,
         updatedByUserId: actor.id,
       }
@@ -459,11 +494,11 @@ export async function saveBrandAsset(
         action: 'configuration.branding.asset.save',
         details: {
           role: input.role,
-          unitId: input.unitId ?? null,
+          unitId: targetUnitId,
         },
         entityId: asset.id,
         entityName: 'BrandAsset',
-        unitId: input.unitId ?? null,
+        unitId: targetUnitId,
         userId: actor.id,
       })
 
@@ -493,26 +528,34 @@ export async function saveDomainBinding(
   if (!canEditDomainBindings(actor)) {
     throw new AppError('FORBIDDEN', 403, 'Missing permission: dominio.editar.')
   }
+  const targetUnitId = normalizeOptionalUnitId(input.unitId)
 
-  if (input.unitId) {
-    assertCanWriteUnitScopedBranding(actor, input.unitId)
+  if (targetUnitId) {
+    assertCanWriteUnitScopedBranding(actor, targetUnitId)
   }
 
   try {
     return await prisma.$transaction(async (tx) => {
       const normalizedHostname = normalizeRequiredHostname(input.hostname)
-      const existingBinding =
-        input.domainBindingId
-          ? await tx.domainBinding.findUnique({
-              where: {
-                id: input.domainBindingId,
-              },
-            })
-          : await tx.domainBinding.findUnique({
-              where: {
-                hostname: normalizedHostname,
-              },
-            })
+      const existingBinding = input.domainBindingId
+        ? await tx.domainBinding.findUnique({
+            where: {
+              id: input.domainBindingId,
+            },
+          })
+        : await tx.domainBinding.findUnique({
+            where: {
+              hostname: normalizedHostname,
+            },
+          })
+
+      if (input.domainBindingId && !existingBinding) {
+        throw new AppError('NOT_FOUND', 404, 'Domain binding not found.')
+      }
+
+      if (existingBinding) {
+        assertCanMutateExistingDomainBinding(actor, existingBinding, targetUnitId)
+      }
 
       const data = {
         hostname: normalizedHostname,
@@ -521,7 +564,7 @@ export async function saveDomainBinding(
         notes: input.notes ?? null,
         status: input.status,
         surface: input.surface,
-        unitId: input.unitId ?? null,
+        unitId: targetUnitId,
         updatedByUserId: actor.id,
       }
 
@@ -939,6 +982,72 @@ async function getLatestConfigurationPublish() {
   )
 }
 
+function resolveBrandingReadScope(
+  actor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  const normalizedRequestedUnitId = normalizeOptionalUnitId(requestedUnitId)
+  const actorUnitId = normalizeOptionalUnitId(actor.unitId)
+
+  if (normalizedRequestedUnitId) {
+    assertCanReadUnitScopedBranding(actor, normalizedRequestedUnitId)
+
+    return {
+      selectedUnitId: normalizedRequestedUnitId,
+      visibleUnitIds: [normalizedRequestedUnitId],
+    }
+  }
+
+  if (hasPermission(actor, 'multiunidade.global.visualizar')) {
+    return {
+      selectedUnitId: actorUnitId,
+      visibleUnitIds: actorUnitId ? [actorUnitId] : null,
+    }
+  }
+
+  if (actorUnitId) {
+    assertCanReadUnitScopedBranding(actor, actorUnitId)
+
+    return {
+      selectedUnitId: actorUnitId,
+      visibleUnitIds: [actorUnitId],
+    }
+  }
+
+  return {
+    selectedUnitId: null,
+    visibleUnitIds: [] as string[],
+  }
+}
+
+function filterSerializableBrandingState(
+  state: BrandingSerializableSnapshot | null,
+  visibleUnitIds: string[] | null,
+): BrandingSerializableSnapshot | null {
+  if (!state || visibleUnitIds === null) {
+    return state
+  }
+
+  const visibleUnitIdSet = new Set(visibleUnitIds)
+  const unitBrandings = state.unitBrandings.filter((branding) =>
+    visibleUnitIdSet.has(branding.unitId),
+  )
+  const visibleUnitBrandingIds = new Set(unitBrandings.map((branding) => branding.id))
+
+  return {
+    ...state,
+    brandAssets: state.brandAssets.filter(
+      (asset) =>
+        asset.unitBrandingId === null ||
+        visibleUnitBrandingIds.has(asset.unitBrandingId),
+    ),
+    domainBindings: state.domainBindings.filter(
+      (binding) => binding.unitId === null || visibleUnitIdSet.has(binding.unitId),
+    ),
+    unitBrandings,
+  }
+}
+
 function parsePublishedBrandingSnapshot(snapshotJson: Prisma.JsonValue | null) {
   if (!snapshotJson || typeof snapshotJson !== 'object' || Array.isArray(snapshotJson)) {
     return null
@@ -972,6 +1081,25 @@ function assertCanWriteUnitScopedBranding(
   }
 }
 
+function assertCanReadUnitScopedBranding(
+  actor: AuthenticatedUserData,
+  unitId: string,
+) {
+  const decision = evaluateActorMultiUnitScope(actor, {
+    operation: 'READ',
+    ownership: createLocalUnitOwnershipBinding(unitId),
+    requestedUnitId: unitId,
+  })
+
+  if (!decision.allowed) {
+    throw new AppError(
+      'FORBIDDEN',
+      403,
+      'User is not allowed to read white label overrides for this unit context.',
+    )
+  }
+}
+
 function assertCanEditWhiteLabel(actor: AuthenticatedUserData) {
   if (canEditWhiteLabel(actor)) {
     return
@@ -994,6 +1122,44 @@ function assertCanViewWhiteLabel(actor: AuthenticatedUserData) {
     403,
     'Missing permission for the Phase 5 white label administration surface.',
   )
+}
+
+function assertCanMutateExistingBrandAsset(
+  actor: AuthenticatedUserData,
+  asset: BrandAssetScopedRecord,
+  targetUnitId: string | null,
+) {
+  const existingUnitId = asset.unitBranding?.unitId ?? null
+
+  if (existingUnitId) {
+    assertCanWriteUnitScopedBranding(actor, existingUnitId)
+  }
+
+  if (existingUnitId !== targetUnitId) {
+    throw new AppError(
+      'CONFLICT',
+      409,
+      'Existing brand assets cannot be reassigned to another branding scope.',
+    )
+  }
+}
+
+function assertCanMutateExistingDomainBinding(
+  actor: AuthenticatedUserData,
+  binding: DomainBindingRecord,
+  targetUnitId: string | null,
+) {
+  if (binding.unitId) {
+    assertCanWriteUnitScopedBranding(actor, binding.unitId)
+  }
+
+  if ((binding.unitId ?? null) !== targetUnitId) {
+    throw new AppError(
+      'CONFLICT',
+      409,
+      'Existing domain bindings cannot be reassigned to another branding scope.',
+    )
+  }
 }
 
 function resolveDomainBindingMatch(
@@ -1122,6 +1288,15 @@ function normalizeHostname(hostname: string | null) {
 
   const [value] = hostname.split(':')
   return value?.trim().toLowerCase() || null
+}
+
+function normalizeOptionalUnitId(unitId: string | null | undefined) {
+  if (typeof unitId !== 'string') {
+    return null
+  }
+
+  const normalized = unitId.trim()
+  return normalized.length > 0 ? normalized : null
 }
 
 function normalizeRequiredHostname(hostname: string) {
