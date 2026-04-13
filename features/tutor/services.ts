@@ -2,6 +2,10 @@ import { Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { hashPassword } from '@/server/auth/password'
 import { normalizeEmailAddress } from '@/server/auth/user-access'
+import {
+  assertActorCanAccessLocalUnitRecord,
+  resolveScopedUnitId,
+} from '@/server/authorization/scope'
 import { writeAuditLog } from '@/server/audit/logging'
 import { prisma } from '@/server/db/prisma'
 import { AppError } from '@/server/http/errors'
@@ -31,7 +35,12 @@ const tutorAppointmentInclude = Prisma.validator<Prisma.AppointmentInclude>()({
       service: true,
       employee: {
         include: {
-          user: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       },
     },
@@ -41,23 +50,28 @@ const tutorAppointmentInclude = Prisma.validator<Prisma.AppointmentInclude>()({
     include: {
       assignedDriver: {
         include: {
-          user: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       },
-      createdBy: true,
     },
   },
-  tutorPreCheckIn: {
-    include: {
-      submittedBy: true,
-    },
-  },
+  tutorPreCheckIn: true,
   waitlistSource: {
     include: {
       desiredService: true,
       preferredEmployee: {
         include: {
-          user: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       },
     },
@@ -65,7 +79,15 @@ const tutorAppointmentInclude = Prisma.validator<Prisma.AppointmentInclude>()({
 })
 
 const tutorClientDetailsInclude = Prisma.validator<Prisma.ClientInclude>()({
-  user: true,
+  user: {
+    select: {
+      id: true,
+      unitId: true,
+      name: true,
+      email: true,
+      phone: true,
+    },
+  },
   pets: true,
   appointments: {
     include: tutorAppointmentInclude,
@@ -84,15 +106,43 @@ const tutorPreCheckInDetailsInclude = Prisma.validator<Prisma.TutorPreCheckInInc
         include: {
           assignedDriver: {
             include: {
-              user: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
             },
           },
         },
       },
     },
   },
-  submittedBy: true,
 })
+
+type TutorAppointmentDetails = Prisma.AppointmentGetPayload<{
+  include: typeof tutorAppointmentInclude
+}>
+
+type TutorClientDetails = Prisma.ClientGetPayload<{
+  include: typeof tutorClientDetailsInclude
+}>
+
+type TutorPreCheckInDetails = Prisma.TutorPreCheckInGetPayload<{
+  include: typeof tutorPreCheckInDetailsInclude
+}>
+
+type TutorNotificationDetails = Prisma.MessageLogGetPayload<{
+  include: {
+    template: true
+    appointment: {
+      include: {
+        pet: true
+        operationalStatus: true
+      }
+    }
+  }
+}>
 
 const preCheckInWindowSettingKey = 'agenda.pre_check_in_antecedencia_horas'
 const defaultPreCheckInWindowHours = 48
@@ -105,19 +155,276 @@ function toNumber(value: Prisma.Decimal | number | null | undefined) {
   return typeof value === 'number' ? value : Number(value)
 }
 
+function resolveTutorScopedUnitId(
+  tutor: AuthenticatedUserData,
+  requestedUnitId?: string | null,
+) {
+  return resolveScopedUnitId(tutor, requestedUnitId ?? null)
+}
+
+function buildTutorClientDetailsInclude(unitId: string): Prisma.ClientInclude {
+  return {
+    ...tutorClientDetailsInclude,
+    appointments: {
+      include: tutorAppointmentInclude,
+      orderBy: {
+        startAt: 'desc',
+      },
+      where: {
+        unitId,
+      },
+    },
+  }
+}
+
+function sanitizeTutorUserSummary(
+  user: {
+    id: string
+    name: string
+  },
+) {
+  return {
+    id: user.id,
+    name: user.name,
+  }
+}
+
+function sanitizeTutorAppointment(appointment: TutorAppointmentDetails) {
+  return {
+    id: appointment.id,
+    unitId: appointment.unitId,
+    clientId: appointment.clientId,
+    petId: appointment.petId,
+    operationalStatusId: appointment.operationalStatusId,
+    financialStatus: appointment.financialStatus,
+    startAt: appointment.startAt,
+    endAt: appointment.endAt,
+    clientNotes: appointment.clientNotes,
+    estimatedTotalAmount: appointment.estimatedTotalAmount,
+    createdAt: appointment.createdAt,
+    updatedAt: appointment.updatedAt,
+    operationalStatus: {
+      id: appointment.operationalStatus.id,
+      name: appointment.operationalStatus.name,
+      description: appointment.operationalStatus.description,
+      displayOrder: appointment.operationalStatus.displayOrder,
+    },
+    pet: {
+      id: appointment.pet.id,
+      name: appointment.pet.name,
+      species: appointment.pet.species,
+      breed: appointment.pet.breed,
+    },
+    services: appointment.services.map((serviceItem) => ({
+      id: serviceItem.id,
+      serviceId: serviceItem.serviceId,
+      employeeUserId: serviceItem.employeeUserId,
+      agreedUnitPrice: serviceItem.agreedUnitPrice,
+      calculatedCommissionAmount: serviceItem.calculatedCommissionAmount,
+      service: {
+        id: serviceItem.service.id,
+        name: serviceItem.service.name,
+        description: serviceItem.service.description,
+        basePrice: serviceItem.service.basePrice,
+        estimatedDurationMinutes: serviceItem.service.estimatedDurationMinutes,
+        active: serviceItem.service.active,
+        unitId: serviceItem.service.unitId,
+      },
+      employee: serviceItem.employee
+        ? {
+            userId: serviceItem.employee.userId,
+            unitId: serviceItem.employee.unitId,
+            user: sanitizeTutorUserSummary(serviceItem.employee.user),
+          }
+        : null,
+    })),
+    reportCard: appointment.reportCard
+      ? {
+          id: appointment.reportCard.id,
+          generatedAt: appointment.reportCard.generatedAt,
+        }
+      : null,
+    taxiDogRide: appointment.taxiDogRide
+      ? {
+          id: appointment.taxiDogRide.id,
+          status: appointment.taxiDogRide.status,
+          pickupWindowStartAt: appointment.taxiDogRide.pickupWindowStartAt,
+          pickupWindowEndAt: appointment.taxiDogRide.pickupWindowEndAt,
+          dropoffWindowStartAt: appointment.taxiDogRide.dropoffWindowStartAt,
+          dropoffWindowEndAt: appointment.taxiDogRide.dropoffWindowEndAt,
+          feeAmount: appointment.taxiDogRide.feeAmount,
+          assignedDriver: appointment.taxiDogRide.assignedDriver
+            ? {
+                userId: appointment.taxiDogRide.assignedDriver.userId,
+                unitId: appointment.taxiDogRide.assignedDriver.unitId,
+                user: sanitizeTutorUserSummary(appointment.taxiDogRide.assignedDriver.user),
+              }
+            : null,
+        }
+      : null,
+    tutorPreCheckIn: appointment.tutorPreCheckIn
+      ? {
+          id: appointment.tutorPreCheckIn.id,
+          contactPhone: appointment.tutorPreCheckIn.contactPhone,
+          consentConfirmed: appointment.tutorPreCheckIn.consentConfirmed,
+          notes: appointment.tutorPreCheckIn.notes,
+          payload: appointment.tutorPreCheckIn.payload,
+          submittedAt: appointment.tutorPreCheckIn.submittedAt,
+          updatedAt: appointment.tutorPreCheckIn.updatedAt,
+        }
+      : null,
+    waitlistSource: appointment.waitlistSource
+      ? {
+          id: appointment.waitlistSource.id,
+          status: appointment.waitlistSource.status,
+          preferredStartAt: appointment.waitlistSource.preferredStartAt,
+          preferredEndAt: appointment.waitlistSource.preferredEndAt,
+          requestedTransport: appointment.waitlistSource.requestedTransport,
+          desiredService: {
+            id: appointment.waitlistSource.desiredService.id,
+            name: appointment.waitlistSource.desiredService.name,
+          },
+          preferredEmployee: appointment.waitlistSource.preferredEmployee
+            ? {
+                userId: appointment.waitlistSource.preferredEmployee.userId,
+                user: sanitizeTutorUserSummary(
+                  appointment.waitlistSource.preferredEmployee.user,
+                ),
+              }
+            : null,
+        }
+      : null,
+  }
+}
+
+function sanitizeTutorDashboard(client: TutorClientDetails) {
+  return {
+    user: {
+      id: client.user.id,
+      unitId: client.user.unitId,
+      name: client.user.name,
+      email: client.user.email,
+      phone: client.user.phone,
+    },
+    address: client.address,
+    city: client.city,
+    state: client.state,
+    zipCode: client.zipCode,
+    contactPreference: client.contactPreference,
+    generalNotes: client.generalNotes,
+    pets: client.pets.map((pet) => ({
+      id: pet.id,
+      clientId: pet.clientId,
+      name: pet.name,
+      species: pet.species,
+      breed: pet.breed,
+      birthDate: pet.birthDate,
+      weightKg: pet.weightKg,
+      healthNotes: pet.healthNotes,
+      allergies: pet.allergies,
+      primaryPhotoUrl: pet.primaryPhotoUrl,
+      createdAt: pet.createdAt,
+      updatedAt: pet.updatedAt,
+    })),
+    appointments: client.appointments.map(sanitizeTutorAppointment),
+  }
+}
+
+function sanitizeTutorPreCheckIn(preCheckIn: TutorPreCheckInDetails) {
+  return {
+    id: preCheckIn.id,
+    appointmentId: preCheckIn.appointmentId,
+    contactPhone: preCheckIn.contactPhone,
+    consentConfirmed: preCheckIn.consentConfirmed,
+    notes: preCheckIn.notes,
+    payload: preCheckIn.payload,
+    submittedAt: preCheckIn.submittedAt,
+    updatedAt: preCheckIn.updatedAt,
+    appointment: {
+      id: preCheckIn.appointment.id,
+      unitId: preCheckIn.appointment.unitId,
+      clientId: preCheckIn.appointment.clientId,
+      petId: preCheckIn.appointment.petId,
+      operationalStatusId: preCheckIn.appointment.operationalStatusId,
+      financialStatus: preCheckIn.appointment.financialStatus,
+      startAt: preCheckIn.appointment.startAt,
+      endAt: preCheckIn.appointment.endAt,
+      operationalStatus: {
+        id: preCheckIn.appointment.operationalStatus.id,
+        name: preCheckIn.appointment.operationalStatus.name,
+      },
+      pet: {
+        id: preCheckIn.appointment.pet.id,
+        name: preCheckIn.appointment.pet.name,
+      },
+      taxiDogRide: preCheckIn.appointment.taxiDogRide
+        ? {
+            id: preCheckIn.appointment.taxiDogRide.id,
+            status: preCheckIn.appointment.taxiDogRide.status,
+            pickupWindowStartAt: preCheckIn.appointment.taxiDogRide.pickupWindowStartAt,
+            pickupWindowEndAt: preCheckIn.appointment.taxiDogRide.pickupWindowEndAt,
+            dropoffWindowStartAt: preCheckIn.appointment.taxiDogRide.dropoffWindowStartAt,
+            dropoffWindowEndAt: preCheckIn.appointment.taxiDogRide.dropoffWindowEndAt,
+            feeAmount: preCheckIn.appointment.taxiDogRide.feeAmount,
+            assignedDriver: preCheckIn.appointment.taxiDogRide.assignedDriver
+              ? {
+                  userId: preCheckIn.appointment.taxiDogRide.assignedDriver.userId,
+                  user: sanitizeTutorUserSummary(
+                    preCheckIn.appointment.taxiDogRide.assignedDriver.user,
+                  ),
+                }
+              : null,
+          }
+        : null,
+    },
+  }
+}
+
+function sanitizeTutorNotification(notification: TutorNotificationDetails) {
+  return {
+    id: notification.id,
+    channel: notification.channel,
+    deliveryStatus: notification.deliveryStatus,
+    messageContent: notification.messageContent,
+    sentAt: notification.sentAt,
+    template: notification.template
+      ? {
+          id: notification.template.id,
+          name: notification.template.name,
+          channel: notification.template.channel,
+          subject: notification.template.subject,
+        }
+      : null,
+    appointment: notification.appointment
+      ? {
+          id: notification.appointment.id,
+          pet: {
+            id: notification.appointment.pet.id,
+            name: notification.appointment.pet.name,
+          },
+          operationalStatus: {
+            id: notification.appointment.operationalStatus.id,
+            name: notification.appointment.operationalStatus.name,
+          },
+        }
+      : null,
+  }
+}
+
 async function getTutorClientOrThrow(tutor: AuthenticatedUserData) {
+  const scopedUnitId = resolveTutorScopedUnitId(tutor)
   const client = await prisma.client.findUnique({
     where: {
       userId: tutor.id,
     },
-    include: tutorClientDetailsInclude,
+    include: buildTutorClientDetailsInclude(scopedUnitId),
   })
 
   if (!client) {
     throw new AppError('NOT_FOUND', 404, 'Tutor client profile not found.')
   }
 
-  return client
+  return client as unknown as TutorClientDetails
 }
 
 async function getTutorPreCheckInWindowHours(unitId: string | null | undefined) {
@@ -161,9 +468,7 @@ async function getTutorAppointmentForPreCheckInOrThrow(
     throw new AppError('FORBIDDEN', 403, 'Tutor is not allowed to access this appointment.')
   }
 
-  if (tutor.unitId && appointment.unitId !== tutor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'Tutor is not allowed to access this appointment.')
-  }
+  assertActorCanAccessLocalUnitRecord(tutor, appointment.unitId)
 
   return appointment
 }
@@ -189,13 +494,15 @@ function buildTutorPreCheckInPayload(input: TutorPreCheckInPayload): Prisma.Inpu
 }
 
 export async function getTutorDashboard(tutor: AuthenticatedUserData) {
-  return getTutorClientOrThrow(tutor)
+  const client = await getTutorClientOrThrow(tutor)
+  return sanitizeTutorDashboard(client)
 }
 
 export async function updateTutorProfile(
   tutor: AuthenticatedUserData,
   input: UpdateTutorProfileInput,
 ) {
+  const scopedUnitId = resolveTutorScopedUnitId(tutor)
   await getTutorClientOrThrow(tutor)
   const passwordHash = input.password ? await hashPassword(input.password) : undefined
 
@@ -212,7 +519,7 @@ export async function updateTutorProfile(
       },
     })
 
-    const client = await tx.client.update({
+    await tx.client.update({
       where: {
         userId: tutor.id,
       },
@@ -224,11 +531,10 @@ export async function updateTutorProfile(
         ...(input.contactPreference !== undefined ? { contactPreference: input.contactPreference } : {}),
         ...(input.generalNotes !== undefined ? { generalNotes: input.generalNotes } : {}),
       },
-      include: tutorClientDetailsInclude,
     })
 
     await writeAuditLog(tx, {
-      unitId: tutor.unitId,
+      unitId: scopedUnitId,
       userId: tutor.id,
       action: 'tutor.profile.update',
       entityName: 'Client',
@@ -238,7 +544,14 @@ export async function updateTutorProfile(
       },
     })
 
-    return client
+    const client = await tx.client.findUniqueOrThrow({
+      where: {
+        userId: tutor.id,
+      },
+      include: buildTutorClientDetailsInclude(scopedUnitId),
+    })
+
+    return sanitizeTutorDashboard(client as unknown as TutorClientDetails)
   })
 }
 
@@ -253,8 +566,8 @@ export async function createTutorAppointment(
     throw new AppError('FORBIDDEN', 403, 'Tutor is not allowed to schedule for this pet.')
   }
 
-  return createAppointment(tutor, {
-    unitId: client.user.unitId ?? undefined,
+  const appointment = await createAppointment(tutor, {
+    unitId: resolveTutorScopedUnitId(tutor, client.user.unitId ?? null),
     clientId: tutor.id,
     petId: input.petId,
     startAt: input.startAt,
@@ -264,13 +577,17 @@ export async function createTutorAppointment(
       serviceId,
     })),
   })
+
+  return sanitizeTutorAppointment(appointment as unknown as TutorAppointmentDetails)
 }
 
 export async function listTutorReportCards(tutor: AuthenticatedUserData) {
-  return prisma.reportCard.findMany({
+  const scopedUnitId = resolveTutorScopedUnitId(tutor)
+  const reportCards = await prisma.reportCard.findMany({
     where: {
       appointment: {
         clientId: tutor.id,
+        unitId: scopedUnitId,
       },
     },
     include: {
@@ -280,26 +597,53 @@ export async function listTutorReportCards(tutor: AuthenticatedUserData) {
           operationalStatus: true,
         },
       },
-      createdBy: true,
     },
     orderBy: {
       generatedAt: 'desc',
     },
   })
+
+  return reportCards.map((reportCard) => ({
+    id: reportCard.id,
+    generatedAt: reportCard.generatedAt,
+    updatedAt: reportCard.updatedAt,
+    generalNotes: reportCard.generalNotes,
+    petBehavior: reportCard.petBehavior,
+    productsUsed: reportCard.productsUsed,
+    nextReturnRecommendation: reportCard.nextReturnRecommendation,
+    appointment: {
+      id: reportCard.appointment.id,
+      unitId: reportCard.appointment.unitId,
+      pet: {
+        id: reportCard.appointment.pet.id,
+        name: reportCard.appointment.pet.name,
+      },
+      operationalStatus: {
+        id: reportCard.appointment.operationalStatus.id,
+        name: reportCard.appointment.operationalStatus.name,
+      },
+    },
+  }))
 }
 
 export async function listTutorNotifications(tutor: AuthenticatedUserData) {
   await getTutorClientOrThrow(tutor)
+  const scopedUnitId = resolveTutorScopedUnitId(tutor)
 
-  return prisma.messageLog.findMany({
+  const notifications = await prisma.messageLog.findMany({
     where: {
       OR: [
         {
-          clientId: tutor.id,
-        },
-        {
           appointment: {
             clientId: tutor.id,
+            unitId: scopedUnitId,
+          },
+        },
+        {
+          clientId: tutor.id,
+          appointmentId: null,
+          template: {
+            unitId: scopedUnitId,
           },
         },
       ],
@@ -321,6 +665,10 @@ export async function listTutorNotifications(tutor: AuthenticatedUserData) {
     },
     take: 6,
   })
+
+  return notifications.map((notification) =>
+    sanitizeTutorNotification(notification as TutorNotificationDetails),
+  )
 }
 
 export async function getTutorFinancialOverview(tutor: AuthenticatedUserData) {
@@ -337,20 +685,69 @@ export async function getTutorFinancialOverview(tutor: AuthenticatedUserData) {
     }),
   ])
 
+  const sanitizedDeposits = deposits.map((deposit) => ({
+    id: deposit.id,
+    appointmentId: deposit.appointmentId,
+    amount: deposit.amount,
+    purpose: deposit.purpose,
+    status: deposit.status,
+    notes: deposit.notes,
+    expiresAt: deposit.expiresAt,
+    receivedAt: deposit.receivedAt,
+    appliedAt: deposit.appliedAt,
+    createdAt: deposit.createdAt,
+    appointment: deposit.appointment
+      ? {
+          id: deposit.appointment.id,
+          pet: {
+            id: deposit.appointment.pet.id,
+            name: deposit.appointment.pet.name,
+          },
+        }
+      : null,
+  }))
+  const sanitizedRefunds = refunds.map((refund) => ({
+    id: refund.id,
+    appointmentId: refund.appointmentId,
+    amount: refund.amount,
+    reason: refund.reason,
+    status: refund.status,
+    processedAt: refund.processedAt,
+    createdAt: refund.createdAt,
+    appointment: refund.appointment
+      ? {
+          id: refund.appointment.id,
+          pet: {
+            id: refund.appointment.pet.id,
+            name: refund.appointment.pet.name,
+          },
+        }
+      : null,
+  }))
+  const sanitizedClientCredits = clientCredits.map((credit) => ({
+    id: credit.id,
+    originType: credit.originType,
+    totalAmount: credit.totalAmount,
+    availableAmount: credit.availableAmount,
+    expiresAt: credit.expiresAt,
+    notes: credit.notes,
+    createdAt: credit.createdAt,
+  }))
+
   return {
-    clientCredits,
-    deposits,
-    refunds,
+    clientCredits: sanitizedClientCredits,
+    deposits: sanitizedDeposits,
+    refunds: sanitizedRefunds,
     summary: summarizeTutorFinance({
-      clientCredits: clientCredits.map((credit) => ({
+      clientCredits: sanitizedClientCredits.map((credit) => ({
         availableAmount: toNumber(credit.availableAmount),
         expiresAt: credit.expiresAt,
       })),
-      deposits: deposits.map((deposit) => ({
+      deposits: sanitizedDeposits.map((deposit) => ({
         amount: toNumber(deposit.amount),
         status: deposit.status,
       })),
-      refunds: refunds.map((refund) => ({
+      refunds: sanitizedRefunds.map((refund) => ({
         amount: toNumber(refund.amount),
         status: refund.status,
       })),
@@ -359,9 +756,49 @@ export async function getTutorFinancialOverview(tutor: AuthenticatedUserData) {
 }
 
 export async function listTutorWaitlistEntries(tutor: AuthenticatedUserData) {
-  return listWaitlistEntries(tutor, {
+  const entries = await listWaitlistEntries(tutor, {
     clientId: tutor.id,
   })
+
+  return entries.map((entry) => ({
+    id: entry.id,
+    unitId: entry.unitId,
+    clientId: entry.clientId,
+    petId: entry.petId,
+    desiredServiceId: entry.desiredServiceId,
+    status: entry.status,
+    preferredStartAt: entry.preferredStartAt,
+    preferredEndAt: entry.preferredEndAt,
+    requestedTransport: entry.requestedTransport,
+    notes: entry.notes,
+    cancellationReason: entry.cancellationReason,
+    createdAt: entry.createdAt,
+    statusChangedAt: entry.statusChangedAt,
+    pet: {
+      id: entry.pet.id,
+      name: entry.pet.name,
+    },
+    desiredService: {
+      id: entry.desiredService.id,
+      name: entry.desiredService.name,
+    },
+    promotedAppointment: entry.promotedAppointment
+      ? {
+          id: entry.promotedAppointment.id,
+          startAt: entry.promotedAppointment.startAt,
+          operationalStatus: {
+            id: entry.promotedAppointment.operationalStatus.id,
+            name: entry.promotedAppointment.operationalStatus.name,
+          },
+        }
+      : null,
+    preferredEmployee: entry.preferredEmployee
+      ? {
+          userId: entry.preferredEmployee.userId,
+          user: sanitizeTutorUserSummary(entry.preferredEmployee.user),
+        }
+      : null,
+  }))
 }
 
 export async function createTutorWaitlistEntry(
@@ -379,7 +816,7 @@ export async function createTutorWaitlistEntry(
     )
   }
 
-  return createWaitlistEntry(tutor, {
+  const waitlistEntry = await createWaitlistEntry(tutor, {
     clientId: tutor.id,
     desiredServiceId: input.desiredServiceId,
     notes: input.notes,
@@ -388,6 +825,46 @@ export async function createTutorWaitlistEntry(
     preferredStartAt: input.preferredStartAt,
     requestedTransport: input.requestedTransport,
   })
+
+  return {
+    id: waitlistEntry.id,
+    unitId: waitlistEntry.unitId,
+    clientId: waitlistEntry.clientId,
+    petId: waitlistEntry.petId,
+    desiredServiceId: waitlistEntry.desiredServiceId,
+    status: waitlistEntry.status,
+    preferredStartAt: waitlistEntry.preferredStartAt,
+    preferredEndAt: waitlistEntry.preferredEndAt,
+    requestedTransport: waitlistEntry.requestedTransport,
+    notes: waitlistEntry.notes,
+    cancellationReason: waitlistEntry.cancellationReason,
+    createdAt: waitlistEntry.createdAt,
+    statusChangedAt: waitlistEntry.statusChangedAt,
+    pet: {
+      id: waitlistEntry.pet.id,
+      name: waitlistEntry.pet.name,
+    },
+    desiredService: {
+      id: waitlistEntry.desiredService.id,
+      name: waitlistEntry.desiredService.name,
+    },
+    promotedAppointment: waitlistEntry.promotedAppointment
+      ? {
+          id: waitlistEntry.promotedAppointment.id,
+          startAt: waitlistEntry.promotedAppointment.startAt,
+          operationalStatus: {
+            id: waitlistEntry.promotedAppointment.operationalStatus.id,
+            name: waitlistEntry.promotedAppointment.operationalStatus.name,
+          },
+        }
+      : null,
+    preferredEmployee: waitlistEntry.preferredEmployee
+      ? {
+          userId: waitlistEntry.preferredEmployee.userId,
+          user: sanitizeTutorUserSummary(waitlistEntry.preferredEmployee.user),
+        }
+      : null,
+  }
 }
 
 export async function cancelTutorWaitlistEntry(
@@ -416,13 +893,51 @@ export async function cancelTutorWaitlistEntry(
     throw new AppError('FORBIDDEN', 403, 'Tutor is not allowed to access this waitlist entry.')
   }
 
-  if (tutor.unitId && waitlistEntry.unitId !== tutor.unitId) {
-    throw new AppError('FORBIDDEN', 403, 'Tutor is not allowed to access this waitlist entry.')
-  }
+  assertActorCanAccessLocalUnitRecord(tutor, waitlistEntry.unitId)
 
-  return cancelWaitlistEntry(tutor, waitlistEntry.id, {
+  const canceledEntry = await cancelWaitlistEntry(tutor, waitlistEntry.id, {
     reason: input.reason,
   })
+
+  return {
+    id: canceledEntry.id,
+    unitId: canceledEntry.unitId,
+    clientId: canceledEntry.clientId,
+    petId: canceledEntry.petId,
+    desiredServiceId: canceledEntry.desiredServiceId,
+    status: canceledEntry.status,
+    preferredStartAt: canceledEntry.preferredStartAt,
+    preferredEndAt: canceledEntry.preferredEndAt,
+    requestedTransport: canceledEntry.requestedTransport,
+    notes: canceledEntry.notes,
+    cancellationReason: canceledEntry.cancellationReason,
+    createdAt: canceledEntry.createdAt,
+    statusChangedAt: canceledEntry.statusChangedAt,
+    pet: {
+      id: canceledEntry.pet.id,
+      name: canceledEntry.pet.name,
+    },
+    desiredService: {
+      id: canceledEntry.desiredService.id,
+      name: canceledEntry.desiredService.name,
+    },
+    promotedAppointment: canceledEntry.promotedAppointment
+      ? {
+          id: canceledEntry.promotedAppointment.id,
+          startAt: canceledEntry.promotedAppointment.startAt,
+          operationalStatus: {
+            id: canceledEntry.promotedAppointment.operationalStatus.id,
+            name: canceledEntry.promotedAppointment.operationalStatus.name,
+          },
+        }
+      : null,
+    preferredEmployee: canceledEntry.preferredEmployee
+      ? {
+          userId: canceledEntry.preferredEmployee.userId,
+          user: sanitizeTutorUserSummary(canceledEntry.preferredEmployee.user),
+        }
+      : null,
+  }
 }
 
 export async function getTutorPreCheckInStatus(
@@ -433,9 +948,19 @@ export async function getTutorPreCheckInStatus(
   const preCheckInWindowHours = await getTutorPreCheckInWindowHours(appointment.unitId)
 
   return {
-    appointment,
+    appointment: sanitizeTutorAppointment(appointment as TutorAppointmentDetails),
     editable: canTutorSubmitPreCheckIn(appointment, preCheckInWindowHours),
-    preCheckIn: appointment.tutorPreCheckIn,
+    preCheckIn: appointment.tutorPreCheckIn
+      ? {
+          id: appointment.tutorPreCheckIn.id,
+          contactPhone: appointment.tutorPreCheckIn.contactPhone,
+          consentConfirmed: appointment.tutorPreCheckIn.consentConfirmed,
+          notes: appointment.tutorPreCheckIn.notes,
+          payload: appointment.tutorPreCheckIn.payload,
+          submittedAt: appointment.tutorPreCheckIn.submittedAt,
+          updatedAt: appointment.tutorPreCheckIn.updatedAt,
+        }
+      : null,
     preCheckInWindowHours,
   }
 }
@@ -484,7 +1009,7 @@ export async function upsertTutorPreCheckIn(
       },
     })
 
-    return preCheckIn
+    return sanitizeTutorPreCheckIn(preCheckIn as unknown as TutorPreCheckInDetails)
   })
 }
 
@@ -501,7 +1026,7 @@ export async function getTutorPortalOverview(tutor: AuthenticatedUserData) {
     ])
 
   const preCheckInWindowHours = await getTutorPreCheckInWindowHours(
-    dashboard.user.unitId ?? tutor.unitId,
+    resolveTutorScopedUnitId(tutor, dashboard.user.unitId ?? null),
   )
   const appointmentTimeline = splitTutorAppointmentsByTimeline(dashboard.appointments)
   const alerts = deriveTutorPortalAlerts({

@@ -101,6 +101,68 @@ const mediaAssetDetailsInclude = Prisma.validator<Prisma.MediaAssetInclude>()({
   uploadedBy: true,
 })
 
+const tutorDocumentSelect = Prisma.validator<Prisma.DocumentSelect>()({
+  id: true,
+  unitId: true,
+  appointmentId: true,
+  clientId: true,
+  petId: true,
+  type: true,
+  title: true,
+  originalFileName: true,
+  mimeType: true,
+  sizeBytes: true,
+  accessLevel: true,
+  expiresAt: true,
+  metadata: true,
+  createdAt: true,
+  appointment: {
+    select: {
+      clientId: true,
+    },
+  },
+  pet: {
+    select: {
+      clientId: true,
+    },
+  },
+  signatures: {
+    select: {
+      signerUserId: true,
+      status: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  },
+})
+
+const tutorMediaAssetSelect = Prisma.validator<Prisma.MediaAssetSelect>()({
+  id: true,
+  unitId: true,
+  appointmentId: true,
+  clientId: true,
+  petId: true,
+  type: true,
+  originalFileName: true,
+  mimeType: true,
+  sizeBytes: true,
+  accessLevel: true,
+  description: true,
+  metadata: true,
+  createdAt: true,
+  appointment: {
+    select: {
+      clientId: true,
+    },
+  },
+  pet: {
+    select: {
+      clientId: true,
+    },
+  },
+})
+
 type DocumentDetails = Prisma.DocumentGetPayload<{
   include: typeof documentDetailsInclude
 }>
@@ -108,6 +170,48 @@ type DocumentDetails = Prisma.DocumentGetPayload<{
 type MediaAssetDetails = Prisma.MediaAssetGetPayload<{
   include: typeof mediaAssetDetailsInclude
 }>
+
+type TutorDocumentSummary = Prisma.DocumentGetPayload<{
+  select: typeof tutorDocumentSelect
+}>
+
+type TutorMediaAssetSummary = Prisma.MediaAssetGetPayload<{
+  select: typeof tutorMediaAssetSelect
+}>
+
+interface TutorReadableDocumentLike {
+  accessLevel: DocumentDetails['accessLevel']
+  appointment: {
+    clientId: string
+  } | null
+  archivedAt: Date | null
+  clientId: string | null
+  pet: {
+    clientId: string
+  } | null
+  unitId: string
+}
+
+interface TutorReadableMediaLike {
+  accessLevel: MediaAssetDetails['accessLevel']
+  appointment: {
+    clientId: string
+  } | null
+  archivedAt: Date | null
+  clientId: string | null
+  pet: {
+    clientId: string
+  } | null
+  unitId: string
+}
+
+interface TutorSignaturePendingDocument {
+  metadata: unknown
+  signatures: Array<{
+    signerUserId: string | null
+    status: string
+  }>
+}
 
 type DocumentScopeQuery = {
   unitId?: string | null
@@ -144,7 +248,7 @@ interface AssetBindingInput {
   petId?: string
 }
 
-function buildDocumentOwnerSnapshot(document: DocumentDetails) {
+function buildDocumentOwnerSnapshot(document: TutorReadableDocumentLike) {
   return {
     appointmentClientId: document.appointment?.clientId,
     clientId: document.clientId,
@@ -152,7 +256,7 @@ function buildDocumentOwnerSnapshot(document: DocumentDetails) {
   }
 }
 
-function buildMediaOwnerSnapshot(mediaAsset: MediaAssetDetails) {
+function buildMediaOwnerSnapshot(mediaAsset: TutorReadableMediaLike) {
   return {
     appointmentClientId: mediaAsset.appointment?.clientId,
     clientId: mediaAsset.clientId,
@@ -166,6 +270,72 @@ function deriveDocumentFileName(document: DocumentDetails) {
 
 function deriveMediaFileName(mediaAsset: MediaAssetDetails) {
   return mediaAsset.originalFileName ?? `${mediaAsset.id}.bin`
+}
+
+function resolveTutorAssetUnitId(tutor: AuthenticatedUserData) {
+  return resolveScopedUnitId(tutor, null)
+}
+
+function sanitizeTutorDocumentMetadata(metadata: unknown) {
+  return {
+    requiresSignature: documentRequiresSignature(metadata),
+  }
+}
+
+function sanitizeTutorMediaMetadata(metadata: unknown) {
+  const parsedMetadata = asMetadataObject(metadata)
+
+  return {
+    captureStage:
+      typeof parsedMetadata.captureStage === 'string'
+        ? parsedMetadata.captureStage
+        : null,
+    galleryLabel:
+      typeof parsedMetadata.galleryLabel === 'string'
+        ? parsedMetadata.galleryLabel
+        : null,
+  }
+}
+
+function sanitizeTutorDocument(document: TutorDocumentSummary) {
+  return {
+    id: document.id,
+    unitId: document.unitId,
+    appointmentId: document.appointmentId,
+    clientId: document.clientId,
+    petId: document.petId,
+    type: document.type,
+    title: document.title,
+    originalFileName: document.originalFileName,
+    mimeType: document.mimeType,
+    sizeBytes: document.sizeBytes,
+    accessLevel: document.accessLevel,
+    expiresAt: document.expiresAt,
+    metadata: sanitizeTutorDocumentMetadata(document.metadata),
+    createdAt: document.createdAt,
+    signatures: document.signatures.map((signature) => ({
+      signerUserId: signature.signerUserId,
+      status: signature.status,
+    })),
+  }
+}
+
+function sanitizeTutorMediaAsset(mediaAsset: TutorMediaAssetSummary) {
+  return {
+    id: mediaAsset.id,
+    unitId: mediaAsset.unitId,
+    appointmentId: mediaAsset.appointmentId,
+    clientId: mediaAsset.clientId,
+    petId: mediaAsset.petId,
+    type: mediaAsset.type,
+    originalFileName: mediaAsset.originalFileName,
+    mimeType: mediaAsset.mimeType,
+    sizeBytes: mediaAsset.sizeBytes,
+    accessLevel: mediaAsset.accessLevel,
+    description: mediaAsset.description,
+    metadata: sanitizeTutorMediaMetadata(mediaAsset.metadata),
+    createdAt: mediaAsset.createdAt,
+  }
 }
 
 async function resolveAssetBindings(
@@ -352,8 +522,12 @@ async function loadMediaForInternalRead(actor: AuthenticatedUserData, mediaAsset
   return mediaAsset
 }
 
-function assertTutorCanReadDocument(tutor: AuthenticatedUserData, document: DocumentDetails) {
+function assertTutorCanReadDocument(
+  tutor: AuthenticatedUserData,
+  document: TutorReadableDocumentLike,
+) {
   assertPermission(tutor, 'documento.visualizar_proprio')
+  assertActorCanAccessLocalUnitRecord(tutor, document.unitId)
 
   if (document.archivedAt) {
     throw new AppError('NOT_FOUND', 404, 'Document not found.')
@@ -364,8 +538,12 @@ function assertTutorCanReadDocument(tutor: AuthenticatedUserData, document: Docu
   }
 }
 
-function assertTutorCanReadMedia(tutor: AuthenticatedUserData, mediaAsset: MediaAssetDetails) {
+function assertTutorCanReadMedia(
+  tutor: AuthenticatedUserData,
+  mediaAsset: TutorReadableMediaLike,
+) {
   assertPermission(tutor, 'midia.visualizar_propria')
+  assertActorCanAccessLocalUnitRecord(tutor, mediaAsset.unitId)
 
   if (mediaAsset.archivedAt) {
     throw new AppError('NOT_FOUND', 404, 'Media asset not found.')
@@ -396,8 +574,10 @@ export async function listDocuments(actor: AuthenticatedUserData, query: ListDoc
 }
 
 export async function listTutorDocuments(tutor: AuthenticatedUserData) {
-  return prisma.document.findMany({
+  const unitId = resolveTutorAssetUnitId(tutor)
+  const documents = await prisma.document.findMany({
     where: {
+      unitId,
       archivedAt: null,
       accessLevel: {
         not: 'PRIVATE',
@@ -408,11 +588,13 @@ export async function listTutorDocuments(tutor: AuthenticatedUserData) {
         { appointment: { clientId: tutor.id } },
       ],
     },
-    include: documentDetailsInclude,
+    select: tutorDocumentSelect,
     orderBy: {
       createdAt: 'desc',
     },
   })
+
+  return documents.map((document) => sanitizeTutorDocument(document as TutorDocumentSummary))
 }
 
 export async function createDocument(
@@ -554,8 +736,16 @@ export async function signDocument(
     assertPermission(actor, 'documento.assinar_proprio')
     assertTutorSignatureMethod(input.method)
     assertTutorCanReadDocument(actor, document)
+    if (!documentRequiresSignature(document.metadata)) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'This document is not pending a tutor signature.',
+      )
+    }
   } else {
     assertPermission(actor, 'documento.assinar')
+    assertActorCanReadDocumentInScope(actor, document.unitId)
   }
 
   const signerUserId = isTutorUser(actor) || input.method !== 'MANUAL' ? actor.id : null
@@ -636,8 +826,10 @@ export async function listMediaAssets(actor: AuthenticatedUserData, query: ListM
 }
 
 export async function listTutorMediaAssets(tutor: AuthenticatedUserData) {
-  return prisma.mediaAsset.findMany({
+  const unitId = resolveTutorAssetUnitId(tutor)
+  const mediaAssets = await prisma.mediaAsset.findMany({
     where: {
+      unitId,
       archivedAt: null,
       accessLevel: {
         not: 'PRIVATE',
@@ -648,11 +840,15 @@ export async function listTutorMediaAssets(tutor: AuthenticatedUserData) {
         { appointment: { clientId: tutor.id } },
       ],
     },
-    include: mediaAssetDetailsInclude,
+    select: tutorMediaAssetSelect,
     orderBy: {
       createdAt: 'desc',
     },
   })
+
+  return mediaAssets.map((mediaAsset) =>
+    sanitizeTutorMediaAsset(mediaAsset as TutorMediaAssetSummary),
+  )
 }
 
 export async function createMediaAsset(
@@ -827,7 +1023,7 @@ export async function getMediaBinaryForActor(
 
 export function isDocumentSignaturePendingForTutor(
   tutor: AuthenticatedUserData,
-  document: DocumentDetails,
+  document: TutorSignaturePendingDocument,
 ) {
   return (
     documentRequiresSignature(document.metadata) &&
