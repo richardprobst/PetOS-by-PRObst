@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O artefato `.next/standalone` agora reescreve o `package.json` de runtime para usar um launcher `sh ./start-server.sh`, eliminando a dependencia de `scripts/start-standalone.mjs` ausente no pacote publicado e de `node` no `PATH` do shell gerenciado da Hostinger.
 - O build agora prepara explicitamente o artefato `.next/standalone` consumido pela Hostinger: o `server.js` gerado pelo Next passa a ser preservado como `server-standalone.js`, o wrapper versionado do PetOS ocupa o `server.js` publicado e o helper do Prisma com o fallback `query_compiler_bg.wasm` sao copiados para o pacote standalone antes do deploy.
 - O deploy automatico da Hostinger ganhou autocura para o artefato `node_modules/.prisma/client/query_compiler_bg.wasm`: `postinstall` e o bootstrap de runtime agora restauram esse `.wasm` a partir de um fallback versionado quando o host o omite no `prisma generate`.
 - O bootstrap de runtime da Hostinger passou a dar precedencia ao `.builds/config/.env` sobre variaveis antigas injetadas pelo painel, evitando que o app suba com `DATABASE_URL` e URLs stale apos redeploy.

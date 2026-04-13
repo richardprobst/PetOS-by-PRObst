@@ -12,6 +12,7 @@ console.log(
     {
       generatedEntrypoint: paths.generatedEntrypoint,
       helperDestination: paths.helperDestination,
+      runtimeLauncherDestination: paths.runtimeLauncherDestination,
       standaloneEntrypoint: paths.standaloneEntrypoint,
       vendorDestination: paths.vendorDestination,
     },
