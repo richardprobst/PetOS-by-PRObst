@@ -46,6 +46,18 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O gate `npm run check:all` agora reaproveita `npm run ops:check` em vez de `ops:preflight`, eliminando falso verde de prontidao quando banco, migrations, seed ou lifecycle operacional estao degradados.
+- Os comandos `ops:preflight:staging` e `ops:check:staging` agora seguem a documentacao operacional de forma estrita: sem `--env-file`, eles usam apenas variaveis injetadas pelo ambiente hospedado/CI e nao fazem fallback silencioso para `.env` local.
+- O `ops:check` agora usa o mesmo bootstrap Prisma do runtime do app, reduzindo drift entre o diagnostico operacional e o comportamento real do servidor em hosts compartilhados.
+- A Etapa 2 das colunas-ancora de PDV/estoque agora possui rollout operacional completo no repositorio: `npm run ops:backfill:anchor-columns` executa backfill idempotente e fechado, `FinancialTransaction.revenuePosSaleId` e `InventoryMovement.saleOutPosSaleItemId` passaram a ter `UNIQUE` na migration final e o preflight das ancoras agora classifica explicitamente `GO`, `GO_COM_RESSALVAS` e `NO_GO`.
+- A trilha de migracao da Etapa 2 foi endurecida para trocar corretamente FK + indice no MySQL antes de promover `UNIQUE`, evitando falha estrutural ao reaproveitar os indices criados na Etapa 1.
+- O rollout estrutural das ancoras agora tambem foi concluido em producao com gate real por ambiente: primeiro os pre-requisitos ate a Etapa 1 foram executados manualmente e registrados com `migrate resolve --applied`, depois o preflight remoto veio limpo, o backfill rodou como no-op e so entao a Etapa 2 foi aplicada com a migration final.
+- A documentacao operacional das ancoras agora registra o estado por ambiente: `local` e `producao` concluidos, `staging` ainda pendente por falta de credencial real.
+- O fechamento operacional da trilha das colunas-ancora agora ficou explicito: `local` e `producao` seguem `GO`, `staging` permanece `NO-GO` apenas por inacessibilidade e o protocolo minimo futuro desse ambiente ja esta registrado sem reabrir schema ou migrations.
+- A Etapa 1 do endurecimento estrutural do PDV/estoque entrou em producao no repositorio: `FinancialTransaction` agora possui `revenuePosSaleId` e `InventoryMovement` agora possui `saleOutPosSaleItemId`, ambas nullable, escritas nos write paths corretos e ainda sem `UNIQUE` para manter a rollout gateada por preflight e backfill por ambiente.
+- O repositorio agora possui o preflight tecnico `npm run ops:preflight:anchor-columns` e o gate `npm run ops:check:anchor-columns`, preparados para validar por ambiente a promocao futura de `UNIQUE` das colunas-ancora sem depender do banco local como fonte unica de verdade.
+- `finance`, `pos` e `inventory` agora reutilizam um leitor comum de `UnitSetting`, reduzindo duplicacao de parsing e fallback de defaults por unidade sem mover responsabilidade de regra para fora dos dominios.
+- As invariantes condicionais do PDV/estoque passaram a ter um ponto unico de guardas em `features/pos/effect-guards.ts`, deixando explicito onde o service layer protege `REVENUE por posSaleId` e `SALE_OUT por posSaleItemId`.
 - O artefato `.next/standalone` agora reescreve o `package.json` de runtime para usar um launcher `sh ./start-server.sh`, eliminando a dependencia de `scripts/start-standalone.mjs` ausente no pacote publicado e de `node` no `PATH` do shell gerenciado da Hostinger.
 - O build agora prepara explicitamente o artefato `.next/standalone` consumido pela Hostinger: o `server.js` gerado pelo Next passa a ser preservado como `server-standalone.js`, o wrapper versionado do PetOS ocupa o `server.js` publicado e o helper do Prisma com o fallback `query_compiler_bg.wasm` sao copiados para o pacote standalone antes do deploy.
 - O deploy automatico da Hostinger ganhou autocura para o artefato `node_modules/.prisma/client/query_compiler_bg.wasm`: `postinstall` e o bootstrap de runtime agora restauram esse `.wasm` a partir de um fallback versionado quando o host o omite no `prisma generate`.
@@ -197,6 +209,7 @@ Exemplo:
 - `scripts/sanitize-netlify-artifacts.mjs` e o comando `npm run netlify:artifacts:sanitize` para remover `.env*` empacotados indevidamente das functions do Netlify antes de um deploy manual.
 
 ### Fixed
+- A estrategia evolutiva para as invariantes condicionais remanescentes de `pos` e `inventory` agora ficou documentada de forma explicita, incluindo o caminho futuro com colunas-ancora nullable em vez de workaround fragil de indice parcial no MySQL atual.
 - As superficies administrativas que consomem persistencia de imagem e insight preditivo agora degradam de forma controlada quando o banco publicado esta com schema atrasado, evitando `500` bruto em `/admin/agenda`, `/admin/sistema` e leituras correlatas e expondo alerta explicito de migration pendente na governanca consolidada da Fase 3.
 - Ambiguidade documental que ainda sugeria fechamento incompleto do MVP mesmo apos a rodada manual bem-sucedida.
 - `eslint` passou a ignorar artefatos gerados em `.netlify`, evitando falso negativo de qualidade depois do link/deploy local via CLI.
