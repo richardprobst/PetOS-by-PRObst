@@ -2,9 +2,51 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createHmac } from 'node:crypto'
 import { resetEnvironmentCacheForTests } from '../../../server/env'
-import { assertValidIntegrationSignature } from '../../../features/integrations/services'
+import {
+  assertValidIntegrationSignature,
+  reprocessIntegrationEvent,
+} from '../../../features/integrations/services'
+import type { AuthenticatedUserData } from '../../../server/auth/types'
+import { prisma } from '../../../server/db/prisma'
 
 const originalEnvironment = { ...process.env }
+const restorers: Array<() => void> = []
+const localActor: AuthenticatedUserData = {
+  active: true,
+  email: 'integrations@petos.app',
+  id: 'user_integrations_local',
+  multiUnitContext: {
+    activeUnitId: 'unit_local',
+    contextOrigin: 'SESSION_DEFAULT',
+    contextType: 'LOCAL',
+  },
+  name: 'Integracoes Local',
+  permissions: [],
+  profiles: ['Gerente'],
+  unitId: 'unit_local',
+  userType: 'ADMIN',
+}
+
+function replaceMethod(target: object, key: string, value: unknown) {
+  const descriptor =
+    Object.getOwnPropertyDescriptor(target, key) ??
+    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(target), key)
+
+  Object.defineProperty(target, key, {
+    configurable: true,
+    value,
+    writable: true,
+  })
+
+  restorers.push(() => {
+    if (descriptor) {
+      Object.defineProperty(target, key, descriptor)
+      return
+    }
+
+    Reflect.deleteProperty(target, key)
+  })
+}
 
 function loadTestEnvironment() {
   process.env = {
@@ -44,6 +86,10 @@ function loadTestEnvironment() {
 test.after(() => {
   process.env = originalEnvironment
   resetEnvironmentCacheForTests()
+
+  while (restorers.length > 0) {
+    restorers.pop()?.()
+  }
 })
 
 test('assertValidIntegrationSignature accepts a matching hmac signature', () => {
@@ -64,4 +110,113 @@ test('assertValidIntegrationSignature rejects an invalid signature', () => {
     () => assertValidIntegrationSignature('MERCADO_PAGO', rawBody, 'sha256=invalid'),
     /Invalid integration signature/,
   )
+})
+
+test('reprocessIntegrationEvent fails closed on ambiguous deposit references', async () => {
+  replaceMethod(prisma as object, 'integrationEvent', {
+    findUnique: async () => ({
+      eventType: 'deposit.updated',
+      executedBy: null,
+      externalEventId: 'event_1',
+      id: 'event_1',
+      payload: {
+        depositStatus: 'CONFIRMED',
+        externalReference: 'dep_ref_1',
+      },
+      provider: 'MERCADO_PAGO',
+      resourceId: null,
+      resourceType: 'deposit',
+      unit: null,
+      unitId: 'unit_local',
+    }),
+  })
+  replaceMethod(prisma as object, '$transaction', async (callback: (tx: unknown) => Promise<unknown>) =>
+    callback({
+      auditLog: {
+        create: async () => null,
+      },
+      deposit: {
+        findMany: async () => [
+          {
+            id: 'deposit_1',
+          },
+          {
+            id: 'deposit_2',
+          },
+        ],
+      },
+      integrationEvent: {
+        update: async () => {
+          throw new Error('integrationEvent.update should not run after ambiguous lookup')
+        },
+      },
+    }),
+  )
+
+  await assert.rejects(
+    () => reprocessIntegrationEvent(localActor, 'event_1'),
+    /Multiple deposit records share the same external reference/,
+  )
+})
+
+test('reprocessIntegrationEvent scopes fiscal document lookup by provider name', async () => {
+  let capturedWhere: Record<string, unknown> | null = null
+
+  replaceMethod(prisma as object, 'integrationEvent', {
+    findUnique: async () => ({
+      eventType: 'fiscal_document.updated',
+      executedBy: null,
+      externalEventId: 'event_2',
+      id: 'event_2',
+      payload: {
+        externalReference: 'doc_ref_1',
+        fiscalDocumentStatus: 'AUTHORIZED',
+      },
+      provider: 'STRIPE',
+      resourceId: null,
+      resourceType: 'fiscal_document',
+      unit: null,
+      unitId: 'unit_local',
+    }),
+  })
+  replaceMethod(prisma as object, '$transaction', async (callback: (tx: unknown) => Promise<unknown>) =>
+    callback({
+      auditLog: {
+        create: async () => null,
+      },
+      fiscalDocument: {
+        findMany: async (args: { where: Record<string, unknown> }) => {
+          capturedWhere = args.where
+
+          return [
+            {
+              id: 'document_1',
+              unitId: 'unit_local',
+            },
+          ]
+        },
+        update: async () => ({
+          id: 'document_1',
+          unitId: 'unit_local',
+        }),
+      },
+      integrationEvent: {
+        update: async () => ({
+          eventType: 'fiscal_document.updated',
+          executedBy: null,
+          id: 'event_2',
+          provider: 'STRIPE',
+          unit: null,
+          unitId: 'unit_local',
+        }),
+      },
+    }),
+  )
+
+  await reprocessIntegrationEvent(localActor, 'event_2')
+
+  assert.deepEqual(capturedWhere, {
+    externalReference: 'doc_ref_1',
+    providerName: 'STRIPE',
+  })
 })

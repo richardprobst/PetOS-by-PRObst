@@ -163,8 +163,16 @@ type CrmCampaignRecord = Prisma.CrmCampaignGetPayload<{
   include: typeof crmCampaignDetailsInclude
 }>
 
+type ClientCommunicationPreferenceRecord = Prisma.ClientCommunicationPreferenceGetPayload<{
+  include: typeof communicationPreferenceDetailsInclude
+}>
+
 type CrmClientAudienceRecord = Prisma.ClientGetPayload<{
   include: typeof crmClientAudienceInclude
+}>
+
+type CrmCampaignExecutionRecord = Prisma.CrmCampaignExecutionGetPayload<{
+  include: typeof crmCampaignExecutionDetailsInclude
 }>
 
 type CrmCompletedAppointmentRecord = Prisma.AppointmentGetPayload<{
@@ -197,6 +205,187 @@ interface BuiltClientProfile {
 
 type CrmScopeQuery = {
   unitId?: string | null
+}
+
+function serializeSafeUserSummary(
+  user:
+    | {
+        id: string
+        name: string
+      }
+    | null
+    | undefined,
+) {
+  if (!user) {
+    return null
+  }
+
+  return {
+    id: user.id,
+    name: user.name,
+  }
+}
+
+function serializeRequiredUserSummary(user: { id: string; name: string }) {
+  return {
+    id: user.id,
+    name: user.name,
+  }
+}
+
+function serializeSafeUnitSummary(
+  unit:
+    | {
+        id: string
+        name: string
+      }
+    | null
+    | undefined,
+) {
+  if (!unit) {
+    return null
+  }
+
+  return {
+    id: unit.id,
+    name: unit.name,
+  }
+}
+
+function serializeCrmTemplateSummary(
+  template:
+    | {
+        active: boolean
+        channel: MessageChannel
+        id: string
+        name: string
+      }
+    | null
+    | undefined,
+) {
+  if (!template) {
+    return null
+  }
+
+  return {
+    active: template.active,
+    channel: template.channel,
+    id: template.id,
+    name: template.name,
+  }
+}
+
+function serializeClientCommunicationPreference(
+  preference: ClientCommunicationPreferenceRecord,
+) {
+  return {
+    client: {
+      user: serializeRequiredUserSummary(preference.client.user),
+    },
+    clientId: preference.clientId,
+    createdAt: preference.createdAt,
+    emailOptIn: preference.emailOptIn,
+    marketingOptIn: preference.marketingOptIn,
+    notes: preference.notes,
+    postServiceOptIn: preference.postServiceOptIn,
+    reviewOptIn: preference.reviewOptIn,
+    source: preference.source,
+    updatedAt: preference.updatedAt,
+    whatsappOptIn: preference.whatsappOptIn,
+  }
+}
+
+function serializeCrmCampaign(campaign: CrmCampaignRecord) {
+  return {
+    _count: campaign._count,
+    campaignType: campaign.campaignType,
+    channel: campaign.channel,
+    createdAt: campaign.createdAt,
+    createdBy: serializeSafeUserSummary(campaign.createdBy),
+    createdByUserId: campaign.createdByUserId,
+    criteria: buildCampaignCriteriaSnapshot(campaign.criteria),
+    description: campaign.description,
+    id: campaign.id,
+    lastExecutedAt: campaign.lastExecutedAt,
+    name: campaign.name,
+    status: campaign.status,
+    template: serializeCrmTemplateSummary(campaign.template),
+    templateId: campaign.templateId,
+    unit: serializeSafeUnitSummary(campaign.unit),
+    unitId: campaign.unitId,
+    updatedAt: campaign.updatedAt,
+  }
+}
+
+function serializeCrmExecutionRecipient(
+  recipient: CrmCampaignExecutionRecord['recipients'][number],
+) {
+  return {
+    appointment: recipient.appointment
+      ? {
+          id: recipient.appointment.id,
+          pet: recipient.appointment.pet
+            ? {
+                id: recipient.appointment.pet.id,
+                name: recipient.appointment.pet.name,
+              }
+            : null,
+        }
+      : null,
+    appointmentId: recipient.appointmentId,
+    campaignId: recipient.campaignId,
+    channel: recipient.channel,
+    client: {
+      user: serializeRequiredUserSummary(recipient.client.user),
+      userId: recipient.client.userId,
+    },
+    clientId: recipient.clientId,
+    createdAt: recipient.createdAt,
+    executionId: recipient.executionId,
+    id: recipient.id,
+    launchedAt: recipient.launchedAt,
+    messageLog: recipient.messageLog
+      ? {
+          channel: recipient.messageLog.channel,
+          deliveryStatus: recipient.messageLog.deliveryStatus,
+          id: recipient.messageLog.id,
+          sentAt: recipient.messageLog.sentAt,
+        }
+      : null,
+    messageLogId: recipient.messageLogId,
+    skippedReason: recipient.skippedReason,
+    sourceKey: recipient.sourceKey,
+    status: recipient.status,
+    updatedAt: recipient.updatedAt,
+  }
+}
+
+function serializeCrmExecution(execution: CrmCampaignExecutionRecord) {
+  return {
+    audienceSnapshot: execution.audienceSnapshot,
+    campaign: {
+      campaignType: execution.campaign.campaignType,
+      channel: execution.campaign.channel,
+      id: execution.campaign.id,
+      name: execution.campaign.name,
+      status: execution.campaign.status,
+      template: serializeCrmTemplateSummary(execution.campaign.template),
+      templateId: execution.campaign.templateId,
+    },
+    campaignId: execution.campaignId,
+    completedAt: execution.completedAt,
+    executedBy: serializeSafeUserSummary(execution.executedBy),
+    executedByUserId: execution.executedByUserId,
+    executionReason: execution.executionReason,
+    failedCount: execution.failedCount,
+    id: execution.id,
+    launchedCount: execution.launchedCount,
+    preparedCount: execution.preparedCount,
+    recipients: execution.recipients.map(serializeCrmExecutionRecipient),
+    skippedCount: execution.skippedCount,
+    startedAt: execution.startedAt,
+    status: execution.status,
+  }
 }
 
 function toNumber(value: Prisma.Decimal | number | null | undefined) {
@@ -368,7 +557,7 @@ export async function getCrmCampaignDetails(
     unitId: query.unitId,
   })
 
-  return campaign
+  return serializeCrmCampaign(campaign)
 }
 
 function buildClientProfile(client: CrmClientAudienceRecord, now: Date): BuiltClientProfile {
@@ -893,7 +1082,7 @@ function buildRecipientLaunchContext(recipient: CrmRecipientLaunchRecord) {
 export async function listClientCommunicationPreferences(actor: AuthenticatedUserData) {
   const unitId = resolveCrmReadUnitId(actor)
 
-  return prisma.clientCommunicationPreference.findMany({
+  const preferences = await prisma.clientCommunicationPreference.findMany({
     where: {
       client: {
         user: {
@@ -910,6 +1099,8 @@ export async function listClientCommunicationPreferences(actor: AuthenticatedUse
       },
     },
   })
+
+  return preferences.map(serializeClientCommunicationPreference)
 }
 
 export async function upsertClientCommunicationPreference(
@@ -932,7 +1123,7 @@ export async function upsertClientCommunicationPreference(
   assertActorCanUseClient(actor, client.user.unitId)
   const unitId = resolveScopedUnitId(actor, client.user.unitId)
 
-  return prisma.$transaction(async (tx) => {
+  const preference = await prisma.$transaction(async (tx) => {
     const preference = await tx.clientCommunicationPreference.upsert({
       where: {
         clientId: input.clientId,
@@ -978,6 +1169,8 @@ export async function upsertClientCommunicationPreference(
 
     return preference
   })
+
+  return serializeClientCommunicationPreference(preference)
 }
 
 export async function listCrmCampaigns(
@@ -986,7 +1179,7 @@ export async function listCrmCampaigns(
 ) {
   const unitId = resolveCrmReadUnitId(actor, query.unitId ?? null)
 
-  return prisma.crmCampaign.findMany({
+  const campaigns = await prisma.crmCampaign.findMany({
     where: {
       unitId,
       ...(query.status ? { status: query.status } : {}),
@@ -997,6 +1190,8 @@ export async function listCrmCampaigns(
       createdAt: 'desc',
     },
   })
+
+  return campaigns.map(serializeCrmCampaign)
 }
 
 export async function createCrmCampaign(
@@ -1010,7 +1205,7 @@ export async function createCrmCampaign(
     unitId,
   })
 
-  return prisma.$transaction(async (tx) => {
+  const campaign = await prisma.$transaction(async (tx) => {
     const campaign = await tx.crmCampaign.create({
       data: {
         unitId,
@@ -1041,6 +1236,8 @@ export async function createCrmCampaign(
 
     return campaign
   })
+
+  return serializeCrmCampaign(campaign)
 }
 
 export async function updateCrmCampaign(
@@ -1062,7 +1259,7 @@ export async function updateCrmCampaign(
     unitId: existingCampaign.unitId,
   })
 
-  return prisma.$transaction(async (tx) => {
+  const campaign = await prisma.$transaction(async (tx) => {
     const campaign = await tx.crmCampaign.update({
       where: {
         id: campaignId,
@@ -1092,6 +1289,8 @@ export async function updateCrmCampaign(
 
     return campaign
   })
+
+  return serializeCrmCampaign(campaign)
 }
 
 export async function listCrmExecutions(
@@ -1100,7 +1299,7 @@ export async function listCrmExecutions(
 ) {
   const unitId = resolveCrmReadUnitId(actor, query.unitId ?? null)
 
-  return prisma.crmCampaignExecution.findMany({
+  const executions = await prisma.crmCampaignExecution.findMany({
     where: {
       campaign: {
         unitId,
@@ -1122,6 +1321,8 @@ export async function listCrmExecutions(
     },
     take: 10,
   })
+
+  return executions.map(serializeCrmExecution)
 }
 
 export async function prepareCrmCampaignExecution(
@@ -1207,12 +1408,14 @@ export async function prepareCrmCampaignExecution(
     return createdExecution
   })
 
-  return prisma.crmCampaignExecution.findUniqueOrThrow({
+  const hydratedExecution = await prisma.crmCampaignExecution.findUniqueOrThrow({
     where: {
       id: execution.id,
     },
     include: crmCampaignExecutionDetailsInclude,
   })
+
+  return serializeCrmExecution(hydratedExecution)
 }
 
 export async function launchCrmCampaignRecipient(actor: AuthenticatedUserData, recipientId: string) {

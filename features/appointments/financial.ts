@@ -1,4 +1,5 @@
 import { Prisma, type AppointmentFinancialStatus } from '@prisma/client'
+import { writeAuditLog } from '@/server/audit/logging'
 import { AppError } from '@/server/http/errors'
 import { calculateCommissionAmountFromBilledValue } from '@/features/appointments/commission'
 import {
@@ -14,6 +15,16 @@ interface AppointmentFinancialStatusInput {
   refundedAmount: number
   hasReversedPayment: boolean
   operationalStatusId: string
+}
+
+interface AppointmentFinancialSyncOptions {
+  source?: {
+    action: string
+    actorUserId?: string | null
+    details?: Record<string, unknown>
+    entityId?: string | null
+    entityName: string
+  }
 }
 
 export function deriveAppointmentFinancialStatus(
@@ -76,6 +87,7 @@ export async function recalculateAppointmentServiceCommissions(
 export async function syncAppointmentFinancialStatus(
   client: Prisma.TransactionClient,
   appointmentId: string,
+  options: AppointmentFinancialSyncOptions = {},
 ) {
   const appointment = await client.appointment.findUnique({
     where: {
@@ -83,7 +95,10 @@ export async function syncAppointmentFinancialStatus(
     },
     select: {
       estimatedTotalAmount: true,
+      financialStatus: true,
+      id: true,
       operationalStatusId: true,
+      unitId: true,
       financialTransactions: {
         where: {
           transactionType: {
@@ -141,23 +156,50 @@ export async function syncAppointmentFinancialStatus(
     (total, refund) => total + Number(refund.amount),
     0,
   )
+  const reversedPayment = hasReversedPayment(appointment.financialTransactions)
 
   const nextFinancialStatus = deriveAppointmentFinancialStatus({
     estimatedTotalAmount: Number(appointment.estimatedTotalAmount),
     grossSettledAmount,
     refundedAmount,
-    hasReversedPayment: hasReversedPayment(appointment.financialTransactions),
+    hasReversedPayment: reversedPayment,
     operationalStatusId: appointment.operationalStatusId,
   })
 
-  await client.appointment.update({
-    where: {
-      id: appointmentId,
-    },
-    data: {
-      financialStatus: nextFinancialStatus,
-    },
-  })
+  if (appointment.financialStatus !== nextFinancialStatus) {
+    await client.appointment.update({
+      where: {
+        id: appointmentId,
+      },
+      data: {
+        financialStatus: nextFinancialStatus,
+      },
+    })
+
+    await writeAuditLog(client, {
+      unitId: appointment.unitId,
+      userId: options.source?.actorUserId ?? null,
+      action: 'appointment.financial_status.sync',
+      entityName: 'Appointment',
+      entityId: appointment.id,
+      details: {
+        from: appointment.financialStatus,
+        to: nextFinancialStatus,
+        estimatedTotalAmount: Number(appointment.estimatedTotalAmount),
+        grossSettledAmount,
+        refundedAmount,
+        hasReversedPayment: reversedPayment,
+        source: options.source
+          ? {
+              action: options.source.action,
+              details: options.source.details ?? null,
+              entityId: options.source.entityId ?? null,
+              entityName: options.source.entityName,
+            }
+          : null,
+      },
+    })
+  }
 
   await recalculateAppointmentServiceCommissions(client, appointmentId)
 }

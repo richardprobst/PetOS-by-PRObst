@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { prisma } from '@/server/db/prisma'
+import { runSerializableTransaction } from '@/server/db/transactions'
 import {
   assertActorCanAccessLocalUnitRecord,
   resolveScopedUnitId,
@@ -38,6 +39,8 @@ const scheduleBlockInclude = Prisma.validator<Prisma.ScheduleBlockInclude>()({
   createdBy: true,
 })
 
+type AppointmentAdvancedMutationClient = Prisma.TransactionClient | typeof prisma
+
 async function getCapacityRuleOrThrow(actor: AuthenticatedUserData, ruleId: string) {
   const rule = await prisma.appointmentCapacityRule.findUnique({
     where: {
@@ -72,12 +75,16 @@ async function getScheduleBlockOrThrow(actor: AuthenticatedUserData, blockId: st
   return block
 }
 
-async function assertEmployeeScope(unitId: string, employeeUserId: string | undefined | null) {
+async function assertEmployeeScope(
+  client: AppointmentAdvancedMutationClient,
+  unitId: string,
+  employeeUserId: string | undefined | null,
+) {
   if (!employeeUserId) {
     return
   }
 
-  const employee = await prisma.employee.findUnique({
+  const employee = await client.employee.findUnique({
     where: {
       userId: employeeUserId,
     },
@@ -92,13 +99,14 @@ async function assertEmployeeScope(unitId: string, employeeUserId: string | unde
 }
 
 async function assertCapacityRuleUniqueness(
+  client: AppointmentAdvancedMutationClient,
   unitId: string,
   employeeUserId: string | null | undefined,
   sizeCategory: string | null | undefined,
   breed: string | null | undefined,
   excludingRuleId?: string,
 ) {
-  const existingRules = await prisma.appointmentCapacityRule.findMany({
+  const existingRules = await client.appointmentCapacityRule.findMany({
     where: {
       unitId,
       active: true,
@@ -146,10 +154,17 @@ export async function createAppointmentCapacityRule(
   input: CreateAppointmentCapacityRuleInput,
 ) {
   const unitId = resolveScopedUnitId(actor, null)
-  await assertEmployeeScope(unitId, input.employeeUserId)
-  await assertCapacityRuleUniqueness(unitId, input.employeeUserId, input.sizeCategory, input.breed)
 
-  return prisma.$transaction(async (tx) => {
+  return runSerializableTransaction(async (tx) => {
+    await assertEmployeeScope(tx, unitId, input.employeeUserId)
+    await assertCapacityRuleUniqueness(
+      tx,
+      unitId,
+      input.employeeUserId,
+      input.sizeCategory,
+      input.breed,
+    )
+
     const rule = await tx.appointmentCapacityRule.create({
       data: {
         unitId,
@@ -178,7 +193,7 @@ export async function createAppointmentCapacityRule(
     })
 
     return rule
-  })
+  }, 'The appointment capacity rules changed before this rule could be created.')
 }
 
 export async function updateAppointmentCapacityRule(
@@ -193,16 +208,17 @@ export async function updateAppointmentCapacityRule(
     input.sizeCategory !== undefined ? input.sizeCategory : existingRule.sizeCategory
   const nextBreed = input.breed !== undefined ? input.breed : existingRule.breed
 
-  await assertEmployeeScope(existingRule.unitId, nextEmployeeUserId ?? null)
-  await assertCapacityRuleUniqueness(
-    existingRule.unitId,
-    nextEmployeeUserId ?? null,
-    nextSizeCategory ?? null,
-    nextBreed ?? null,
-    ruleId,
-  )
+  return runSerializableTransaction(async (tx) => {
+    await assertEmployeeScope(tx, existingRule.unitId, nextEmployeeUserId ?? null)
+    await assertCapacityRuleUniqueness(
+      tx,
+      existingRule.unitId,
+      nextEmployeeUserId ?? null,
+      nextSizeCategory ?? null,
+      nextBreed ?? null,
+      ruleId,
+    )
 
-  return prisma.$transaction(async (tx) => {
     const rule = await tx.appointmentCapacityRule.update({
       where: {
         id: ruleId,
@@ -232,7 +248,7 @@ export async function updateAppointmentCapacityRule(
     })
 
     return rule
-  })
+  }, 'The appointment capacity rules changed before this rule could be updated.')
 }
 
 export async function listScheduleBlocks(
@@ -279,7 +295,7 @@ export async function listScheduleBlocks(
 export async function createScheduleBlock(actor: AuthenticatedUserData, input: CreateScheduleBlockInput) {
   const unitId = resolveScopedUnitId(actor, null)
   assertScheduleBlockWindow(input.startAt, input.endAt)
-  await assertEmployeeScope(unitId, input.employeeUserId)
+  await assertEmployeeScope(prisma, unitId, input.employeeUserId)
 
   return prisma.$transaction(async (tx) => {
     const block = await tx.scheduleBlock.create({
@@ -324,7 +340,7 @@ export async function updateScheduleBlock(
   const nextEndAt = input.endAt ?? existingBlock.endAt
 
   assertScheduleBlockWindow(nextStartAt, nextEndAt)
-  await assertEmployeeScope(existingBlock.unitId, nextEmployeeUserId ?? null)
+  await assertEmployeeScope(prisma, existingBlock.unitId, nextEmployeeUserId ?? null)
 
   return prisma.$transaction(async (tx) => {
     const block = await tx.scheduleBlock.update({

@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client'
+import { Prisma, type MessageChannel } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { prisma } from '@/server/db/prisma'
 import { AppError } from '@/server/http/errors'
@@ -46,6 +46,141 @@ const messageLogDetailsInclude = Prisma.validator<Prisma.MessageLogInclude>()({
   template: true,
   sender: true,
 })
+
+type MessageTemplateDetailsRecord = Prisma.MessageTemplateGetPayload<{
+  include: typeof messageTemplateDetailsInclude
+}>
+
+type MessageLogDetailsRecord = Prisma.MessageLogGetPayload<{
+  include: typeof messageLogDetailsInclude
+}>
+
+function normalizeAvailableVariables(value: Prisma.JsonValue | null | undefined) {
+  if (!Array.isArray(value)) {
+    return [] as string[]
+  }
+
+  return value.filter((entry): entry is string => typeof entry === 'string')
+}
+
+function serializeSafeUserSummary(
+  user:
+    | {
+        id: string
+        name: string
+      }
+    | null
+    | undefined,
+) {
+  if (!user) {
+    return null
+  }
+
+  return {
+    id: user.id,
+    name: user.name,
+  }
+}
+
+function serializeRequiredUserSummary(user: { id: string; name: string }) {
+  return {
+    id: user.id,
+    name: user.name,
+  }
+}
+
+function serializeSafeUnitSummary(
+  unit:
+    | {
+        id: string
+        name: string
+      }
+    | null
+    | undefined,
+) {
+  if (!unit) {
+    return null
+  }
+
+  return {
+    id: unit.id,
+    name: unit.name,
+  }
+}
+
+function serializeMessageTemplate(template: MessageTemplateDetailsRecord) {
+  return {
+    active: template.active,
+    availableVariables: normalizeAvailableVariables(template.availableVariables),
+    body: template.body,
+    channel: template.channel,
+    id: template.id,
+    name: template.name,
+    subject: template.subject,
+    unit: serializeSafeUnitSummary(template.unit),
+    unitId: template.unitId,
+  }
+}
+
+function serializeMessageTemplateSummary(
+  template:
+    | {
+        active: boolean
+        channel: MessageChannel
+        id: string
+        name: string
+      }
+    | null
+    | undefined,
+) {
+  if (!template) {
+    return null
+  }
+
+  return {
+    active: template.active,
+    channel: template.channel,
+    id: template.id,
+    name: template.name,
+  }
+}
+
+function serializeMessageLog(log: MessageLogDetailsRecord) {
+  return {
+    appointment: log.appointment
+      ? {
+          client: {
+            user: serializeRequiredUserSummary(log.appointment.client.user),
+          },
+          id: log.appointment.id,
+          pet: log.appointment.pet
+            ? {
+                id: log.appointment.pet.id,
+                name: log.appointment.pet.name,
+              }
+            : null,
+          startAt: log.appointment.startAt,
+        }
+      : null,
+    appointmentId: log.appointmentId,
+    channel: log.channel,
+    client: log.client
+      ? {
+          user: serializeRequiredUserSummary(log.client.user),
+          userId: log.client.userId,
+        }
+      : null,
+    clientId: log.clientId,
+    deliveryStatus: log.deliveryStatus,
+    id: log.id,
+    messageContent: log.messageContent,
+    sender: serializeSafeUserSummary(log.sender),
+    senderUserId: log.senderUserId,
+    sentAt: log.sentAt,
+    template: serializeMessageTemplateSummary(log.template),
+    templateId: log.templateId,
+  }
+}
 
 export function resolveMessageReadUnitId(
   actor: AuthenticatedUserData,
@@ -256,7 +391,7 @@ export async function listMessageTemplates(
 ) {
   const scopedUnitId = resolveMessageReadUnitId(actor, query.unitId ?? null)
 
-  return prisma.messageTemplate.findMany({
+  const templates = await prisma.messageTemplate.findMany({
     where: {
       OR: [{ unitId: scopedUnitId }, { unitId: null }],
       ...(query.search
@@ -274,6 +409,8 @@ export async function listMessageTemplates(
       name: 'asc',
     },
   })
+
+  return templates.map(serializeMessageTemplate)
 }
 
 export async function createMessageTemplate(
@@ -282,7 +419,7 @@ export async function createMessageTemplate(
 ) {
   const unitId = resolveScopedUnitId(actor, input.unitId ?? null)
 
-  return prisma.$transaction(async (tx) => {
+  const template = await prisma.$transaction(async (tx) => {
     const template = await tx.messageTemplate.create({
       data: {
         unitId,
@@ -310,6 +447,8 @@ export async function createMessageTemplate(
 
     return template
   })
+
+  return serializeMessageTemplate(template)
 }
 
 export async function updateMessageTemplate(
@@ -323,7 +462,7 @@ export async function updateMessageTemplate(
       ? null
       : resolveScopedUnitId(actor, input.unitId ?? existingTemplate.unitId ?? null)
 
-  return prisma.$transaction(async (tx) => {
+  const template = await prisma.$transaction(async (tx) => {
     const template = await tx.messageTemplate.update({
       where: {
         id: templateId,
@@ -355,12 +494,14 @@ export async function updateMessageTemplate(
 
     return template
   })
+
+  return serializeMessageTemplate(template)
 }
 
 export async function listMessageLogs(actor: AuthenticatedUserData, query: ListMessageLogsQuery) {
   const scopedUnitId = resolveMessageReadUnitId(actor, query.unitId ?? null)
 
-  return prisma.messageLog.findMany({
+  const logs = await prisma.messageLog.findMany({
     where: {
       ...(query.appointmentId ? { appointmentId: query.appointmentId } : {}),
       ...(query.clientId ? { clientId: query.clientId } : {}),
@@ -386,6 +527,8 @@ export async function listMessageLogs(actor: AuthenticatedUserData, query: ListM
       sentAt: 'desc',
     },
   })
+
+  return logs.map(serializeMessageLog)
 }
 
 export async function createMessageLog(actor: AuthenticatedUserData, input: CreateMessageLogInput) {
@@ -398,7 +541,7 @@ export async function createMessageLog(actor: AuthenticatedUserData, input: Crea
       null,
   )
 
-  return prisma.$transaction(async (tx) => {
+  const log = await prisma.$transaction(async (tx) => {
     const log = await tx.messageLog.create({
       data: {
         appointmentId: context.appointment?.id ?? null,
@@ -428,6 +571,8 @@ export async function createMessageLog(actor: AuthenticatedUserData, input: Crea
 
     return log
   })
+
+  return serializeMessageLog(log)
 }
 
 export async function launchManualMessage(
@@ -487,7 +632,7 @@ export async function launchManualMessage(
   })
 
   return {
-    log,
+    log: serializeMessageLog(log),
     launchUrl,
   }
 }

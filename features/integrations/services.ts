@@ -83,6 +83,27 @@ export function assertValidIntegrationSignature(
   }
 }
 
+async function findSingleResourceByExternalReference<T extends { id: string }>(
+  finder: () => Promise<T[]>,
+  resourceLabel: string,
+) {
+  const matches = await finder()
+
+  if (matches.length === 0) {
+    return null
+  }
+
+  if (matches.length > 1) {
+    throw new AppError(
+      'CONFLICT',
+      409,
+      `Multiple ${resourceLabel} records share the same external reference.`,
+    )
+  }
+
+  return matches[0]
+}
+
 async function processNormalizedIntegrationEvent(
   tx: Prisma.TransactionClient,
   input: NormalizedIntegrationEventInput,
@@ -99,12 +120,17 @@ async function processNormalizedIntegrationEvent(
             })
           : null) ??
         (input.data.externalReference
-          ? await tx.financialTransaction.findFirst({
-              where: {
-                integrationProvider: provider,
-                externalReference: input.data.externalReference,
-              },
-            })
+          ? await findSingleResourceByExternalReference(
+              () =>
+                tx.financialTransaction.findMany({
+                  where: {
+                    integrationProvider: provider,
+                    externalReference: input.data.externalReference,
+                  },
+                  take: 2,
+                }),
+              'financial transaction',
+            )
           : null)
 
       if (!transaction) {
@@ -125,7 +151,19 @@ async function processNormalizedIntegrationEvent(
       })
 
       if (updatedTransaction.appointmentId) {
-        await syncAppointmentFinancialStatus(tx, updatedTransaction.appointmentId)
+        await syncAppointmentFinancialStatus(tx, updatedTransaction.appointmentId, {
+          source: {
+            action: 'integration_event.process',
+            details: {
+              eventType: input.eventType,
+              externalEventId: input.externalEventId ?? null,
+              provider,
+              resourceType: input.resourceType,
+            },
+            entityId: input.externalEventId ?? updatedTransaction.id,
+            entityName: 'IntegrationEvent',
+          },
+        })
       }
 
       return {
@@ -144,11 +182,16 @@ async function processNormalizedIntegrationEvent(
             })
           : null) ??
         (input.data.externalReference
-          ? await tx.deposit.findFirst({
-              where: {
-                externalReference: input.data.externalReference,
-              },
-            })
+          ? await findSingleResourceByExternalReference(
+              () =>
+                tx.deposit.findMany({
+                  where: {
+                    externalReference: input.data.externalReference,
+                  },
+                  take: 2,
+                }),
+              'deposit',
+            )
           : null)
 
       if (!deposit) {
@@ -185,7 +228,19 @@ async function processNormalizedIntegrationEvent(
       }
 
       if (updatedDeposit.appointmentId) {
-        await syncAppointmentFinancialStatus(tx, updatedDeposit.appointmentId)
+        await syncAppointmentFinancialStatus(tx, updatedDeposit.appointmentId, {
+          source: {
+            action: 'integration_event.process',
+            details: {
+              eventType: input.eventType,
+              externalEventId: input.externalEventId ?? null,
+              provider,
+              resourceType: input.resourceType,
+            },
+            entityId: input.externalEventId ?? updatedDeposit.id,
+            entityName: 'IntegrationEvent',
+          },
+        })
       }
 
       return {
@@ -204,11 +259,16 @@ async function processNormalizedIntegrationEvent(
             })
           : null) ??
         (input.data.externalReference
-          ? await tx.refund.findFirst({
-              where: {
-                externalReference: input.data.externalReference,
-              },
-            })
+          ? await findSingleResourceByExternalReference(
+              () =>
+                tx.refund.findMany({
+                  where: {
+                    externalReference: input.data.externalReference,
+                  },
+                  take: 2,
+                }),
+              'refund',
+            )
           : null)
 
       if (!refund) {
@@ -244,7 +304,19 @@ async function processNormalizedIntegrationEvent(
       }
 
       if (updatedRefund.appointmentId) {
-        await syncAppointmentFinancialStatus(tx, updatedRefund.appointmentId)
+        await syncAppointmentFinancialStatus(tx, updatedRefund.appointmentId, {
+          source: {
+            action: 'integration_event.process',
+            details: {
+              eventType: input.eventType,
+              externalEventId: input.externalEventId ?? null,
+              provider,
+              resourceType: input.resourceType,
+            },
+            entityId: input.externalEventId ?? updatedRefund.id,
+            entityName: 'IntegrationEvent',
+          },
+        })
       }
 
       return {
@@ -263,11 +335,17 @@ async function processNormalizedIntegrationEvent(
             })
           : null) ??
         (input.data.externalReference
-          ? await tx.fiscalDocument.findFirst({
-              where: {
-                externalReference: input.data.externalReference,
-              },
-            })
+          ? await findSingleResourceByExternalReference(
+              () =>
+                tx.fiscalDocument.findMany({
+                  where: {
+                    providerName: provider,
+                    externalReference: input.data.externalReference,
+                  },
+                  take: 2,
+                }),
+              'fiscal document',
+            )
           : null)
 
       if (!document) {

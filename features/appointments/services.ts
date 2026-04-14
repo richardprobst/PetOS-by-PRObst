@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { prisma } from '@/server/db/prisma'
+import { runSerializableTransaction } from '@/server/db/transactions'
 import { AppError } from '@/server/http/errors'
 import {
   assertActorCanAccessOwnershipBinding,
@@ -509,23 +510,6 @@ export function assertActorCanReadAppointmentInScope(
   )
 }
 
-async function getAppointmentOrThrow(actor: AuthenticatedUserData, appointmentId: string) {
-  const appointment = await prisma.appointment.findUnique({
-    where: {
-      id: appointmentId,
-    },
-    include: appointmentDetailsInclude,
-  })
-
-  if (!appointment) {
-    throw new AppError('NOT_FOUND', 404, 'Appointment not found.')
-  }
-
-  assertActorCanReadAppointmentInScope(actor, appointment.unitId)
-
-  return appointment
-}
-
 async function getAppointmentForReadOrThrow(
   actor: AuthenticatedUserData,
   appointmentId: string,
@@ -534,7 +518,19 @@ async function getAppointmentForReadOrThrow(
     sessionActiveUnitId?: string | null
   },
 ) {
-  const appointment = await prisma.appointment.findUnique({
+  return getAppointmentInScopeOrThrow(prisma, actor, appointmentId, options)
+}
+
+async function getAppointmentInScopeOrThrow(
+  client: AppointmentMutationClient,
+  actor: AuthenticatedUserData,
+  appointmentId: string,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  const appointment = await client.appointment.findUnique({
     where: {
       id: appointmentId,
     },
@@ -684,7 +680,109 @@ export async function createAppointmentInMutation(
 }
 
 export async function createAppointment(actor: AuthenticatedUserData, input: CreateAppointmentInput) {
-  return prisma.$transaction((tx) => createAppointmentInMutation(tx, actor, input))
+  return runSerializableTransaction(
+    (tx) => createAppointmentInMutation(tx, actor, input),
+    'The selected slot changed before the appointment could be created.',
+  )
+}
+
+async function updateAppointmentInMutation(
+  tx: AppointmentMutationClient,
+  actor: AuthenticatedUserData,
+  appointmentId: string,
+  input: UpdateAppointmentInput,
+  existingAppointment?: AppointmentWithDetails,
+) {
+  const currentAppointment =
+    existingAppointment ?? (await getAppointmentInScopeOrThrow(tx, actor, appointmentId))
+  assertAppointmentCanBeEdited(currentAppointment)
+
+  const nextUnitId = resolveScopedUnitId(actor, input.unitId ?? currentAppointment.unitId)
+  const nextClientId = input.clientId ?? currentAppointment.clientId
+  const nextPetId = input.petId ?? currentAppointment.petId
+  const nextServiceItems =
+    input.services ??
+    currentAppointment.services.map((serviceItem) => ({
+      serviceId: serviceItem.serviceId,
+      employeeUserId: serviceItem.employeeUserId ?? undefined,
+      agreedUnitPrice: Number(serviceItem.agreedUnitPrice),
+    }))
+  const nextStartAt = input.startAt ?? currentAppointment.startAt
+
+  const dependencies = await loadAppointmentDependencies(
+    tx,
+    actor,
+    nextUnitId,
+    nextClientId,
+    nextPetId,
+    nextServiceItems,
+  )
+  const totalDurationMinutes = calculateAppointmentDurationMinutes(
+    dependencies.services.map((service) => service.estimatedDurationMinutes),
+  )
+  const nextEndAt = input.endAt ?? calculateAppointmentEndAt(nextStartAt, totalDurationMinutes)
+
+  assertAppointmentIsNotInThePast(nextStartAt)
+  assertAppointmentDurationIsCompatible(nextStartAt, nextEndAt, totalDurationMinutes)
+
+  await assertScheduleAvailability(
+    tx,
+    nextUnitId,
+    dependencies.employees,
+    nextStartAt,
+    nextEndAt,
+    dependencies.petRecord,
+    appointmentId,
+  )
+
+  await tx.appointmentService.deleteMany({
+    where: {
+      appointmentId,
+    },
+  })
+
+  await tx.appointment.update({
+    where: {
+      id: appointmentId,
+    },
+    data: {
+      unitId: nextUnitId,
+      clientId: nextClientId,
+      petId: nextPetId,
+      startAt: nextStartAt,
+      endAt: nextEndAt,
+      ...(input.clientNotes !== undefined ? { clientNotes: input.clientNotes } : {}),
+      ...(input.internalNotes !== undefined ? { internalNotes: input.internalNotes } : {}),
+      estimatedTotalAmount: calculateEstimatedTotalAmount(
+        nextServiceItems,
+        dependencies.services,
+        toNumber(currentAppointment.taxiDogRide?.feeAmount),
+      ),
+      services: {
+        create: buildAppointmentServiceCreateData(nextServiceItems, dependencies.services),
+      },
+    },
+  })
+
+  await recalculateAppointmentServiceCommissions(tx, appointmentId)
+
+  await writeAuditLog(tx, {
+    unitId: nextUnitId,
+    userId: actor.id,
+    action: 'appointment.update',
+    entityName: 'Appointment',
+    entityId: appointmentId,
+    details: {
+      changedFields: Object.keys(input),
+    },
+  })
+
+  return tx.appointment.findUniqueOrThrow({
+    where: {
+      id: appointmentId,
+    },
+    include: appointmentDetailsInclude,
+  })
 }
 
 export async function updateAppointment(
@@ -692,97 +790,10 @@ export async function updateAppointment(
   appointmentId: string,
   input: UpdateAppointmentInput,
 ) {
-  const existingAppointment = await getAppointmentOrThrow(actor, appointmentId)
-  assertAppointmentCanBeEdited(existingAppointment)
-
-  const nextUnitId = resolveScopedUnitId(actor, input.unitId ?? existingAppointment.unitId)
-  const nextClientId = input.clientId ?? existingAppointment.clientId
-  const nextPetId = input.petId ?? existingAppointment.petId
-  const nextServiceItems =
-    input.services ??
-    existingAppointment.services.map((serviceItem) => ({
-      serviceId: serviceItem.serviceId,
-      employeeUserId: serviceItem.employeeUserId ?? undefined,
-      agreedUnitPrice: Number(serviceItem.agreedUnitPrice),
-    }))
-  const nextStartAt = input.startAt ?? existingAppointment.startAt
-
-  return prisma.$transaction(async (tx) => {
-    const dependencies = await loadAppointmentDependencies(
-      tx,
-      actor,
-      nextUnitId,
-      nextClientId,
-      nextPetId,
-      nextServiceItems,
-    )
-    const totalDurationMinutes = calculateAppointmentDurationMinutes(
-      dependencies.services.map((service) => service.estimatedDurationMinutes),
-    )
-    const nextEndAt = input.endAt ?? calculateAppointmentEndAt(nextStartAt, totalDurationMinutes)
-
-    assertAppointmentIsNotInThePast(nextStartAt)
-    assertAppointmentDurationIsCompatible(nextStartAt, nextEndAt, totalDurationMinutes)
-
-    await assertScheduleAvailability(
-      tx,
-      nextUnitId,
-      dependencies.employees,
-      nextStartAt,
-      nextEndAt,
-      dependencies.petRecord,
-      appointmentId,
-    )
-
-    await tx.appointmentService.deleteMany({
-      where: {
-        appointmentId,
-      },
-    })
-
-    await tx.appointment.update({
-      where: {
-        id: appointmentId,
-      },
-      data: {
-        unitId: nextUnitId,
-        clientId: nextClientId,
-        petId: nextPetId,
-        startAt: nextStartAt,
-        endAt: nextEndAt,
-        ...(input.clientNotes !== undefined ? { clientNotes: input.clientNotes } : {}),
-        ...(input.internalNotes !== undefined ? { internalNotes: input.internalNotes } : {}),
-        estimatedTotalAmount: calculateEstimatedTotalAmount(
-          nextServiceItems,
-          dependencies.services,
-          toNumber(existingAppointment.taxiDogRide?.feeAmount),
-        ),
-        services: {
-          create: buildAppointmentServiceCreateData(nextServiceItems, dependencies.services),
-        },
-      },
-    })
-
-    await recalculateAppointmentServiceCommissions(tx, appointmentId)
-
-    await writeAuditLog(tx, {
-      unitId: nextUnitId,
-      userId: actor.id,
-      action: 'appointment.update',
-      entityName: 'Appointment',
-      entityId: appointmentId,
-      details: {
-        changedFields: Object.keys(input),
-      },
-    })
-
-    return tx.appointment.findUniqueOrThrow({
-      where: {
-        id: appointmentId,
-      },
-      include: appointmentDetailsInclude,
-    })
-  })
+  return runSerializableTransaction(
+    (tx) => updateAppointmentInMutation(tx, actor, appointmentId, input),
+    'The appointment changed before it could be updated.',
+  )
 }
 
 export async function changeAppointmentStatus(
@@ -790,21 +801,29 @@ export async function changeAppointmentStatus(
   appointmentId: string,
   input: ChangeAppointmentStatusInput,
 ) {
-  const appointment = await getAppointmentOrThrow(actor, appointmentId)
+  return runSerializableTransaction(async (tx) => {
+    const appointment = await getAppointmentInScopeOrThrow(tx, actor, appointmentId)
+    assertOperationalStatusTransition(appointment.operationalStatusId, input.nextStatusId)
 
-  assertOperationalStatusTransition(appointment.operationalStatusId, input.nextStatusId)
-
-  return prisma.$transaction(async (tx) => {
     await getOperationalStatusOrThrow(tx, input.nextStatusId)
 
-    await tx.appointment.update({
+    const updatedAppointment = await tx.appointment.updateMany({
       where: {
         id: appointmentId,
+        operationalStatusId: appointment.operationalStatusId,
       },
       data: {
         operationalStatusId: input.nextStatusId,
       },
     })
+
+    if (updatedAppointment.count !== 1) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'The appointment changed before its status could be updated.',
+      )
+    }
 
     await createStatusHistoryEntry(tx, appointmentId, input.nextStatusId, actor)
     await recalculateAppointmentServiceCommissions(tx, appointmentId)
@@ -827,7 +846,7 @@ export async function changeAppointmentStatus(
       },
       include: appointmentDetailsInclude,
     })
-  })
+  }, 'The appointment changed before its status could be updated.')
 }
 
 export async function cancelAppointment(
@@ -835,20 +854,29 @@ export async function cancelAppointment(
   appointmentId: string,
   input: CancelAppointmentInput,
 ) {
-  const appointment = await getAppointmentOrThrow(actor, appointmentId)
-  const settings = await getUnitRuleSettings(prisma, appointment.unitId)
-  assertAppointmentCanBeEdited(appointment)
-  assertCancellationWindow(appointment.startAt, settings.cancellationWindowHours)
+  return runSerializableTransaction(async (tx) => {
+    const appointment = await getAppointmentInScopeOrThrow(tx, actor, appointmentId)
+    const settings = await getUnitRuleSettings(tx, appointment.unitId)
+    assertAppointmentCanBeEdited(appointment)
+    assertCancellationWindow(appointment.startAt, settings.cancellationWindowHours)
 
-  return prisma.$transaction(async (tx) => {
-    await tx.appointment.update({
+    const canceledAppointment = await tx.appointment.updateMany({
       where: {
         id: appointmentId,
+        operationalStatusId: appointment.operationalStatusId,
       },
       data: {
         operationalStatusId: operationalStatusIds.canceled,
       },
     })
+
+    if (canceledAppointment.count !== 1) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'The appointment changed before it could be canceled.',
+      )
+    }
 
     await createStatusHistoryEntry(tx, appointmentId, operationalStatusIds.canceled, actor)
     await recalculateAppointmentServiceCommissions(tx, appointmentId)
@@ -870,7 +898,7 @@ export async function cancelAppointment(
       },
       include: appointmentDetailsInclude,
     })
-  })
+  }, 'The appointment changed before it could be canceled.')
 }
 
 export async function rescheduleAppointment(
@@ -878,20 +906,28 @@ export async function rescheduleAppointment(
   appointmentId: string,
   input: RescheduleAppointmentInput,
 ) {
-  const appointment = await getAppointmentOrThrow(actor, appointmentId)
-  const settings = await getUnitRuleSettings(prisma, appointment.unitId)
-  assertAppointmentCanBeEdited(appointment)
-  assertRescheduleWindow(appointment.startAt, settings.rescheduleWindowHours)
+  return runSerializableTransaction(async (tx) => {
+    const appointment = await getAppointmentInScopeOrThrow(tx, actor, appointmentId)
+    const settings = await getUnitRuleSettings(tx, appointment.unitId)
+    assertAppointmentCanBeEdited(appointment)
+    assertRescheduleWindow(appointment.startAt, settings.rescheduleWindowHours)
 
-  return updateAppointment(actor, appointmentId, {
-    startAt: input.startAt,
-    endAt: input.endAt,
-    services: input.services,
-    internalNotes:
-      input.reason && appointment.internalNotes
-        ? `${appointment.internalNotes}\nReagendamento: ${input.reason}`
-        : input.reason ?? appointment.internalNotes ?? undefined,
-  })
+    return updateAppointmentInMutation(
+      tx,
+      actor,
+      appointmentId,
+      {
+        startAt: input.startAt,
+        endAt: input.endAt,
+        services: input.services,
+        internalNotes:
+          input.reason && appointment.internalNotes
+            ? `${appointment.internalNotes}\nReagendamento: ${input.reason}`
+            : input.reason ?? appointment.internalNotes ?? undefined,
+      },
+      appointment,
+    )
+  }, 'The appointment changed before it could be rescheduled.')
 }
 
 export async function checkInAppointment(
@@ -899,36 +935,45 @@ export async function checkInAppointment(
   appointmentId: string,
   input: AppointmentCheckInInput,
 ) {
-  const appointment = await getAppointmentOrThrow(actor, appointmentId)
+  return runSerializableTransaction(async (tx) => {
+    const appointment = await getAppointmentInScopeOrThrow(tx, actor, appointmentId)
 
-  if (appointment.operationalStatusId !== operationalStatusIds.confirmed) {
-    throw new AppError(
-      'CONFLICT',
-      409,
-      'Check-in is only allowed for confirmed appointments.',
-    )
-  }
+    if (appointment.operationalStatusId !== operationalStatusIds.confirmed) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'Check-in is only allowed for confirmed appointments.',
+      )
+    }
 
-  if (appointment.checkIn) {
-    throw new AppError('CONFLICT', 409, 'This appointment already has a check-in record.')
-  }
+    if (appointment.checkIn) {
+      throw new AppError('CONFLICT', 409, 'This appointment already has a check-in record.')
+    }
 
-  return prisma.$transaction(async (tx) => {
+    const checkedInAppointment = await tx.appointment.updateMany({
+      where: {
+        id: appointmentId,
+        operationalStatusId: operationalStatusIds.confirmed,
+      },
+      data: {
+        operationalStatusId: operationalStatusIds.checkIn,
+      },
+    })
+
+    if (checkedInAppointment.count !== 1) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'The appointment changed before check-in could be recorded.',
+      )
+    }
+
     await tx.appointmentCheckIn.create({
       data: {
         appointmentId,
         performedByUserId: actor.id,
         checklistSnapshot: input.checklist,
         notes: input.notes,
-      },
-    })
-
-    await tx.appointment.update({
-      where: {
-        id: appointmentId,
-      },
-      data: {
-        operationalStatusId: operationalStatusIds.checkIn,
       },
     })
 
@@ -952,5 +997,5 @@ export async function checkInAppointment(
       },
       include: appointmentDetailsInclude,
     })
-  })
+  }, 'The appointment changed before check-in could be recorded.')
 }

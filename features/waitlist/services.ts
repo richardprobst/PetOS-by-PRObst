@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { prisma } from '@/server/db/prisma'
+import { runSerializableTransaction } from '@/server/db/transactions'
 import {
   assertActorCanAccessLocalUnitRecord,
   resolveScopedUnitId,
@@ -38,6 +39,8 @@ const waitlistEntryInclude = Prisma.validator<Prisma.WaitlistEntryInclude>()({
   canceledBy: true,
 })
 
+type WaitlistMutationClient = Prisma.TransactionClient | typeof prisma
+
 export function resolveWaitlistReadUnitId(
   actor: AuthenticatedUserData,
   requestedUnitId?: string | null,
@@ -56,30 +59,14 @@ export function assertActorCanReadWaitlistEntryInScope(
   assertActorCanAccessLocalUnitRecord(actor, entryUnitId, options)
 }
 
-async function getWaitlistEntryOrThrow(actor: AuthenticatedUserData, waitlistEntryId: string) {
-  const entry = await prisma.waitlistEntry.findUnique({
-    where: {
-      id: waitlistEntryId,
-    },
-    include: waitlistEntryInclude,
-  })
-
-  if (!entry) {
-    throw new AppError('NOT_FOUND', 404, 'Waitlist entry not found.')
-  }
-
-  assertActorCanReadWaitlistEntryInScope(actor, entry.unitId)
-
-  return entry
-}
-
 async function loadWaitlistDependencies(
+  client: WaitlistMutationClient,
   actor: AuthenticatedUserData,
   input: CreateWaitlistEntryInput,
 ) {
   const unitId = resolveScopedUnitId(actor, input.unitId ?? null)
   const [clientRecord, petRecord, serviceRecord, preferredEmployee] = await Promise.all([
-    prisma.client.findUnique({
+    client.client.findUnique({
       where: {
         userId: input.clientId,
       },
@@ -87,18 +74,18 @@ async function loadWaitlistDependencies(
         user: true,
       },
     }),
-    prisma.pet.findUnique({
+    client.pet.findUnique({
       where: {
         id: input.petId,
       },
     }),
-    prisma.service.findUnique({
+    client.service.findUnique({
       where: {
         id: input.desiredServiceId,
       },
     }),
     input.preferredEmployeeUserId
-      ? prisma.employee.findUnique({
+      ? client.employee.findUnique({
           where: {
             userId: input.preferredEmployeeUserId,
           },
@@ -145,6 +132,31 @@ async function loadWaitlistDependencies(
   }
 }
 
+async function getWaitlistEntryInScopeOrThrow(
+  client: WaitlistMutationClient,
+  actor: AuthenticatedUserData,
+  waitlistEntryId: string,
+  options?: {
+    requestedUnitId?: string | null
+    sessionActiveUnitId?: string | null
+  },
+) {
+  const entry = await client.waitlistEntry.findUnique({
+    where: {
+      id: waitlistEntryId,
+    },
+    include: waitlistEntryInclude,
+  })
+
+  if (!entry) {
+    throw new AppError('NOT_FOUND', 404, 'Waitlist entry not found.')
+  }
+
+  assertActorCanReadWaitlistEntryInScope(actor, entry.unitId, options)
+
+  return entry
+}
+
 export async function listWaitlistEntries(
   actor: AuthenticatedUserData,
   query: ListWaitlistEntriesQuery,
@@ -177,33 +189,33 @@ export async function createWaitlistEntry(
   input: CreateWaitlistEntryInput,
 ) {
   assertWaitlistWindow(input.preferredStartAt, input.preferredEndAt)
-  const dependencies = await loadWaitlistDependencies(actor, input)
 
-  const existingEntry = await prisma.waitlistEntry.findFirst({
-    where: {
-      unitId: dependencies.unitId,
-      clientId: input.clientId,
-      petId: input.petId,
-      desiredServiceId: input.desiredServiceId,
-      status: 'PENDING',
-      preferredStartAt: {
-        lt: input.preferredEndAt,
+  return runSerializableTransaction(async (tx) => {
+    const dependencies = await loadWaitlistDependencies(tx, actor, input)
+    const existingEntry = await tx.waitlistEntry.findFirst({
+      where: {
+        unitId: dependencies.unitId,
+        clientId: input.clientId,
+        petId: input.petId,
+        desiredServiceId: input.desiredServiceId,
+        status: 'PENDING',
+        preferredStartAt: {
+          lt: input.preferredEndAt,
+        },
+        preferredEndAt: {
+          gt: input.preferredStartAt,
+        },
       },
-      preferredEndAt: {
-        gt: input.preferredStartAt,
-      },
-    },
-  })
+    })
 
-  if (existingEntry) {
-    throw new AppError(
-      'CONFLICT',
-      409,
-      'There is already a pending waitlist entry for this pet and service in the selected window.',
-    )
-  }
+    if (existingEntry) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'There is already a pending waitlist entry for this pet and service in the selected window.',
+      )
+    }
 
-  return prisma.$transaction(async (tx) => {
     const entry = await tx.waitlistEntry.create({
       data: {
         unitId: dependencies.unitId,
@@ -234,7 +246,7 @@ export async function createWaitlistEntry(
     })
 
     return entry
-  })
+  }, 'The waitlist changed before the entry could be created.')
 }
 
 export async function cancelWaitlistEntry(
@@ -242,16 +254,17 @@ export async function cancelWaitlistEntry(
   waitlistEntryId: string,
   input: CancelWaitlistEntryInput,
 ) {
-  const entry = await getWaitlistEntryOrThrow(actor, waitlistEntryId)
+  return runSerializableTransaction(async (tx) => {
+    const entry = await getWaitlistEntryInScopeOrThrow(tx, actor, waitlistEntryId)
 
-  if (entry.status !== 'PENDING') {
-    throw new AppError('CONFLICT', 409, 'Only pending waitlist entries can be canceled.')
-  }
+    if (entry.status !== 'PENDING') {
+      throw new AppError('CONFLICT', 409, 'Only pending waitlist entries can be canceled.')
+    }
 
-  return prisma.$transaction(async (tx) => {
-    const canceledEntry = await tx.waitlistEntry.update({
+    const canceledEntry = await tx.waitlistEntry.updateMany({
       where: {
         id: waitlistEntryId,
+        status: 'PENDING',
       },
       data: {
         status: 'CANCELED',
@@ -259,8 +272,15 @@ export async function cancelWaitlistEntry(
         cancellationReason: input.reason ?? null,
         statusChangedAt: new Date(),
       },
-      include: waitlistEntryInclude,
     })
+
+    if (canceledEntry.count !== 1) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'The waitlist entry changed before it could be canceled.',
+      )
+    }
 
     await writeAuditLog(tx, {
       unitId: entry.unitId,
@@ -273,8 +293,13 @@ export async function cancelWaitlistEntry(
       },
     })
 
-    return canceledEntry
-  })
+    return tx.waitlistEntry.findUniqueOrThrow({
+      where: {
+        id: waitlistEntryId,
+      },
+      include: waitlistEntryInclude,
+    })
+  }, 'The waitlist entry changed before it could be canceled.')
 }
 
 export async function promoteWaitlistEntry(
@@ -282,13 +307,13 @@ export async function promoteWaitlistEntry(
   waitlistEntryId: string,
   input: PromoteWaitlistEntryInput,
 ) {
-  const entry = await getWaitlistEntryOrThrow(actor, waitlistEntryId)
+  return runSerializableTransaction(async (tx) => {
+    const entry = await getWaitlistEntryInScopeOrThrow(tx, actor, waitlistEntryId)
 
-  if (entry.status !== 'PENDING') {
-    throw new AppError('CONFLICT', 409, 'Only pending waitlist entries can be promoted.')
-  }
+    if (entry.status !== 'PENDING') {
+      throw new AppError('CONFLICT', 409, 'Only pending waitlist entries can be promoted.')
+    }
 
-  return prisma.$transaction(async (tx) => {
     const appointment = await createAppointmentInMutation(tx, actor, {
       unitId: entry.unitId,
       clientId: entry.clientId,
@@ -312,17 +337,26 @@ export async function promoteWaitlistEntry(
       ],
     })
 
-    const promotedEntry = await tx.waitlistEntry.update({
+    const promotedEntry = await tx.waitlistEntry.updateMany({
       where: {
         id: waitlistEntryId,
+        promotedAppointmentId: null,
+        status: 'PENDING',
       },
       data: {
         status: 'PROMOTED',
         promotedAppointmentId: appointment.id,
         statusChangedAt: new Date(),
       },
-      include: waitlistEntryInclude,
     })
+
+    if (promotedEntry.count !== 1) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'The waitlist entry changed before it could be promoted.',
+      )
+    }
 
     await writeAuditLog(tx, {
       unitId: entry.unitId,
@@ -335,6 +369,11 @@ export async function promoteWaitlistEntry(
       },
     })
 
-    return promotedEntry
-  })
+    return tx.waitlistEntry.findUniqueOrThrow({
+      where: {
+        id: waitlistEntryId,
+      },
+      include: waitlistEntryInclude,
+    })
+  }, 'The waitlist entry changed before it could be promoted.')
 }
