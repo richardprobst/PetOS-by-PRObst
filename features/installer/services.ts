@@ -136,7 +136,7 @@ export async function validateInstallerSetupDraft(
     throw new AppError(
       'CONFLICT',
       409,
-      'Installer preflight is not ready. Resolve the blocked diagnostics before reviewing the setup draft.',
+      'O preflight do instalador ainda nao esta pronto. Resolva os bloqueios antes de revisar o draft de setup.',
     )
   }
 
@@ -173,7 +173,7 @@ export async function finalizeInstallerSetup(
     throw new AppError(
       'CONFLICT',
       409,
-      'Installer preflight is not ready. Resolve the blocked diagnostics before finishing the setup.',
+      'O preflight do instalador ainda nao esta pronto. Resolva os bloqueios antes de concluir o setup.',
     )
   }
 
@@ -187,7 +187,7 @@ export async function finalizeInstallerSetup(
     throw new AppError(
       'CONFLICT',
       409,
-      'The installer could not confirm a ready schema after migrate deploy. Review the runtime diagnostics before retrying.',
+      'O instalador nao conseguiu confirmar um schema pronto depois do migrate deploy. Revise o diagnostico de runtime antes de tentar novamente.',
     )
   }
 
@@ -223,7 +223,7 @@ export async function finalizeInstallerSetup(
         throw new AppError(
           'INTERNAL_SERVER_ERROR',
           500,
-          'The installer did not produce the initial administrator user.',
+          'O instalador nao conseguiu gerar o usuario administrador inicial.',
         )
       }
 

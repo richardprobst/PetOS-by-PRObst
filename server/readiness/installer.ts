@@ -51,7 +51,7 @@ export async function collectInstallerPreflightSnapshot(
   const runtime = await collectSystemRuntimeSnapshot(prisma, environment)
   const checks: InstallerPreflightCheck[] = [
     {
-      message: 'Environment parsed successfully for installer mode.',
+      message: 'Ambiente carregado com sucesso para o modo instalador.',
       name: 'environment',
       status: 'ok',
     },
@@ -59,19 +59,19 @@ export async function collectInstallerPreflightSnapshot(
 
   if (!environment.INSTALLER_ENABLED) {
     checks.push({
-      message: 'Installer mode is disabled in the environment.',
+      message: 'O modo instalador esta desabilitado neste ambiente.',
       name: 'system',
       status: 'fail',
     })
   } else if (!runtime.installerTokenConfigured) {
     checks.push({
-      message: 'Installer bootstrap token is not configured.',
+      message: 'O token de bootstrap do instalador nao esta configurado.',
       name: 'system',
       status: 'fail',
     })
   } else {
     checks.push({
-      message: 'Installer mode is enabled and protected by a bootstrap token.',
+      message: 'O modo instalador esta habilitado e protegido por token de bootstrap.',
       name: 'system',
       status: 'ok',
     })
@@ -79,7 +79,8 @@ export async function collectInstallerPreflightSnapshot(
 
   if (!runtime.databaseAvailable) {
     checks.push({
-      message: 'Database connection failed. The installer cannot continue until MySQL is reachable.',
+      message:
+        'A conexao com o banco falhou. O instalador nao pode continuar ate o MySQL ficar acessivel.',
       name: 'database',
       status: 'fail',
     })
@@ -93,7 +94,7 @@ export async function collectInstallerPreflightSnapshot(
   }
 
   checks.push({
-    message: 'Database connection established for installer preflight.',
+    message: 'Conexao com o banco estabelecida para o preflight do instalador.',
     name: 'database',
     status: 'ok',
   })
@@ -102,7 +103,7 @@ export async function collectInstallerPreflightSnapshot(
     if (runtimeCapabilities.canRunMigrateDeploy) {
       checks.push({
         message:
-          'Prisma migrations have not been applied yet. The installer can initialize the schema during finalize for this runtime.',
+          'As migrations do Prisma ainda nao foram aplicadas. Este runtime consegue inicializar o schema durante o finalize do setup.',
         name: 'migrations',
         status: 'warn',
       })
@@ -117,7 +118,7 @@ export async function collectInstallerPreflightSnapshot(
     }
   } else {
     checks.push({
-      message: 'Prisma migrations table detected.',
+      message: 'Tabela de migrations do Prisma detectada.',
       name: 'migrations',
       status: 'ok',
     })
@@ -125,21 +126,21 @@ export async function collectInstallerPreflightSnapshot(
 
   if (runtime.recordExists && runtime.lifecycleState !== 'NOT_INSTALLED') {
     checks.push({
-      message: `System runtime state is already ${runtime.lifecycleState}. Use repair or update flows instead of the initial installer.`,
+      message: `O runtime ja esta em ${runtime.lifecycleState}. Use repair ou update em vez do instalador inicial.`,
       name: 'system',
       status: 'fail',
     })
   } else if (!runtime.recordExists && runtime.coreSeedAvailable) {
     checks.push({
       message:
-        'Core seed data already exists in this database. Treat this environment as installed and use repair or update flows instead of the initial installer.',
+        'A seed base ja existe neste banco. Trate este ambiente como instalado e use repair ou update em vez do instalador inicial.',
       name: 'seed',
       status: 'fail',
     })
   } else {
     checks.push({
       message:
-        'Core seed data is not present yet. The installer can initialize permissions, settings, and the initial admin safely.',
+        'A seed base ainda nao existe. O instalador pode criar permissoes, configuracoes e o admin inicial com seguranca.',
       name: 'seed',
       status: 'warn',
     })

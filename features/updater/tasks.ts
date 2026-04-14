@@ -21,11 +21,11 @@ export const builtInUpdatePostTasks: Record<string, UpdatePostTaskDefinition> = 
     async execute(context) {
       return {
         manifestHash: context.manifestHash,
-        note: 'Runtime manifest metadata will be finalized after the execution succeeds.',
+        note: 'Os metadados de manifest do runtime serao finalizados depois que a execucao concluir com sucesso.',
       }
     },
     id: 'refresh_runtime_manifest',
-    label: 'Refresh runtime manifest metadata',
+    label: 'Atualizar metadados de manifest do runtime',
   },
 }
 
@@ -40,7 +40,7 @@ export async function executeRegisteredPostUpdateTask(
     throw new AppError(
       'CONFLICT',
       409,
-      `The post-update task ${taskId} is not supported by this updater runtime.`,
+      `A tarefa pos-update ${taskId} nao e suportada por este runtime do updater.`,
     )
   }
 

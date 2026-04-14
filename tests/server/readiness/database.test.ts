@@ -63,17 +63,17 @@ test('collectDatabaseReadinessChecks reports a healthy snapshot when database, m
 
   assert.deepEqual(checks, [
     {
-      message: 'Database connection established.',
+      message: 'Conexao com o banco estabelecida.',
       name: 'database',
       status: 'ok',
     },
     {
-      message: 'Prisma migrations table detected.',
+      message: 'Tabela de migrations do Prisma detectada.',
       name: 'migrations',
       status: 'ok',
     },
     {
-      message: `Core and Phase 2 base seed data detected (units=1, statuses=7, profiles=1, phase2Permissions=${phase2SeedPermissionNames.length}, phase2Settings=${phase2SeedUnitSettingKeys.length}).`,
+      message: `Seed base do core/Fase 2 detectada (unidades=1, status=7, perfis=1, permissoesFase2=${phase2SeedPermissionNames.length}, configuracoesFase2=${phase2SeedUnitSettingKeys.length}).`,
       name: 'seed',
       status: 'ok',
     },
@@ -90,7 +90,7 @@ test('collectDatabaseReadinessChecks stops on an unreachable database', async ()
 
   assert.deepEqual(checks, [
     {
-      message: 'Database is unreachable at DATABASE_URL.',
+      message: 'Nao foi possivel acessar o banco configurado em DATABASE_URL.',
       name: 'database',
       status: 'fail',
     },
@@ -107,17 +107,18 @@ test('collectDatabaseReadinessChecks flags missing seed data after successful co
 
   assert.deepEqual(checks, [
     {
-      message: 'Database connection established.',
+      message: 'Conexao com o banco estabelecida.',
       name: 'database',
       status: 'ok',
     },
     {
-      message: 'Prisma migrations table detected.',
+      message: 'Tabela de migrations do Prisma detectada.',
       name: 'migrations',
       status: 'ok',
     },
     {
-      message: 'Core or Phase 2 base seed data is missing. Run `npm run prisma:seed` after migrations.',
+      message:
+        'A seed base do core/Fase 2 ainda nao esta completa. Rode `npm run prisma:seed` depois das migrations.',
       name: 'seed',
       status: 'fail',
     },
@@ -134,17 +135,18 @@ test('collectDatabaseReadinessChecks flags missing phase 2 foundation seed data 
 
   assert.deepEqual(checks, [
     {
-      message: 'Database connection established.',
+      message: 'Conexao com o banco estabelecida.',
       name: 'database',
       status: 'ok',
     },
     {
-      message: 'Prisma migrations table detected.',
+      message: 'Tabela de migrations do Prisma detectada.',
       name: 'migrations',
       status: 'ok',
     },
     {
-      message: 'Core or Phase 2 base seed data is missing. Run `npm run prisma:seed` after migrations.',
+      message:
+        'A seed base do core/Fase 2 ainda nao esta completa. Rode `npm run prisma:seed` depois das migrations.',
       name: 'seed',
       status: 'fail',
     },

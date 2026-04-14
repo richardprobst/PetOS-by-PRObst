@@ -153,6 +153,10 @@ test('buildUpdatePreflightReport blocks when the embedded manifest is invalid', 
 
   assert.equal(report.status, 'blocking')
   assert.equal(report.gates.some((gate) => gate.code === 'target.manifest.invalid'), true)
+  assert.equal(
+    report.gates.find((gate) => gate.code === 'target.manifest.invalid')?.title,
+    'Manifest embarcado invalido',
+  )
 })
 
 test('buildUpdatePreflightReport blocks when build version and target manifest diverge', () => {

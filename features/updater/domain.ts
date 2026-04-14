@@ -1,4 +1,5 @@
 import type {
+  UpdateExecutionMode,
   UpdateExecutionStatus,
   UpdateRecoveryState,
 } from '@prisma/client'
@@ -19,6 +20,7 @@ export interface UpdatePreflightGate {
   code: string
   message: string
   status: UpdatePreflightStatus
+  title: string
 }
 
 export interface UpdateVersionSnapshot {
@@ -71,7 +73,7 @@ export const updateExecutionStepDefinitions = [
   },
   {
     code: 'ENTER_MAINTENANCE',
-    label: 'Entrar em maintenance',
+    label: 'Entrar em manutencao',
   },
   {
     code: 'APPLY_MIGRATIONS',
@@ -79,11 +81,11 @@ export const updateExecutionStepDefinitions = [
   },
   {
     code: 'APPLY_SEED_POLICY',
-    label: 'Aplicar seed policy',
+    label: 'Aplicar politica de seed',
   },
   {
     code: 'RUN_POST_UPDATE_TASKS',
-    label: 'Executar tasks pos-update',
+    label: 'Executar tarefas pos-update',
   },
   {
     code: 'FINALIZE_RUNTIME',
@@ -184,7 +186,38 @@ function pushGate(
   status: UpdatePreflightStatus,
   message: string,
 ) {
-  gates.push({ code, message, status })
+  gates.push({ code, message, status, title: resolveUpdateGateTitle(code) })
+}
+
+function resolveUpdateGateTitle(code: string) {
+  if (code.startsWith('env.') && code.endsWith('.missing')) {
+    return `Variavel obrigatoria ausente: ${code.slice(4, -('.missing'.length))}`
+  }
+
+  const labels: Record<string, string> = {
+    'current.version.missing': 'Versao atual nao registrada',
+    'current.version.persisted': 'Versao atual persistida',
+    'current.version.untrusted': 'Versao atual apenas inferida',
+    'runtime.lifecycle.compatible': 'Lifecycle compativel com planejamento',
+    'runtime.lifecycle.incompatible': 'Lifecycle atual bloqueia o updater',
+    'runtime.migrate.available': 'Runtime com migrate deploy',
+    'runtime.migrate.unavailable': 'Runtime sem migrate deploy',
+    'runtime.readiness.degraded': 'Readiness degradada antes do update',
+    'runtime.readiness.ok': 'Readiness valida para planejamento',
+    'target.manifest.drift': 'Manifest persistido diverge do build',
+    'target.manifest.invalid': 'Manifest embarcado invalido',
+    'target.manifest.ok': 'Manifest embarcado consistente',
+    'target.version.mismatch': 'Versao do build diverge do manifest',
+    'update.backup.required': 'Backup logico exigido',
+    'update.downgrade.unsupported': 'Downgrade nao suportado',
+    'update.jump.unsupported': 'Salto de versao nao homologado',
+    'update.maintenance.required': 'Janela de manutencao exigida',
+    'update.noop': 'Nenhum update aplicavel',
+    'update.path.supported': 'Caminho de update suportado',
+    'update.source.unsupported': 'Versao de origem fora da janela suportada',
+  }
+
+  return labels[code] ?? code
 }
 
 export function getUpdateExecutionStatusTone(status: UpdateExecutionStatus) {
@@ -219,6 +252,41 @@ export function getUpdateRecoveryStateLabel(state: UpdateRecoveryState) {
       return 'Retentativa permitida'
     case 'MANUAL_INTERVENTION_REQUIRED':
       return 'Intervencao manual obrigatoria'
+  }
+}
+
+export function getUpdateExecutionStatusLabel(status: UpdateExecutionStatus) {
+  switch (status) {
+    case 'COMPLETED':
+      return 'Concluida'
+    case 'FAILED':
+      return 'Falhou'
+    case 'PREPARING':
+      return 'Preparando'
+    case 'RUNNING':
+      return 'Em execucao'
+  }
+}
+
+export function getUpdateTypeLabel(type: UpdateType) {
+  switch (type) {
+    case 'downgrade':
+      return 'Downgrade'
+    case 'none':
+      return 'Sem update'
+    case 'unknown':
+      return 'Indeterminado'
+    case 'upgrade':
+      return 'Upgrade'
+  }
+}
+
+export function getUpdateExecutionModeLabel(mode: UpdateExecutionMode) {
+  switch (mode) {
+    case 'MANUAL':
+      return 'Manual'
+    case 'RETRY':
+      return 'Retentativa'
   }
 }
 
@@ -263,14 +331,14 @@ export function buildUpdatePreflightReport(
       gates,
       'runtime.lifecycle.incompatible',
       'blocking',
-      `The updater preflight only supports environments currently in ${[...allowedLifecycleStates].join(', ')}. Current state: ${input.runtime.lifecycleState}.`,
+      `O preflight do updater so suporta ambientes atualmente em ${[...allowedLifecycleStates].join(', ')}. Estado atual: ${input.runtime.lifecycleState}.`,
     )
   } else {
     pushGate(
       gates,
       'runtime.lifecycle.compatible',
       'ok',
-      `Runtime lifecycle ${input.runtime.lifecycleState} can be inspected safely for update planning.`,
+      `O lifecycle ${input.runtime.lifecycleState} permite planejar o update com seguranca.`,
     )
   }
 
@@ -279,14 +347,14 @@ export function buildUpdatePreflightReport(
       gates,
       'runtime.readiness.degraded',
       'blocking',
-      'The environment is degraded before the update starts. Resolve database, migrations or seed issues before planning execution.',
+      'O ambiente ja esta degradado antes do update. Resolva banco, migrations ou seed antes de planejar a execucao.',
     )
   } else {
     pushGate(
       gates,
       'runtime.readiness.ok',
       'ok',
-      'Database, migrations and base seed are healthy enough for update planning.',
+      'Banco, migrations e seed base estao saudaveis o suficiente para planejar o update.',
     )
   }
 
@@ -303,7 +371,7 @@ export function buildUpdatePreflightReport(
       gates,
       'runtime.migrate.available',
       'ok',
-      'Runtime Prisma migrate deploy capability is available for controlled execution.',
+      'O runtime atual consegue executar `prisma migrate deploy` de forma controlada.',
     )
   }
 
@@ -312,21 +380,21 @@ export function buildUpdatePreflightReport(
       gates,
       'target.manifest.invalid',
       'blocking',
-      `The embedded release manifest is invalid: ${input.manifestResult.error}`,
+      `O manifest embarcado da release esta invalido: ${input.manifestResult.error}`,
     )
   } else if (input.manifestResult.manifest.version !== input.buildVersion) {
     pushGate(
       gates,
       'target.version.mismatch',
       'blocking',
-      `Build version ${input.buildVersion} does not match manifest version ${input.manifestResult.manifest.version}.`,
+      `A versao do build ${input.buildVersion} diverge da versao ${input.manifestResult.manifest.version} declarada no manifest.`,
     )
   } else {
     pushGate(
       gates,
       'target.manifest.ok',
       'ok',
-      `Embedded release manifest loaded successfully for target ${input.manifestResult.manifest.version}.`,
+      `O manifest embarcado foi carregado com sucesso para o alvo ${input.manifestResult.manifest.version}.`,
     )
 
     if (
@@ -338,7 +406,7 @@ export function buildUpdatePreflightReport(
         gates,
         'target.manifest.drift',
         'blocking',
-        'The persisted manifest hash does not match the embedded release manifest for the same version. Review the release artifact before proceeding.',
+        'O hash de manifest persistido nao bate com o manifest embarcado para a mesma versao. Revise o artefato antes de seguir.',
       )
     }
   }
@@ -348,21 +416,21 @@ export function buildUpdatePreflightReport(
       gates,
       'current.version.missing',
       'blocking',
-      'The currently installed version could not be determined from runtime state.',
+      'A versao atualmente instalada nao pode ser determinada a partir do runtime state.',
     )
   } else if (currentVersionSource === 'untrusted') {
     pushGate(
       gates,
       'current.version.untrusted',
       'blocking',
-      'The currently installed version is only inferred. Persisted runtime metadata is required before a controlled update can proceed.',
+      'A versao atualmente instalada esta apenas inferida. O update controlado exige metadata persistida de runtime.',
     )
   } else {
     pushGate(
       gates,
       'current.version.persisted',
       'ok',
-      `Current installed version ${input.runtime.currentInstalledVersion} is persisted and can be used as the update source.`,
+      `A versao instalada ${input.runtime.currentInstalledVersion} esta persistida e pode ser usada como origem do update.`,
     )
   }
 
@@ -376,14 +444,14 @@ export function buildUpdatePreflightReport(
       gates,
       'update.noop',
       'warning',
-      'The current installed version already matches the target release. No update execution is needed.',
+      'A versao instalada ja corresponde a release alvo. Nenhuma execucao de update e necessaria.',
     )
   } else if (updateType === 'downgrade') {
     pushGate(
       gates,
       'update.downgrade.unsupported',
       'blocking',
-      'Controlled downgrade is not supported by the updater core.',
+      'O updater core nao suporta downgrade controlado.',
     )
   } else if (
     updateType === 'upgrade' &&
@@ -403,21 +471,21 @@ export function buildUpdatePreflightReport(
         gates,
         'update.source.unsupported',
         'blocking',
-        `Source version ${sourceVersion} is below the minimum supported version ${input.manifestResult.manifest.minSupportedFrom}.`,
+        `A versao de origem ${sourceVersion} esta abaixo da minima suportada ${input.manifestResult.manifest.minSupportedFrom}.`,
       )
     } else if (!isSupportedSequentialUpgrade(sourceVersion, targetVersion)) {
       pushGate(
         gates,
         'update.jump.unsupported',
         'blocking',
-        `The jump from ${sourceVersion} to ${targetVersion} is not homologated for controlled execution.`,
+        `O salto de ${sourceVersion} para ${targetVersion} ainda nao esta homologado para execucao controlada.`,
       )
     } else {
       pushGate(
         gates,
         'update.path.supported',
         'ok',
-        `Controlled upgrade path ${sourceVersion} -> ${targetVersion} is supported by the updater core.`,
+        `O caminho controlado ${sourceVersion} -> ${targetVersion} e suportado pelo updater core.`,
       )
     }
   }
@@ -429,7 +497,7 @@ export function buildUpdatePreflightReport(
           gates,
           `env.${key}.missing`,
           'blocking',
-          `The target release requires ${key}, but that key is missing in the current environment.`,
+          `A release alvo exige ${key}, mas essa variavel esta ausente no ambiente atual.`,
         )
       }
     }
@@ -440,8 +508,8 @@ export function buildUpdatePreflightReport(
         'update.maintenance.required',
         input.runtime.lifecycleState === 'MAINTENANCE' ? 'ok' : 'warning',
         input.runtime.lifecycleState === 'MAINTENANCE'
-          ? 'Maintenance mode is already active for this environment.'
-          : 'The target release requires an explicit maintenance window before execution.',
+          ? 'A manutencao ja esta ativa neste ambiente.'
+          : 'A release alvo exige uma janela explicita de manutencao antes da execucao.',
       )
     }
 
@@ -450,7 +518,7 @@ export function buildUpdatePreflightReport(
         gates,
         'update.backup.required',
         'warning',
-        'The target release requires a confirmed logical backup before execution.',
+        'A release alvo exige confirmacao de backup logico antes da execucao.',
       )
     }
   }

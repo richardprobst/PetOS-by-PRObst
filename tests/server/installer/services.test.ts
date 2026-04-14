@@ -243,7 +243,7 @@ test('validateInstallerSetupDraft rejects environments that already look install
     (error: unknown) =>
       error instanceof AppError &&
       error.status === 409 &&
-      error.message.includes('Installer preflight is not ready'),
+      error.message.includes('O preflight do instalador ainda nao esta pronto'),
   )
 })
 

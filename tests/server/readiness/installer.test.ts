@@ -162,7 +162,7 @@ test('collectInstallerPreflightSnapshot blocks setup when the database already l
       (check) =>
         check.name === 'seed' &&
         check.status === 'fail' &&
-        check.message.includes('Core seed data already exists'),
+        check.message.includes('A seed base ja existe neste banco'),
     ),
   )
 })
@@ -183,7 +183,7 @@ test('collectInstallerPreflightSnapshot blocks setup when the database is unreac
       (check) =>
         check.name === 'database' &&
         check.status === 'fail' &&
-        check.message.includes('Database connection failed'),
+        check.message.includes('A conexao com o banco falhou'),
     ),
   )
 })

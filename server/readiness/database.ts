@@ -119,13 +119,13 @@ export async function collectDatabaseReadinessChecks(
   try {
     await prisma.$queryRaw`SELECT 1`
     checks.push({
-      message: 'Database connection established.',
+      message: 'Conexao com o banco estabelecida.',
       name: 'database',
       status: 'ok',
     })
   } catch {
     checks.push({
-      message: 'Database is unreachable at DATABASE_URL.',
+      message: 'Nao foi possivel acessar o banco configurado em DATABASE_URL.',
       name: 'database',
       status: 'fail',
     })
@@ -138,7 +138,8 @@ export async function collectDatabaseReadinessChecks(
     hasMigrationsTable = await prismaMigrationsTableExists(prisma)
   } catch {
     checks.push({
-      message: 'Could not inspect the Prisma migrations table after connecting to the database.',
+      message:
+        'A conexao com o banco abriu, mas nao foi possivel inspecionar a tabela de migrations do Prisma.',
       name: 'migrations',
       status: 'fail',
     })
@@ -147,7 +148,7 @@ export async function collectDatabaseReadinessChecks(
 
   if (!hasMigrationsTable) {
     checks.push({
-      message: 'Prisma migrations have not been applied yet.',
+      message: 'As migrations do Prisma ainda nao foram aplicadas.',
       name: 'migrations',
       status: 'fail',
     })
@@ -155,7 +156,7 @@ export async function collectDatabaseReadinessChecks(
   }
 
   checks.push({
-    message: 'Prisma migrations table detected.',
+    message: 'Tabela de migrations do Prisma detectada.',
     name: 'migrations',
     status: 'ok',
   })
@@ -166,7 +167,8 @@ export async function collectDatabaseReadinessChecks(
     seedSnapshot = await inspectCoreSeedSnapshot(prisma)
   } catch {
     checks.push({
-      message: 'Could not inspect core seed data after connecting to the database.',
+      message:
+        'A conexao com o banco abriu, mas nao foi possivel inspecionar a seed base do sistema.',
       name: 'seed',
       status: 'fail',
     })
@@ -175,7 +177,8 @@ export async function collectDatabaseReadinessChecks(
 
   if (!hasCoreSeedData(seedSnapshot)) {
     checks.push({
-      message: 'Core or Phase 2 base seed data is missing. Run `npm run prisma:seed` after migrations.',
+      message:
+        'A seed base do core/Fase 2 ainda nao esta completa. Rode `npm run prisma:seed` depois das migrations.',
       name: 'seed',
       status: 'fail',
     })
@@ -183,7 +186,7 @@ export async function collectDatabaseReadinessChecks(
   }
 
   checks.push({
-    message: `Core and Phase 2 base seed data detected (units=${seedSnapshot.unitCount}, statuses=${seedSnapshot.operationalStatusCount}, profiles=${seedSnapshot.accessProfileCount}, phase2Permissions=${seedSnapshot.phase2PermissionCount}, phase2Settings=${seedSnapshot.phase2SettingCount}).`,
+    message: `Seed base do core/Fase 2 detectada (unidades=${seedSnapshot.unitCount}, status=${seedSnapshot.operationalStatusCount}, perfis=${seedSnapshot.accessProfileCount}, permissoesFase2=${seedSnapshot.phase2PermissionCount}, configuracoesFase2=${seedSnapshot.phase2SettingCount}).`,
     name: 'seed',
     status: 'ok',
   })

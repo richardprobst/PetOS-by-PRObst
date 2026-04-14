@@ -27,9 +27,13 @@ import {
   startUpdateExecutionAction,
 } from '@/features/updater/actions'
 import {
+  getUpdateExecutionModeLabel,
+  getUpdateExecutionStatusLabel,
   getUpdateExecutionStatusTone,
+  getUpdateExecutionStepLabel,
   getUpdateRecoveryStateLabel,
   getUpdateRecoveryStateTone,
+  getUpdateTypeLabel,
 } from '@/features/updater/domain'
 import { getUpdatePreflight } from '@/features/updater/services'
 import { listUpdateExecutions } from '@/features/updater/services'
@@ -47,6 +51,17 @@ interface SystemPageProps {
 
 function getRecoveryIncidentTone(status: string) {
   return status === 'RESOLVED' ? 'success' : 'danger'
+}
+
+function getRecoveryIncidentLabel(status: string) {
+  switch (status) {
+    case 'OPEN':
+      return 'Aberto'
+    case 'RESOLVED':
+      return 'Resolvido'
+    default:
+      return status
+  }
 }
 
 function getPreflightFeedbackTone(status: 'blocking' | 'ok' | 'warning') {
@@ -73,6 +88,17 @@ function getPreflightBadgeTone(status: 'blocking' | 'ok' | 'warning') {
   return 'success' as const
 }
 
+function getPreflightStatusLabel(status: 'blocking' | 'ok' | 'warning') {
+  switch (status) {
+    case 'blocking':
+      return 'Bloqueado'
+    case 'ok':
+      return 'Pronto'
+    case 'warning':
+      return 'Atencao'
+  }
+}
+
 function getUpdateExecutionStepTone(
   status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SKIPPED',
 ) {
@@ -88,6 +114,129 @@ function getUpdateExecutionStepTone(
     case 'PENDING':
       return 'neutral' as const
   }
+}
+
+function getUpdateExecutionStepStatusLabel(
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SKIPPED',
+) {
+  switch (status) {
+    case 'COMPLETED':
+      return 'Concluido'
+    case 'FAILED':
+      return 'Falhou'
+    case 'RUNNING':
+      return 'Executando'
+    case 'SKIPPED':
+      return 'Ignorado'
+    case 'PENDING':
+      return 'Pendente'
+  }
+}
+
+function getRuntimeLifecycleSourceLabel(source: 'persisted' | 'inferred' | 'unavailable') {
+  switch (source) {
+    case 'inferred':
+      return 'inferido'
+    case 'persisted':
+      return 'persistido'
+    case 'unavailable':
+      return 'indisponivel'
+  }
+}
+
+function getRuntimeVersionSourceLabel(source: 'missing' | 'persisted' | 'untrusted') {
+  switch (source) {
+    case 'missing':
+      return 'ausente'
+    case 'persisted':
+      return 'persistida'
+    case 'untrusted':
+      return 'apenas inferida'
+  }
+}
+
+function getMultiUnitContextStatusLabel(status: string) {
+  switch (status) {
+    case 'RESOLVED':
+      return 'Resolvido'
+    case 'UNRESOLVED':
+      return 'Nao resolvido'
+    default:
+      return status
+  }
+}
+
+function getMultiUnitContextTypeLabel(value: string | null | undefined) {
+  switch (value) {
+    case 'GLOBAL_AUTHORIZED':
+      return 'Global autorizado'
+    case 'LOCAL':
+      return 'Local'
+    case null:
+    case undefined:
+      return 'Sem contexto'
+    default:
+      return value
+  }
+}
+
+function getMultiUnitContextOriginLabel(value: string | null | undefined) {
+  switch (value) {
+    case 'REQUEST_OVERRIDE':
+      return 'Override da requisicao'
+    case 'SESSION_DEFAULT':
+      return 'Sessao padrao'
+    case 'SESSION_OVERRIDE':
+      return 'Override da sessao'
+    case null:
+    case undefined:
+      return 'Nao informado'
+    default:
+      return value
+  }
+}
+
+function getMultiUnitAccessModeLabel(value: string) {
+  switch (value) {
+    case 'BLOCKED':
+      return 'Bloqueado'
+    case 'GLOBAL_AUTHORIZED':
+      return 'Global autorizado'
+    case 'LOCAL':
+      return 'Local'
+    default:
+      return value
+  }
+}
+
+function getMultiUnitOwnershipKindLabel(value: string | null | undefined) {
+  switch (value) {
+    case 'LOCAL_RECORD':
+      return 'Registro local'
+    case 'MASTER_RECORD_WITH_UNIT_LINK':
+      return 'Registro mestre com vinculo por unidade'
+    case null:
+    case undefined:
+      return 'Sem binding'
+    default:
+      return value
+  }
+}
+
+function getMultiUnitReasonLabel(value: string) {
+  const labels: Record<string, string> = {
+    ALLOWED_GLOBAL_SCOPE: 'Leitura global autorizada para este contexto.',
+    ALLOWED_LOCAL_SCOPE: 'Leitura limitada ao contexto local resolvido.',
+    CROSS_UNIT_CONTEXT_FORBIDDEN:
+      'O operador nao possui contexto cross-unit valido para esta leitura.',
+    MISSING_UNIT_CONTEXT: 'O contexto de unidade nao foi resolvido para a sessao.',
+    RECORD_OUTSIDE_CONTEXT_SCOPE:
+      'O registro solicitado esta fora do escopo atualmente resolvido.',
+    STRUCTURAL_WRITE_FORBIDDEN:
+      'Escrita estrutural cross-unit continua bloqueada por padrao.',
+  }
+
+  return labels[value] ?? value
 }
 
 function getAiDiagnosticTone(value: string | null | undefined) {
@@ -223,8 +372,8 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
     <div className="space-y-8">
       <PageHeader
         eyebrow="Sistema"
-        title="Runtime, manutencao, repair e updater core do PetOS."
-        description="Este painel cobre os blocos D, E, F e G da frente installer/updater: runtime controlado, preflight bloqueante, execucao auditavel do update e baseline operacional consolidada."
+        title="Runtime, diagnostico operacional e update controlado."
+        description="Este painel resume o estado real do runtime, manutencao, repair, preflight do updater e execucoes auditaveis sem depender de codigos internos como mensagem primaria para o operador."
       />
 
       <ActionFlash message={params.message} status={params.status} />
@@ -235,6 +384,9 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
           <div className="mt-4 flex flex-wrap gap-2">
             <StatusBadge tone={getLifecycleTone(overview.runtime.lifecycleState)}>
               {getLifecycleLabel(overview.runtime.lifecycleState)}
+            </StatusBadge>
+            <StatusBadge tone="info">
+              origem {getRuntimeLifecycleSourceLabel(overview.runtime.lifecycleSource)}
             </StatusBadge>
             <StatusBadge tone="info">build {overview.runtime.buildVersion}</StatusBadge>
             <StatusBadge tone="info">
@@ -276,7 +428,7 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
 
           <div className="mt-6 space-y-3">
             <FeedbackMessage
-              description="Maintenance, repair, updater core e execucao controlada do update agora compartilham a mesma base de runtime, locks e auditoria."
+              description="Maintenance, repair, updater core e execucao controlada do update compartilham a mesma base de runtime, locks e auditoria. O painel agora traduz esse estado para a linguagem do operador antes de expor codigos internos."
               title="Base consolidada"
               tone="info"
             />
@@ -524,12 +676,14 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <StatusBadge tone={getAiDiagnosticTone(multiUnitDiagnostics.session.status)}>
-                    {multiUnitDiagnostics.session.status}
+                    {getMultiUnitContextStatusLabel(multiUnitDiagnostics.session.status)}
                   </StatusBadge>
                   <StatusBadge
                     tone={getAiDiagnosticTone(multiUnitDiagnostics.session.contextType)}
                   >
-                    {multiUnitDiagnostics.session.contextType ?? 'sem contexto'}
+                    {getMultiUnitContextTypeLabel(
+                      multiUnitDiagnostics.session.contextType,
+                    )}
                   </StatusBadge>
                   <StatusBadge
                     tone={getAiDiagnosticTone(
@@ -553,8 +707,11 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                     </strong>
                   </p>
                   <p>
-                    origem {multiUnitDiagnostics.session.contextOrigin ?? 'nao definida'} /
-                    requested {multiUnitDiagnostics.session.requestedUnitId ?? 'nenhuma'}
+                    origem{' '}
+                    {getMultiUnitContextOriginLabel(
+                      multiUnitDiagnostics.session.contextOrigin,
+                    )}{' '}
+                    / requested {multiUnitDiagnostics.session.requestedUnitId ?? 'nenhuma'}
                   </p>
                   <p>
                     leitura global{' '}
@@ -573,7 +730,9 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                   <p>
                     ownership base{' '}
                     <strong className="text-[color:var(--foreground)]">
-                      {multiUnitDiagnostics.ownershipBase?.kind ?? 'indisponivel'}
+                      {getMultiUnitOwnershipKindLabel(
+                        multiUnitDiagnostics.ownershipBase?.kind,
+                      )}
                     </strong>
                     {' / '}primary{' '}
                     <strong className="text-[color:var(--foreground)]">
@@ -630,23 +789,30 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <StatusBadge tone={getAiDiagnosticTone(probe.allowed ? 'ALLOWED' : 'BLOCKED')}>
-                      {probe.allowed ? 'ALLOWED' : 'BLOCKED'}
+                      {probe.allowed ? 'Permitido' : 'Bloqueado'}
                     </StatusBadge>
                     <StatusBadge tone={getAiDiagnosticTone(probe.accessMode)}>
-                      {probe.accessMode}
+                      {getMultiUnitAccessModeLabel(probe.accessMode)}
                     </StatusBadge>
                   </div>
                   <p className="mt-3 text-sm leading-6 text-[color:var(--foreground-soft)]">
                     motivo{' '}
-                    <strong className="text-[color:var(--foreground)]">{probe.reasonCode}</strong>
+                    <strong className="text-[color:var(--foreground)]">
+                      {getMultiUnitReasonLabel(probe.reasonCode)}
+                    </strong>
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-[color:var(--foreground-soft)]">
+                    codigo interno {probe.reasonCode}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
                     unidade alvo {probe.requestedUnitId ?? 'sessao atual'} / ownership{' '}
-                    {probe.ownershipKind ?? 'sem binding'}
+                    {getMultiUnitOwnershipKindLabel(probe.ownershipKind)}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
-                    contexto {probe.contextStatus}
-                    {probe.contextType ? ` / ${probe.contextType}` : ''}
+                    contexto {getMultiUnitContextStatusLabel(probe.contextStatus)}
+                    {probe.contextType
+                      ? ` / ${getMultiUnitContextTypeLabel(probe.contextType)}`
+                      : ''}
                   </p>
                 </article>
               ))}
@@ -775,10 +941,10 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <StatusBadge tone={getAiDiagnosticTone(assistantDiagnostics.scope.status)}>
-                    {assistantDiagnostics.scope.status}
+                    {getMultiUnitContextStatusLabel(assistantDiagnostics.scope.status)}
                   </StatusBadge>
                   <StatusBadge tone="info">
-                    {assistantDiagnostics.scope.contextType ?? 'SEM_CONTEXTO'}
+                    {getMultiUnitContextTypeLabel(assistantDiagnostics.scope.contextType)}
                   </StatusBadge>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
@@ -1004,7 +1170,10 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                   {updatePreflight.versions.currentInstalledVersion ?? 'nao registrada'}
                 </p>
                 <p className="mt-2 text-xs text-[color:var(--foreground-soft)]">
-                  fonte {updatePreflight.versions.currentVersionSource}
+                  fonte{' '}
+                  {getRuntimeVersionSourceLabel(
+                    updatePreflight.versions.currentVersionSource,
+                  )}
                 </p>
               </article>
               <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/50 p-4">
@@ -1024,10 +1193,10 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <StatusBadge tone={getPreflightBadgeTone(updatePreflight.status)}>
-                    {updatePreflight.status}
+                    {getPreflightStatusLabel(updatePreflight.status)}
                   </StatusBadge>
                   <StatusBadge tone="info">
-                    {updatePreflight.compatibility.updateType}
+                    {getUpdateTypeLabel(updatePreflight.compatibility.updateType)}
                   </StatusBadge>
                 </div>
                 <p className="mt-2 text-xs text-[color:var(--foreground-soft)]">
@@ -1084,9 +1253,9 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
             <div className="space-y-3">
               {updatePreflight.gates.map((gate) => (
                 <FeedbackMessage
-                  description={gate.message}
+                  description={`${gate.message} Codigo interno: ${gate.code}.`}
                   key={gate.code}
-                  title={gate.code}
+                  title={gate.title}
                   tone={getPreflightFeedbackTone(gate.status)}
                 />
               ))}
@@ -1138,12 +1307,14 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
               <div className="rounded-[1.5rem] border border-[color:var(--line)] bg-white/55 p-5">
                 <div className="flex flex-wrap gap-2">
                   <StatusBadge tone={getUpdateExecutionStatusTone(latestUpdateExecution.status)}>
-                    {latestUpdateExecution.status}
+                    {getUpdateExecutionStatusLabel(latestUpdateExecution.status)}
                   </StatusBadge>
                   <StatusBadge tone={getUpdateRecoveryStateTone(latestUpdateExecution.recoveryState)}>
                     {getUpdateRecoveryStateLabel(latestUpdateExecution.recoveryState)}
                   </StatusBadge>
-                  <StatusBadge tone="info">{latestUpdateExecution.mode}</StatusBadge>
+                  <StatusBadge tone="info">
+                    {getUpdateExecutionModeLabel(latestUpdateExecution.mode)}
+                  </StatusBadge>
                   <StatusBadge tone="info">
                     {latestUpdateExecution.sourceVersion} {'->'} {latestUpdateExecution.targetVersion}
                   </StatusBadge>
@@ -1163,7 +1334,11 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                       Ultimo passo com sucesso
                     </p>
                     <p className="mt-3 text-sm text-[color:var(--foreground)]">
-                      {latestUpdateExecution.lastSuccessfulStepCode ?? 'Nenhum'}
+                      {latestUpdateExecution.lastSuccessfulStepCode
+                        ? getUpdateExecutionStepLabel(
+                            latestUpdateExecution.lastSuccessfulStepCode,
+                          )
+                        : 'Nenhum'}
                     </p>
                   </article>
                   <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/50 p-4">
@@ -1171,7 +1346,11 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                       Ultimo passo com falha
                     </p>
                     <p className="mt-3 text-sm text-[color:var(--foreground)]">
-                      {latestUpdateExecution.lastFailedStepCode ?? 'Nenhum'}
+                      {latestUpdateExecution.lastFailedStepCode
+                        ? getUpdateExecutionStepLabel(
+                            latestUpdateExecution.lastFailedStepCode,
+                          )
+                        : 'Nenhum'}
                     </p>
                   </article>
                 </div>
@@ -1212,7 +1391,7 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge tone={getUpdateExecutionStepTone(step.status)}>
-                        {step.status}
+                        {getUpdateExecutionStepStatusLabel(step.status)}
                       </StatusBadge>
                       <StatusBadge tone="info">#{step.position}</StatusBadge>
                       <span className="text-sm font-semibold text-[color:var(--foreground)]">
@@ -1249,7 +1428,7 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                     >
                       <div className="flex flex-wrap gap-2">
                         <StatusBadge tone={getUpdateExecutionStatusTone(execution.status)}>
-                          {execution.status}
+                          {getUpdateExecutionStatusLabel(execution.status)}
                         </StatusBadge>
                         <StatusBadge tone="info">
                           {execution.sourceVersion} {'->'} {execution.targetVersion}
@@ -1342,7 +1521,7 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                   <input name="incidentId" type="hidden" value={incident.id} />
                   <div className="flex flex-wrap gap-2">
                     <StatusBadge tone={getRecoveryIncidentTone(incident.status)}>
-                      {incident.status}
+                      {getRecoveryIncidentLabel(incident.status)}
                     </StatusBadge>
                     <StatusBadge tone="danger">
                       {getLifecycleLabel(incident.lifecycleState)}
@@ -1412,7 +1591,7 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
               render: (incident) => (
                 <div className="flex flex-wrap gap-2">
                   <StatusBadge tone={getRecoveryIncidentTone(incident.status)}>
-                    {incident.status}
+                    {getRecoveryIncidentLabel(incident.status)}
                   </StatusBadge>
                   <StatusBadge tone="danger">
                     {getLifecycleLabel(incident.lifecycleState)}

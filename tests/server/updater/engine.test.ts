@@ -696,7 +696,7 @@ test('startUpdateExecution blocks when another execution already holds the lock'
     (error: unknown) =>
       error instanceof AppError &&
       error.status === 409 &&
-      error.message.includes('already running'),
+      error.message.includes('Ja existe outra execucao de update'),
   )
 })
 
@@ -927,7 +927,7 @@ test('retryUpdateExecution blocks executions without retryable recovery state', 
     (error: unknown) =>
       error instanceof AppError &&
       error.status === 409 &&
-      error.message.includes('retryable'),
+      error.message.includes('reexecutaveis'),
   )
 })
 

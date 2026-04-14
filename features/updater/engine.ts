@@ -21,7 +21,11 @@ import {
   upsertSystemRuntimeState,
 } from '@/server/system/runtime-state'
 import { bootstrapCorePetOS } from '@/server/system/bootstrap-core'
-import { resolveUpdateFailureRecoveryState, type UpdateExecutionStepCode } from './domain'
+import {
+  getUpdateExecutionStepLabel,
+  resolveUpdateFailureRecoveryState,
+  type UpdateExecutionStepCode,
+} from './domain'
 import { getUpdateExecutionDetails, getUpdatePreflight } from './services'
 import {
   builtInUpdatePostTasks,
@@ -103,43 +107,43 @@ function buildExecutionSteps(executionId: string) {
     {
       code: 'PRECHECK_REVALIDATION',
       executionId,
-      label: 'Revalidar preflight',
+      label: getUpdateExecutionStepLabel('PRECHECK_REVALIDATION'),
       position: 10,
     },
     {
       code: 'ENTER_MAINTENANCE',
       executionId,
-      label: 'Entrar em maintenance',
+      label: getUpdateExecutionStepLabel('ENTER_MAINTENANCE'),
       position: 20,
     },
     {
       code: 'APPLY_MIGRATIONS',
       executionId,
-      label: 'Aplicar migrations',
+      label: getUpdateExecutionStepLabel('APPLY_MIGRATIONS'),
       position: 30,
     },
     {
       code: 'APPLY_SEED_POLICY',
       executionId,
-      label: 'Aplicar seed policy',
+      label: getUpdateExecutionStepLabel('APPLY_SEED_POLICY'),
       position: 40,
     },
     {
       code: 'RUN_POST_UPDATE_TASKS',
       executionId,
-      label: 'Executar tasks pos-update',
+      label: getUpdateExecutionStepLabel('RUN_POST_UPDATE_TASKS'),
       position: 50,
     },
     {
       code: 'FINALIZE_RUNTIME',
       executionId,
-      label: 'Finalizar runtime',
+      label: getUpdateExecutionStepLabel('FINALIZE_RUNTIME'),
       position: 60,
     },
     {
       code: 'FINAL_VALIDATE',
       executionId,
-      label: 'Validar resultado final',
+      label: getUpdateExecutionStepLabel('FINAL_VALIDATE'),
       position: 70,
     },
   ] satisfies Array<{
@@ -156,7 +160,7 @@ function buildPreflightBlockingError(report: Awaited<ReturnType<typeof getUpdate
   return new AppError(
     'CONFLICT',
     409,
-    'The update preflight is not compatible with controlled execution.',
+    'O preflight do updater nao esta compativel com execucao controlada.',
     blockingGates,
   )
 }
@@ -165,7 +169,7 @@ function buildExecutionLockError() {
   return new AppError(
     'CONFLICT',
     409,
-    'Another update execution is already running or preparing in this environment.',
+    'Ja existe outra execucao de update em preparo ou em andamento neste ambiente.',
   )
 }
 
@@ -197,7 +201,7 @@ async function expireStaleUpdateLocks(
     await transaction.updateExecutionStep.updateMany({
       data: {
         durationMs: 0,
-        errorSummary: 'Update execution lock expired before completion.',
+        errorSummary: 'O lock da execucao de update expirou antes da conclusao.',
         failedAt: now,
         status: 'FAILED',
       },
@@ -210,7 +214,7 @@ async function expireStaleUpdateLocks(
     await transaction.updateExecution.update({
       data: {
         failedAt: now,
-        failureSummary: 'Update execution lock expired before completion.',
+        failureSummary: 'O lock da execucao de update expirou antes da conclusao.',
         lockExpiresAt: now,
         recoveryState: 'MANUAL_INTERVENTION_REQUIRED',
         status: 'FAILED',
@@ -237,7 +241,7 @@ async function expireStaleUpdateLocks(
   await upsertSystemRuntimeState(transaction, {
     lifecycleState: 'UPDATE_FAILED',
     maintenanceActivatedAt: now,
-    maintenanceReason: 'An update execution lock expired before completion.',
+    maintenanceReason: 'O lock de uma execucao de update expirou antes da conclusao.',
     updatedByUserId: null,
   })
 }
@@ -389,7 +393,7 @@ async function markExecutionFailed(
       currentVersion,
       lifecycleState: 'UPDATE_FAILED',
       maintenanceActivatedAt: failedAt,
-      maintenanceReason: `Update ${context.sourceVersion} -> ${context.targetVersion} failed at ${stepCode}.`,
+      maintenanceReason: `Update ${context.sourceVersion} -> ${context.targetVersion} falhou em ${getUpdateExecutionStepLabel(stepCode)}.`,
       manifestHash,
       updatedByUserId: context.actor.id,
     })
@@ -494,7 +498,7 @@ async function executeSeedPolicy(
       throw new AppError(
         'CONFLICT',
         409,
-        'This release requires manual seed review before the controlled updater can continue.',
+        'Esta release exige revisao manual da seed antes que o updater controlado possa continuar.',
       )
   }
 }
@@ -568,7 +572,7 @@ async function executeFinalValidation(
     throw new AppError(
       'CONFLICT',
       409,
-      'The environment is degraded after update execution.',
+      'O ambiente ficou degradado depois da execucao do update.',
       readinessChecks,
     )
   }
@@ -582,7 +586,7 @@ async function executeFinalValidation(
     throw new AppError(
       'CONFLICT',
       409,
-      `Runtime lifecycle is ${runtime.lifecycleState} after finalization, expected INSTALLED.`,
+      `O lifecycle do runtime ficou em ${runtime.lifecycleState} apos a finalizacao, mas o esperado era INSTALLED.`,
     )
   }
 
@@ -590,7 +594,7 @@ async function executeFinalValidation(
     throw new AppError(
       'CONFLICT',
       409,
-      `Runtime version ${runtime.currentInstalledVersion ?? 'null'} does not match target ${context.targetVersion}.`,
+      `A versao final do runtime ${runtime.currentInstalledVersion ?? 'null'} nao corresponde ao alvo ${context.targetVersion}.`,
     )
   }
 
@@ -598,7 +602,7 @@ async function executeFinalValidation(
     throw new AppError(
       'CONFLICT',
       409,
-      'Runtime manifest hash does not match the embedded target release manifest after finalization.',
+      'O hash de manifest persistido no runtime nao bate com o manifest embarcado apos a finalizacao.',
     )
   }
 
@@ -633,7 +637,7 @@ async function acquireExecution(
         lastTransitionAt: context.now,
         lifecycleState: 'UPDATING',
         maintenanceActivatedAt: context.now,
-        maintenanceReason: `Controlled update ${context.sourceVersion} -> ${context.targetVersion}`,
+        maintenanceReason: `Update controlado ${context.sourceVersion} -> ${context.targetVersion}`,
         updatedByUserId: actor.id,
       },
       where: {
@@ -651,7 +655,7 @@ async function acquireExecution(
       throw new AppError(
         'CONFLICT',
         409,
-        'The runtime lifecycle changed before the update lock could be acquired.',
+        'O lifecycle do runtime mudou antes de o lock de update ser adquirido.',
       )
     }
 
@@ -722,7 +726,7 @@ async function executeUpdateFlow(
     throw new AppError(
       'CONFLICT',
       409,
-      `The embedded release manifest is invalid: ${manifestResult.error}`,
+      `O manifest embarcado da release esta invalido: ${manifestResult.error}`,
     )
   }
 
@@ -746,7 +750,7 @@ async function executeUpdateFlow(
     throw new AppError(
       'CONFLICT',
       409,
-      'This release requires an explicit backup confirmation before execution can start.',
+      'Esta release exige confirmacao explicita de backup antes do inicio da execucao.',
     )
   }
 
@@ -768,7 +772,7 @@ async function executeUpdateFlow(
       throw new AppError(
         'CONFLICT',
         409,
-        'Only failed executions explicitly marked as retryable can be retried.',
+        'Somente execucoes com falha marcadas explicitamente como reexecutaveis podem ser retentadas.',
       )
     }
 
@@ -776,7 +780,7 @@ async function executeUpdateFlow(
       throw new AppError(
         'CONFLICT',
         409,
-        'The retryable execution targets a different release than the current embedded manifest.',
+        'A execucao reexecutavel aponta para uma release diferente do manifest embarcado atual.',
       )
     }
 
@@ -787,7 +791,7 @@ async function executeUpdateFlow(
     throw new AppError(
       'CONFLICT',
       409,
-      'The source version is missing and the update cannot be executed safely.',
+      'A versao de origem nao esta registrada e o update nao pode ser executado com seguranca.',
     )
   }
 
@@ -846,7 +850,7 @@ async function executeUpdateFlow(
           throw new AppError(
             'CONFLICT',
             409,
-            `Runtime lifecycle is ${runtime.lifecycleState} after the update lock, expected UPDATING.`,
+            `O lifecycle do runtime ficou em ${runtime.lifecycleState} depois do lock de update, mas o esperado era UPDATING.`,
           )
         }
 

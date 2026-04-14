@@ -46,6 +46,9 @@ Resposta esperada:
 
 - `200` quando ambiente, banco, migrations e seed estao coerentes
 - `503` quando o bootstrap ainda esta degradado
+- falha de ambiente invalido fica separada de falha de diagnostico operacional:
+  - `environment` cobre env obrigatoria ausente/invalida;
+  - `runtime` cobre falha depois do parse da env, como bootstrap, runtime state ou readiness nao concluido
 
 O payload informa apenas o minimo operacional:
 
@@ -53,6 +56,7 @@ O payload informa apenas o minimo operacional:
 - `service`
 - `checks`
 - `lifecycle`
+- `requestId`
 
 O bloco `lifecycle` resume o modo atual do sistema sem expor segredos:
 
@@ -108,6 +112,7 @@ O preflight responde com:
 - versao alvo do build/manifest;
 - tipo de update (`upgrade`, `none`, `downgrade` ou `unknown`);
 - gates classificados como `ok`, `warning` ou `blocking`;
+- cada gate com `title`, `message` e `code`, para a UI administrativa priorizar explicacao humana e deixar o codigo interno como apoio;
 - readiness atual reaproveitando banco, migrations e seed;
 - disponibilidade real de `prisma migrate deploy` no runtime atual.
 

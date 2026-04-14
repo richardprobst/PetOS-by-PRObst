@@ -46,6 +46,8 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- `/admin/sistema` agora traduz melhor o estado operacional para o operador: o painel de updater passou a priorizar labels humanas para status, modo, tipo de update, etapas e gates, mantendo codigos internos apenas como apoio diagnostico secundario.
+- O snapshot administrativo de multiunidade em `/admin/sistema` agora traduz `accessMode`, `reasonCode`, `contextType`, `contextOrigin` e ownership base antes de expor os codigos internos, reduzindo falso diagnostico por leitura crua de enums internos.
 - O gate `npm run check:all` agora reaproveita `npm run ops:check` em vez de `ops:preflight`, eliminando falso verde de prontidao quando banco, migrations, seed ou lifecycle operacional estao degradados.
 - Os comandos `ops:preflight:staging` e `ops:check:staging` agora seguem a documentacao operacional de forma estrita: sem `--env-file`, eles usam apenas variaveis injetadas pelo ambiente hospedado/CI e nao fazem fallback silencioso para `.env` local.
 - O `ops:check` agora usa o mesmo bootstrap Prisma do runtime do app, reduzindo drift entre o diagnostico operacional e o comportamento real do servidor em hosts compartilhados.
@@ -209,6 +211,9 @@ Exemplo:
 - `scripts/sanitize-netlify-artifacts.mjs` e o comando `npm run netlify:artifacts:sanitize` para remover `.env*` empacotados indevidamente das functions do Netlify antes de um deploy manual.
 
 ### Fixed
+- `GET /api/health` deixou de classificar qualquer falha inesperada como "env invalida": o endpoint agora separa erro de ambiente de falha posterior de diagnostico operacional, evitando resumo mentiroso para o operador.
+- O route handler `GET /api/admin/system/update-executions/[executionId]` agora responde em PT-BR consistente quando a execucao nao existe.
+- O catalogo de APIs internas e o guia de operabilidade agora refletem o contrato real de `/api/health`, `update-preflight` e a divisao entre payload enxuto de listagem e detalhe rico de execucao do updater.
 - A estrategia evolutiva para as invariantes condicionais remanescentes de `pos` e `inventory` agora ficou documentada de forma explicita, incluindo o caminho futuro com colunas-ancora nullable em vez de workaround fragil de indice parcial no MySQL atual.
 - As superficies administrativas que consomem persistencia de imagem e insight preditivo agora degradam de forma controlada quando o banco publicado esta com schema atrasado, evitando `500` bruto em `/admin/agenda`, `/admin/sistema` e leituras correlatas e expondo alerta explicito de migration pendente na governanca consolidada da Fase 3.
 - Ambiguidade documental que ainda sugeria fechamento incompleto do MVP mesmo apos a rodada manual bem-sucedida.

@@ -46,7 +46,15 @@ type UpdateExecutionDatabaseClient = Pick<
   | 'updateExecutionStep'
 >
 
-const updateExecutionInclude = {
+const updateExecutionSummaryInclude = {
+  steps: {
+    orderBy: {
+      position: 'asc',
+    },
+  },
+} as const
+
+const updateExecutionDetailsInclude = {
   completedByUser: {
     select: {
       email: true,
@@ -68,8 +76,12 @@ const updateExecutionInclude = {
   },
 } as const
 
-type UpdateExecutionRecord = Prisma.UpdateExecutionGetPayload<{
-  include: typeof updateExecutionInclude
+type UpdateExecutionSummaryRecord = Prisma.UpdateExecutionGetPayload<{
+  include: typeof updateExecutionSummaryInclude
+}>
+
+type UpdateExecutionDetailsRecord = Prisma.UpdateExecutionGetPayload<{
+  include: typeof updateExecutionDetailsInclude
 }>
 
 interface GetUpdatePreflightOptions {
@@ -93,7 +105,45 @@ interface GetUpdateExecutionDetailsOptions {
   prismaClient?: UpdateExecutionDatabaseClient
 }
 
-function mapUpdateExecution(record: NonNullable<UpdateExecutionRecord>) {
+function mapUpdateExecutionSteps(
+  record: Pick<UpdateExecutionSummaryRecord, 'steps'>,
+) {
+  return record.steps.map((step) => ({
+    code: step.code as UpdateExecutionStepCode,
+    completedAt: step.completedAt,
+    durationMs: step.durationMs,
+    errorSummary: step.errorSummary,
+    failedAt: step.failedAt,
+    id: step.id,
+    label: step.label,
+    payload: step.payload,
+    position: step.position,
+    startedAt: step.startedAt,
+    status: step.status,
+  }))
+}
+
+function mapUpdateExecutionSummary(record: UpdateExecutionSummaryRecord) {
+  return {
+    failureSummary: record.failureSummary,
+    failedAt: record.failedAt,
+    id: record.id,
+    lastFailedStepCode: record.lastFailedStepCode as UpdateExecutionStepCode | null,
+    lastSuccessfulStepCode: record.lastSuccessfulStepCode as UpdateExecutionStepCode | null,
+    mode: record.mode,
+    recoveryState: record.recoveryState,
+    requiresBackup: record.requiresBackup,
+    requiresMaintenance: record.requiresMaintenance,
+    sourceVersion: record.sourceVersion,
+    startedAt: record.startedAt,
+    status: record.status,
+    steps: mapUpdateExecutionSteps(record),
+    targetVersion: record.targetVersion,
+    canRetry: canRetryFailedUpdateExecution(record.status, record.recoveryState),
+  }
+}
+
+function mapUpdateExecutionDetails(record: UpdateExecutionDetailsRecord) {
   return {
     completedAt: record.completedAt,
     completedByUser: record.completedByUser,
@@ -118,19 +168,7 @@ function mapUpdateExecution(record: NonNullable<UpdateExecutionRecord>) {
     startedAt: record.startedAt,
     startedByUser: record.startedByUser,
     status: record.status,
-    steps: record.steps.map((step) => ({
-      code: step.code as UpdateExecutionStepCode,
-      completedAt: step.completedAt,
-      durationMs: step.durationMs,
-      errorSummary: step.errorSummary,
-      failedAt: step.failedAt,
-      id: step.id,
-      label: step.label,
-      payload: step.payload,
-      position: step.position,
-      startedAt: step.startedAt,
-      status: step.status,
-    })),
+    steps: mapUpdateExecutionSteps(record),
     targetVersion: record.targetVersion,
     canRetry: canRetryFailedUpdateExecution(record.status, record.recoveryState),
   }
@@ -174,14 +212,14 @@ export async function listUpdateExecutions(
   const prismaClient = options.prismaClient ?? prisma
   const limit = Math.max(1, Math.min(options.limit ?? 5, 20))
   const records = await prismaClient.updateExecution.findMany({
-    include: updateExecutionInclude,
+    include: updateExecutionSummaryInclude,
     orderBy: {
       startedAt: 'desc',
     },
     take: limit,
   })
 
-  return records.map((record) => mapUpdateExecution(record))
+  return records.map((record) => mapUpdateExecutionSummary(record))
 }
 
 export async function getUpdateExecutionDetails(
@@ -192,11 +230,11 @@ export async function getUpdateExecutionDetails(
 
   const prismaClient = options.prismaClient ?? prisma
   const record = await prismaClient.updateExecution.findUnique({
-    include: updateExecutionInclude,
+    include: updateExecutionDetailsInclude,
     where: {
       id: options.executionId,
     },
   })
 
-  return record ? mapUpdateExecution(record) : null
+  return record ? mapUpdateExecutionDetails(record) : null
 }

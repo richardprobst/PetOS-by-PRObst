@@ -76,19 +76,13 @@ export async function getSystemOperationsOverview(
   const [runtime, recoveryIncidents] = await Promise.all([
     collectSystemRuntimeSnapshot(prisma, environment),
     prisma.recoveryIncident.findMany({
-      include: {
-        openedByUser: {
-          select: {
-            email: true,
-            name: true,
-          },
-        },
-        resolvedByUser: {
-          select: {
-            email: true,
-            name: true,
-          },
-        },
+      select: {
+        id: true,
+        lifecycleState: true,
+        openedAt: true,
+        status: true,
+        summary: true,
+        title: true,
       },
       orderBy: {
         openedAt: 'desc',

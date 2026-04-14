@@ -64,6 +64,12 @@ Uso:
 - governanca consolidada da Fase 3;
 - operacao e trilha do updater.
 
+Observacoes operacionais:
+
+- `/api/health` deve expor apenas leitura minima de `status`, `checks`, `service`, `lifecycle`, `requestId` e fingerprint de deploy, sem stack trace nem segredos.
+- `/api/admin/system/update-preflight` deve priorizar mensagens acionaveis para o operador; `gate.code` existe para suporte tecnico, mas a UI administrativa deve tratar `title` + `message` como fonte primaria.
+- `/api/admin/system/update-executions` deve permanecer em payload enxuto para listagem administrativa; detalhes ricos de execucao ficam reservados a `/api/admin/system/update-executions/[executionId]`.
+
 ### 3.2. Identidade
 
 Rotas:

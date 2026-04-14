@@ -19,7 +19,7 @@ export async function GET(
     const execution = await getUpdateExecutionDetails(actor, { executionId })
 
     if (!execution) {
-      throw new AppError('NOT_FOUND', 404, 'Update execution not found.')
+      throw new AppError('NOT_FOUND', 404, 'Execucao de update nao encontrada.')
     }
 
     return ok(execution)

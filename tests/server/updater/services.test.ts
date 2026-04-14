@@ -204,6 +204,72 @@ test('listUpdateExecutions enforces high permission before exposing execution hi
   )
 })
 
+test('listUpdateExecutions exposes a compact summary payload for the admin list', async () => {
+  const executions = await listUpdateExecutions(updateOperator, {
+    prismaClient: {
+      updateExecution: {
+        findMany: async () => [
+          {
+            completedAt: null,
+            completedByUser: {
+              email: 'admin@petos.app',
+              id: 'user_admin',
+              name: 'Admin PetOS',
+            },
+            failedAt: new Date('2026-04-05T10:25:00.000Z'),
+            failureSummary: 'Task failed.',
+            id: 'execution_1',
+            lastFailedStepCode: 'RUN_POST_UPDATE_TASKS',
+            lastSuccessfulStepCode: 'APPLY_SEED_POLICY',
+            lockExpiresAt: new Date('2026-04-05T10:20:00.000Z'),
+            maintenanceEnteredAt: new Date('2026-04-05T10:00:00.000Z'),
+            maintenanceExitedAt: null,
+            manifestHash: 'manifest-hash',
+            mode: 'MANUAL',
+            preflightSnapshot: { status: 'blocking' },
+            recoveryState: 'RETRY_AVAILABLE',
+            requiresBackup: true,
+            requiresMaintenance: true,
+            retriedFromExecutionId: null,
+            retryCount: 0,
+            seedPolicy: 'none',
+            sourceVersion: '0.2.0',
+            startedAt: new Date('2026-04-05T10:00:00.000Z'),
+            startedByUser: {
+              email: 'admin@petos.app',
+              id: 'user_admin',
+              name: 'Admin PetOS',
+            },
+            status: 'FAILED',
+            steps: [
+              {
+                code: 'RUN_POST_UPDATE_TASKS',
+                completedAt: null,
+                durationMs: 1200,
+                errorSummary: 'Task failed.',
+                failedAt: new Date('2026-04-05T10:25:00.000Z'),
+                id: 'step_1',
+                label: 'Executar tarefas pos-update',
+                payload: null,
+                position: 50,
+                startedAt: new Date('2026-04-05T10:24:00.000Z'),
+                status: 'FAILED',
+              },
+            ],
+            targetVersion: '0.2.1',
+          },
+        ],
+      },
+    } as never,
+  })
+
+  assert.equal(executions[0]?.id, 'execution_1')
+  assert.equal(executions[0]?.steps[0]?.label, 'Executar tarefas pos-update')
+  assert.equal('manifestHash' in (executions[0] ?? {}), false)
+  assert.equal('preflightSnapshot' in (executions[0] ?? {}), false)
+  assert.equal('startedByUser' in (executions[0] ?? {}), false)
+})
+
 test('getUpdateExecutionDetails returns a mapped retryable execution', async () => {
   const execution = await getUpdateExecutionDetails(updateOperator, {
     executionId: 'execution_1',
@@ -262,4 +328,6 @@ test('getUpdateExecutionDetails returns a mapped retryable execution', async () 
   assert.equal(execution?.canRetry, true)
   assert.equal(execution?.steps[0]?.code, 'RUN_POST_UPDATE_TASKS')
   assert.equal(execution?.failureSummary, 'Task failed.')
+  assert.equal(execution?.manifestHash, 'manifest-hash')
+  assert.equal(execution?.startedByUser?.email, 'admin@petos.app')
 })
