@@ -3,6 +3,7 @@ import { ActionFlash } from '@/components/ui/action-flash'
 import { DataTable } from '@/components/ui/data-table'
 import { FormField } from '@/components/ui/form-field'
 import { PageHeader } from '@/components/ui/page-header'
+import { getImageAnalysisReviewStatusLabel } from '@/features/ai/admin-taxonomy'
 import { listImageAnalyses } from '@/features/ai/vision/services'
 import { listClients } from '@/features/clients/services'
 import { savePetAction } from '@/features/pets/actions'
@@ -151,7 +152,7 @@ export default async function PetsPage({ searchParams }: PetsPageProps) {
                     return 'Sem leitura'
                   }
 
-                  return `${analysis.reviewStatus} - ${analysis.resultSummary ?? 'Sem resumo'}`
+                  return `${getImageAnalysisReviewStatusLabel(analysis.reviewStatus)} - ${analysis.resultSummary ?? 'Sem resumo'}`
                 },
               },
               {

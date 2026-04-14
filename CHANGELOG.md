@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- Os diagnosticos administrativos da Fase 3 agora expõem labels humanas junto com os enums tecnicos: `phase3-foundation-diagnostics`, `phase3-governance`, `/admin/sistema`, `agenda`, `documentos`, `pets` e `report-cards` passaram a priorizar explicacao operacional para IA assistiva, fallback, gating, revisao humana e suporte interno, deixando codigos como apoio secundario.
 - `/admin/sistema` agora traduz melhor o estado operacional para o operador: o painel de updater passou a priorizar labels humanas para status, modo, tipo de update, etapas e gates, mantendo codigos internos apenas como apoio diagnostico secundario.
 - O snapshot administrativo de multiunidade em `/admin/sistema` agora traduz `accessMode`, `reasonCode`, `contextType`, `contextOrigin` e ownership base antes de expor os codigos internos, reduzindo falso diagnostico por leitura crua de enums internos.
 - O gate `npm run check:all` agora reaproveita `npm run ops:check` em vez de `ops:preflight`, eliminando falso verde de prontidao quando banco, migrations, seed ou lifecycle operacional estao degradados.

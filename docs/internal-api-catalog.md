@@ -67,6 +67,7 @@ Uso:
 Observacoes operacionais:
 
 - `/api/health` deve expor apenas leitura minima de `status`, `checks`, `service`, `lifecycle`, `requestId` e fingerprint de deploy, sem stack trace nem segredos.
+- `/api/admin/system/phase3-foundation-diagnostics` e `/api/admin/system/phase3-governance` devem expor labels humanas junto com os enums tecnicos, para que UI e suporte tratem a explicacao operacional como fonte primaria e deixem `policyReasonCode`, `gateReasonCode`, `fallbackStatus` e afins apenas como apoio.
 - `/api/admin/system/update-preflight` deve priorizar mensagens acionaveis para o operador; `gate.code` existe para suporte tecnico, mas a UI administrativa deve tratar `title` + `message` como fonte primaria.
 - `/api/admin/system/update-executions` deve permanecer em payload enxuto para listagem administrativa; detalhes ricos de execucao ficam reservados a `/api/admin/system/update-executions/[executionId]`.
 

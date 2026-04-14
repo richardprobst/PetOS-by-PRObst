@@ -3,6 +3,7 @@ import { ActionFlash } from '@/components/ui/action-flash'
 import { DataTable } from '@/components/ui/data-table'
 import { FormField } from '@/components/ui/form-field'
 import { PageHeader } from '@/components/ui/page-header'
+import { getImageAnalysisReviewStatusLabel } from '@/features/ai/admin-taxonomy'
 import { listImageAnalyses } from '@/features/ai/vision/services'
 import { listAppointments } from '@/features/appointments/services'
 import { saveReportCardAction } from '@/features/report-cards/actions'
@@ -186,7 +187,8 @@ export default async function ReportCardsPage({
                 {
                   id: 'review',
                   header: 'Revisao',
-                  render: (analysis) => analysis.reviewStatus,
+                  render: (analysis) =>
+                    getImageAnalysisReviewStatusLabel(analysis.reviewStatus),
                 },
                 {
                   id: 'summary',

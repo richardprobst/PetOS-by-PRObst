@@ -377,7 +377,17 @@ test('getPhase3GovernanceSnapshot consolidates observability and governance sign
       assert.equal(snapshot.phase.currentBlock, 'BLOCK5')
       assert.equal(snapshot.phase.status, 'READY_WITH_GUARDRAILS')
       assert.equal(snapshot.currentState.globalFlagStatus, 'ENABLED')
+      assert.equal(snapshot.currentState.globalFlagStatusLabel, 'Habilitada')
       assert.equal(snapshot.currentState.multiUnitSessionStatus, 'RESOLVED')
+      assert.equal(snapshot.currentState.modules[0]?.moduleLabel, 'Analise de imagem')
+      assert.equal(
+        snapshot.currentState.modules[0]?.currentStatusLabel,
+        'Admitido',
+      )
+      assert.equal(
+        snapshot.currentState.modules[0]?.policyReasonLabel,
+        'Politica habilitada',
+      )
       assert.equal(snapshot.imageAnalysis.pendingHumanReview, 2)
       assert.equal(snapshot.predictiveInsights.actionPlannedFeedback, 2)
       assert.equal(snapshot.audit.aiExecutionEventsLast30Days, 10)
@@ -438,6 +448,7 @@ test('getPhase3GovernanceSnapshot reflects fail-closed governance when AI flags 
 
       assert.equal(snapshot.phase.status, 'ATTENTION_REQUIRED')
       assert.equal(snapshot.currentState.globalFlagStatus, 'MISSING')
+      assert.equal(snapshot.currentState.globalFlagStatusLabel, 'Nao configurada')
       assert.equal(
         snapshot.alerts.some((alert) => alert.key === 'AI_GLOBAL_FAIL_CLOSED'),
         true,

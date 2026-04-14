@@ -5,6 +5,7 @@ import { DataTable } from '@/components/ui/data-table'
 import { FormField } from '@/components/ui/form-field'
 import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { getPredictiveInsightExecutionLabel } from '@/features/ai/admin-taxonomy'
 import {
   createPredictiveInsightAction,
   recordPredictiveInsightFeedbackAction,
@@ -536,7 +537,9 @@ export default async function AdminAgendaPage({ searchParams }: AgendaPageProps)
                 <div className="mt-5 space-y-4 rounded-[1.5rem] border border-[color:var(--line)] bg-white/50 p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge tone={getPredictiveInsightExecutionTone(latestPredictiveInsight.executionStatus)}>
-                      {latestPredictiveInsight.executionStatus}
+                      {getPredictiveInsightExecutionLabel(
+                        latestPredictiveInsight.executionStatus,
+                      )}
                     </StatusBadge>
                     <StatusBadge tone={getPredictiveInsightFeedbackTone(latestPredictiveInsight.feedbackStatus)}>
                       {getPredictiveInsightFeedbackLabel(latestPredictiveInsight.feedbackStatus)}
@@ -665,7 +668,9 @@ export default async function AdminAgendaPage({ searchParams }: AgendaPageProps)
                       render: (predictiveInsight) => (
                         <div className="flex flex-wrap gap-2">
                           <StatusBadge tone={getPredictiveInsightExecutionTone(predictiveInsight.executionStatus)}>
-                            {predictiveInsight.executionStatus}
+                            {getPredictiveInsightExecutionLabel(
+                              predictiveInsight.executionStatus,
+                            )}
                           </StatusBadge>
                           <StatusBadge tone={getPredictiveInsightFeedbackTone(predictiveInsight.feedbackStatus)}>
                             {getPredictiveInsightFeedbackLabel(predictiveInsight.feedbackStatus)}

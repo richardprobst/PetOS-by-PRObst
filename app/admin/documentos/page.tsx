@@ -4,6 +4,10 @@ import { DataTable } from '@/components/ui/data-table'
 import { FormField } from '@/components/ui/form-field'
 import { PageHeader } from '@/components/ui/page-header'
 import {
+  getAiExecutionStatusLabel,
+  getImageAnalysisReviewStatusLabel,
+} from '@/features/ai/admin-taxonomy'
+import {
   createGalleryImageAnalysisAction,
   createPrePostImageAnalysisAction,
   reviewImageAnalysisAction,
@@ -765,7 +769,7 @@ export default async function DocumentsPage({
                   id: 'status',
                   header: 'Execucao',
                   render: (analysis) =>
-                            `${analysis.executionStatus} - ${analysis.reviewStatus}`,
+                    `${getAiExecutionStatusLabel(analysis.executionStatus)} / ${getImageAnalysisReviewStatusLabel(analysis.reviewStatus)}`,
                 },
                 {
                   id: 'summary',

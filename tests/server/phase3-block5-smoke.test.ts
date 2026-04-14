@@ -103,4 +103,5 @@ test('phase 3 block 5 smoke exposes a consolidated governance snapshot over bloc
   assert.equal(snapshot.phase.currentBlock, 'BLOCK5')
   assert.equal(snapshot.currentState.failClosed, true)
   assert.equal(snapshot.currentState.globalFlagStatus, 'ENABLED')
+  assert.equal(snapshot.currentState.globalFlagStatusLabel, 'Habilitada')
 })

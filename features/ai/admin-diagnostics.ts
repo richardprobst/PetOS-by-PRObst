@@ -2,6 +2,25 @@ import type { AuthenticatedUserData } from '@/server/auth/types'
 import { hasAnyPermission } from '@/server/authorization/access-control'
 import { AppError } from '@/server/http/errors'
 import { resolveMultiUnitSessionContext } from '@/features/multiunit/context'
+import {
+  getAiConsentDecisionLabel,
+  getAiConsentReasonLabel,
+  getAiCostStatusLabel,
+  getAiExecutionModeLabel,
+  getAiExecutionProviderStatusLabel,
+  getAiExecutionStatusLabel,
+  getAiFallbackReasonLabel,
+  getAiFallbackStatusLabel,
+  getAiFlagStatusLabel,
+  getAiGateReasonLabel,
+  getAiJobStatusLabel,
+  getAiModuleLabel,
+  getAiOperationalEventLabel,
+  getAiOperationalReasonLabel,
+  getAiOperationalStatusLabel,
+  getAiPolicyReasonLabel,
+  getAiQuotaStatusLabel,
+} from './admin-taxonomy'
 import { createAiCompletedOutcome, createAiInferenceRequest } from './domain'
 import {
   completeAiInferenceExecution,
@@ -41,6 +60,7 @@ export interface AiFoundationFlagDiagnostic {
   rawValue: string | null
   source: 'ENVIRONMENT' | 'UNIT_SCOPE'
   status: string
+  statusLabel: string
 }
 
 export interface AiFoundationQuotaDiagnostic {
@@ -53,6 +73,7 @@ export interface AiFoundationQuotaDiagnostic {
   requested: number | null
   scope: 'MODULE' | 'UNIT'
   status: string
+  statusLabel: string
   used: number | null
 }
 
@@ -60,6 +81,7 @@ export interface AiFoundationEventDiagnostic {
   actionRequired: boolean
   eventClass: 'FUNCTIONAL_GUARD' | 'OPERATIONAL_SIGNAL'
   eventCode: string
+  eventLabel: string
   eventType: 'COST' | 'ERROR' | 'RAPID_SHUTDOWN'
   nextStep: string
   reasonSummary: string
@@ -70,30 +92,44 @@ export interface AiFoundationEventDiagnostic {
 
 export interface AiFoundationEnvelopeDiagnostic {
   consentDecisionStatus: string
+  consentDecisionStatusLabel: string
   consentReasonCode: string
+  consentReasonLabel: string
   consentRequirement: string
   costClass: string
   costStatus: string
+  costStatusLabel: string
   events: AiFoundationEventDiagnostic[]
   executionMode: string
+  executionModeLabel: string
   executionState: string
+  executionStateLabel: string
   failClosed: boolean
   fallbackNextStep: string
   fallbackReasonCode: string
+  fallbackReasonLabel: string
   fallbackStatus: string
+  fallbackStatusLabel: string
   gateReasonCode: string | null
+  gateReasonLabel: string
   gateState: string | null
   gatingEvaluations: AiFoundationFlagDiagnostic[]
   jobStatus: string
+  jobStatusLabel: string
   moduleQuota: AiFoundationQuotaDiagnostic | null
   nextStep: string
   operationalReasonCode: string
+  operationalReasonLabel: string
   operationalStatus: string
+  operationalStatusLabel: string
   policyReasonCode: string | null
+  policyReasonLabel: string
   policyState: string | null
   providerStatus: string
+  providerStatusLabel: string
   retentionPolicyVersion: string
   status: 'ACCEPTED' | 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'BLOCKED' | 'FAILED'
+  statusLabel: string
   statusMessage: string | null
   unitQuota: AiFoundationQuotaDiagnostic | null
 }
@@ -107,6 +143,7 @@ export interface AiFoundationModuleDiagnostic {
   }
   current: AiFoundationEnvelopeDiagnostic
   module: AiInferenceModule
+  moduleLabel: string
 }
 
 export interface AiFoundationScenarioDiagnostic {
@@ -466,6 +503,7 @@ function createModuleDiagnostic(
     },
     current: createEnvelopeDiagnostic(envelope),
     module,
+    moduleLabel: getAiModuleLabel(module),
   }
 }
 
@@ -474,34 +512,66 @@ function createEnvelopeDiagnostic(
 ): AiFoundationEnvelopeDiagnostic {
   return {
     consentDecisionStatus: envelope.consent.decisionStatus,
+    consentDecisionStatusLabel: getAiConsentDecisionLabel(
+      envelope.consent.decisionStatus,
+    ),
     consentReasonCode: envelope.consent.reasonCode,
+    consentReasonLabel: getAiConsentReasonLabel(envelope.consent.reasonCode),
     consentRequirement: envelope.consent.requirement,
     costClass: envelope.operational.cost.costClass,
     costStatus: envelope.operational.cost.status,
+    costStatusLabel: getAiCostStatusLabel(envelope.operational.cost.status),
     events: envelope.events.map(createEventDiagnostic),
     executionMode: envelope.execution.executionMode,
+    executionModeLabel: getAiExecutionModeLabel(
+      envelope.execution.executionMode,
+    ),
     executionState: envelope.execution.state,
+    executionStateLabel: getAiExecutionStatusLabel(envelope.execution.state),
     failClosed: envelope.policy?.decision.failClosed ?? true,
     fallbackNextStep: envelope.operational.fallback.nextStep,
     fallbackReasonCode: envelope.operational.fallback.reasonCode,
+    fallbackReasonLabel: getAiFallbackReasonLabel(
+      envelope.operational.fallback.reasonCode,
+    ),
     fallbackStatus: envelope.operational.fallback.status,
+    fallbackStatusLabel: getAiFallbackStatusLabel(
+      envelope.operational.fallback.status,
+    ),
     gateReasonCode: envelope.policy?.gating.decision.reasonCode ?? null,
+    gateReasonLabel: getAiGateReasonLabel(
+      envelope.policy?.gating.decision.reasonCode ?? null,
+    ),
     gateState: envelope.policy?.gating.decision.state ?? null,
     gatingEvaluations: (envelope.policy?.gating.evaluations ?? []).map(
       createFlagDiagnostic,
     ),
     jobStatus: envelope.execution.jobStatus,
+    jobStatusLabel: getAiJobStatusLabel(envelope.execution.jobStatus),
     moduleQuota: envelope.policy
       ? createQuotaDiagnostic(envelope.policy.moduleQuota, 'Quota do modulo')
       : null,
     nextStep: envelope.execution.nextStep,
     operationalReasonCode: envelope.operational.operationalReasonCode,
+    operationalReasonLabel: getAiOperationalReasonLabel(
+      envelope.operational.operationalReasonCode,
+    ),
     operationalStatus: envelope.operational.operationalStatus,
+    operationalStatusLabel: getAiOperationalStatusLabel(
+      envelope.operational.operationalStatus,
+    ),
     policyReasonCode: envelope.policy?.decision.reasonCode ?? null,
+    policyReasonLabel: getAiPolicyReasonLabel(
+      envelope.policy?.decision.reasonCode ?? null,
+    ),
     policyState: envelope.policy?.decision.state ?? null,
     providerStatus: envelope.execution.providerStatus,
+    providerStatusLabel: getAiExecutionProviderStatusLabel(
+      envelope.execution.providerStatus,
+    ),
     retentionPolicyVersion: envelope.retention.policyVersion,
     status: envelope.status,
+    statusLabel: getAiExecutionStatusLabel(envelope.status),
     statusMessage: envelope.execution.statusMessage,
     unitQuota: envelope.policy
       ? createQuotaDiagnostic(envelope.policy.unitQuota, 'Quota por unidade')
@@ -516,6 +586,7 @@ function createEventDiagnostic(
     actionRequired: event.actionRequired,
     eventClass: event.eventClass,
     eventCode: event.eventCode,
+    eventLabel: getAiOperationalEventLabel(event.eventCode),
     eventType: event.eventType,
     nextStep: event.nextStep,
     reasonSummary: event.reasonSummary,
@@ -555,6 +626,7 @@ function createFlagDiagnostic(
     rawValue: evaluation.rawValue,
     source: evaluation.source,
     status: evaluation.status,
+    statusLabel: getAiFlagStatusLabel(evaluation.status),
   }
 }
 
@@ -572,6 +644,7 @@ function createQuotaDiagnostic(
     requested: quota.requested,
     scope: quota.scope,
     status: quota.status,
+    statusLabel: getAiQuotaStatusLabel(quota.status),
     used: quota.used,
   }
 }

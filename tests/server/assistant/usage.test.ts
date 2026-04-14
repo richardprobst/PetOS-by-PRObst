@@ -124,7 +124,14 @@ test('buildTutorAssistantUsageSnapshotFromAuditLogs derives minimum tutor histor
     '2026-04-08T15:00:00.000Z',
   )
   assert.equal(snapshot.recentInteractions[0]?.intent, 'QUERY_REPORT_CARDS')
+  assert.equal(snapshot.recentInteractions[0]?.intentLabel, 'Report cards')
+  assert.equal(snapshot.recentInteractions[0]?.statusLabel, 'Respondida')
   assert.equal(snapshot.recentInteractions[1]?.status, 'NEEDS_CONFIRMATION')
+  assert.equal(
+    snapshot.recentInteractions[1]?.statusLabel,
+    'Aguardando confirmacao',
+  )
+  assert.equal(snapshot.recentInteractions[1]?.channelLabel, 'Voz')
 })
 
 test('buildTutorAssistantAdminDiagnosticsFromAuditLogs preserves scope and filters the assistant recorte only', () => {
@@ -178,9 +185,14 @@ test('buildTutorAssistantAdminDiagnosticsFromAuditLogs preserves scope and filte
   assert.equal(diagnostics.summary.totalLast30Days, 2)
   assert.equal(diagnostics.summary.answeredLast30Days, 2)
   assert.equal(diagnostics.operationalValidation.status, 'EARLY_USAGE')
+  assert.equal(diagnostics.operationalValidation.statusLabel, 'Uso inicial')
   assert.equal(
     diagnostics.operationalValidation.voiceCoverageStatus,
     'NOT_OBSERVED',
+  )
+  assert.equal(
+    diagnostics.operationalValidation.voiceCoverageStatusLabel,
+    'Voz nao observada',
   )
   assert.equal(
     diagnostics.operationalValidation.alerts.some(
@@ -192,9 +204,19 @@ test('buildTutorAssistantAdminDiagnosticsFromAuditLogs preserves scope and filte
     {
       count: 2,
       intent: 'QUERY_REPORT_CARDS',
+      label: 'Report cards',
     },
   ])
   assert.equal(diagnostics.recentInteractions.every((item) => item.intent === 'QUERY_REPORT_CARDS'), true)
+  assert.equal(
+    diagnostics.recentInteractions.every(
+      (item) =>
+        item.intentLabel === 'Report cards' &&
+        item.statusLabel === 'Respondida' &&
+        item.channelLabel === 'Texto',
+    ),
+    true,
+  )
 })
 
 test('buildTutorAssistantAdminDiagnosticsFromAuditLogs raises attention when block and clarification rates are too high', () => {
@@ -253,6 +275,10 @@ test('buildTutorAssistantAdminDiagnosticsFromAuditLogs raises attention when blo
   )
 
   assert.equal(diagnostics.operationalValidation.status, 'ATTENTION_REQUIRED')
+  assert.equal(
+    diagnostics.operationalValidation.statusLabel,
+    'Atencao necessaria',
+  )
   assert.equal(diagnostics.operationalValidation.blockRatePercent, 40)
   assert.equal(diagnostics.operationalValidation.clarificationRatePercent, 40)
   assert.equal(

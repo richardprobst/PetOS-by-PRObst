@@ -57,19 +57,35 @@ test('getAiFoundationDiagnostics exposes current flags, module states and lifecy
   ])
   assert.equal(diagnostics.flags.length, 3)
   assert.equal(diagnostics.flags[0]?.status, 'ENABLED')
+  assert.equal(diagnostics.flags[0]?.statusLabel, 'Habilitada')
   assert.equal(diagnostics.modules.length, 2)
   assert.equal(diagnostics.modules[0]?.module, 'IMAGE_ANALYSIS')
+  assert.equal(diagnostics.modules[0]?.moduleLabel, 'Analise de imagem')
   assert.equal(diagnostics.modules[0]?.current.status, 'ACCEPTED')
+  assert.equal(diagnostics.modules[0]?.current.statusLabel, 'Admitido')
   assert.equal(diagnostics.modules[0]?.current.policyReasonCode, 'ENABLED')
+  assert.equal(
+    diagnostics.modules[0]?.current.policyReasonLabel,
+    'Politica habilitada',
+  )
   assert.equal(
     diagnostics.modules[0]?.current.events.some(
       (event) => event.eventCode === 'COST_ESTIMATE_AVAILABLE',
     ),
     true,
   )
+  assert.equal(
+    diagnostics.modules[0]?.current.events[0]?.eventLabel,
+    'Estimativa de custo disponivel',
+  )
   assert.equal(diagnostics.modules[1]?.module, 'PREDICTIVE_INSIGHTS')
   assert.equal(diagnostics.modules[1]?.current.consentDecisionStatus, 'NOT_APPLICABLE')
+  assert.equal(
+    diagnostics.modules[1]?.current.consentDecisionStatusLabel,
+    'Consentimento nao exigido',
+  )
   assert.equal(diagnostics.lifecycleReference.accepted.status, 'ACCEPTED')
+  assert.equal(diagnostics.lifecycleReference.accepted.statusLabel, 'Admitido')
   assert.equal(diagnostics.lifecycleReference.queued.status, 'QUEUED')
   assert.equal(diagnostics.lifecycleReference.running.status, 'RUNNING')
   assert.equal(diagnostics.lifecycleReference.completed.status, 'COMPLETED')
@@ -86,6 +102,10 @@ test('getAiFoundationDiagnostics keeps distinct administrative scenarios for fla
 
   assert.equal(scenarios.get('FLAG_BLOCK')?.policyReasonCode, 'DISABLED_BY_POLICY')
   assert.equal(
+    scenarios.get('FLAG_BLOCK')?.policyReasonLabel,
+    'Bloqueado por politica',
+  )
+  assert.equal(
     scenarios.get('FLAG_BLOCK')?.events.some(
       (event) => event.eventCode === 'RAPID_SHUTDOWN_ACTIVE',
     ),
@@ -94,11 +114,24 @@ test('getAiFoundationDiagnostics keeps distinct administrative scenarios for fla
   assert.equal(scenarios.get('QUOTA_BLOCK')?.policyReasonCode, 'QUOTA_EXCEEDED')
   assert.equal(scenarios.get('CONSENT_BLOCK')?.consentReasonCode, 'CONSENT_MISSING')
   assert.equal(
+    scenarios.get('CONSENT_BLOCK')?.consentReasonLabel,
+    'Consentimento ausente',
+  )
+  assert.equal(
     scenarios.get('TEMPORARY_UNAVAILABLE')?.policyReasonCode,
     'TEMPORARILY_UNAVAILABLE',
   )
+  assert.equal(
+    scenarios.get('TEMPORARY_UNAVAILABLE')?.policyReasonLabel,
+    'Indisponibilidade temporaria',
+  )
   assert.equal(scenarios.get('NOT_SUPPORTED')?.gateReasonCode, 'NOT_SUPPORTED')
+  assert.equal(
+    scenarios.get('NOT_SUPPORTED')?.gateReasonLabel,
+    'Gating nao suportado',
+  )
   assert.equal(scenarios.get('CONTROLLED_FAILURE')?.status, 'FAILED')
+  assert.equal(scenarios.get('CONTROLLED_FAILURE')?.statusLabel, 'Falhou')
 })
 
 test('getAiFoundationDiagnostics keeps the multiunit snapshot fail-closed and avoids cross-unit leakage for unresolved local context', () => {

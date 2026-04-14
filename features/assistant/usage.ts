@@ -6,6 +6,13 @@ import { AppError } from '@/server/http/errors'
 import { canReadAiFoundationDiagnostics, getAiFoundationDiagnosticPermissions } from '@/features/ai/admin-diagnostics'
 import { resolveMultiUnitSessionContext } from '@/features/multiunit/context'
 import {
+  getTutorAssistantChannelLabel,
+  getTutorAssistantIntentLabel,
+  getTutorAssistantOperationalValidationStatusLabel,
+  getTutorAssistantResponseStatusLabel,
+  getTutorAssistantVoiceCoverageStatusLabel,
+} from './admin-taxonomy'
+import {
   tutorAssistantChannelSchema,
   tutorAssistantInteractionSummarySchema,
   tutorAssistantIntentSchema,
@@ -47,6 +54,7 @@ export interface TutorAssistantAdminDiagnostics {
   topIntents: Array<{
     count: number
     intent: TutorAssistantIntent
+    label: string
   }>
 }
 
@@ -211,20 +219,26 @@ function parseAssistantInteraction(
   const intent = inferredIntent.success
     ? inferredIntent.data
     : deriveIntentFromInferenceKey(inferenceKey)
+  const status = deriveResponseStatus({
+    action: auditLog.action,
+    inferenceKey,
+    intent,
+    replyPreview,
+    signals,
+  })
 
   return tutorAssistantInteractionSummarySchema.parse({
     channel: inferredChannel.success ? inferredChannel.data : null,
+    channelLabel: getTutorAssistantChannelLabel(
+      inferredChannel.success ? inferredChannel.data : null,
+    ),
     inferenceKey: inferenceKey ?? 'voice.tutor.unknown.interpret.v1',
     intent,
+    intentLabel: getTutorAssistantIntentLabel(intent),
     occurredAt: auditLog.occurredAt,
     replyPreview,
-    status: deriveResponseStatus({
-      action: auditLog.action,
-      inferenceKey,
-      intent,
-      replyPreview,
-      signals,
-    }),
+    status,
+    statusLabel: getTutorAssistantResponseStatusLabel(status),
   })
 }
 
@@ -412,8 +426,11 @@ function createOperationalValidationSnapshot(
     clarificationRatePercent,
     scheduleIntentCoverageLast30Days,
     status,
+    statusLabel: getTutorAssistantOperationalValidationStatusLabel(status),
     statusSummary,
     voiceCoverageStatus,
+    voiceCoverageStatusLabel:
+      getTutorAssistantVoiceCoverageStatusLabel(voiceCoverageStatus),
   })
 }
 
@@ -528,7 +545,11 @@ export function buildTutorAssistantAdminDiagnosticsFromAuditLogs(
       ).length,
     },
     topIntents: [...topIntents.entries()]
-      .map(([intent, count]) => ({ count, intent }))
+      .map(([intent, count]) => ({
+        count,
+        intent,
+        label: getTutorAssistantIntentLabel(intent),
+      }))
       .sort((left, right) => right.count - left.count)
       .slice(0, 4),
   }

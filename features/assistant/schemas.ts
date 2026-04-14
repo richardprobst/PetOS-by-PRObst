@@ -59,11 +59,14 @@ export type TutorAssistantAppointmentDraft = z.infer<
 
 export const tutorAssistantInteractionSummarySchema = z.object({
   channel: tutorAssistantChannelSchema.nullable().default(null),
+  channelLabel: optionalString,
   inferenceKey: z.string().trim().min(1),
   intent: tutorAssistantIntentSchema,
+  intentLabel: z.string().trim().min(1),
   occurredAt: z.coerce.date(),
   replyPreview: optionalString,
   status: tutorAssistantResponseStatusSchema,
+  statusLabel: z.string().trim().min(1),
 })
 
 export type TutorAssistantInteractionSummary = z.infer<
@@ -143,8 +146,10 @@ export const tutorAssistantOperationalValidationSnapshotSchema = z.object({
   clarificationRatePercent: z.number().min(0).max(100),
   scheduleIntentCoverageLast30Days: z.number().int().nonnegative(),
   status: tutorAssistantOperationalValidationStatusSchema,
+  statusLabel: z.string().trim().min(1),
   statusSummary: z.string().trim().min(1),
   voiceCoverageStatus: tutorAssistantOperationalValidationVoiceCoverageSchema,
+  voiceCoverageStatusLabel: z.string().trim().min(1),
 })
 
 export type TutorAssistantOperationalValidationSnapshot = z.infer<

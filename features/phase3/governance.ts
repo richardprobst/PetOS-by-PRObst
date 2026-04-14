@@ -2,6 +2,9 @@ import {
   getAiFoundationDiagnostics,
   type AiFoundationDiagnosticsSnapshot,
 } from '@/features/ai/admin-diagnostics'
+import {
+  getAiFlagStatusLabel,
+} from '@/features/ai/admin-taxonomy'
 import type { AiQuotaEnvironment } from '@/features/ai/policy'
 import { getMultiUnitFoundationDiagnostics } from '@/features/multiunit/admin-diagnostics'
 import type { AuthenticatedUserData } from '@/server/auth/types'
@@ -19,11 +22,17 @@ type GovernanceAlertSource =
 
 export interface Phase3GovernanceModuleSummary {
   currentStatus: string
+  currentStatusLabel: string
   fallbackStatus: string
+  fallbackStatusLabel: string
   gateReasonCode: string | null
+  gateReasonLabel: string
   module: 'IMAGE_ANALYSIS' | 'PREDICTIVE_INSIGHTS'
+  moduleLabel: string
   policyReasonCode: string | null
+  policyReasonLabel: string
   quotaStatus: string | null
+  quotaStatusLabel: string
 }
 
 export interface Phase3GovernanceImageSummary {
@@ -99,11 +108,14 @@ export interface Phase3GovernanceSnapshot {
   currentState: {
     failClosed: true
     globalFlagStatus: string | null
+    globalFlagStatusLabel: string
     imageFlagStatus: string | null
+    imageFlagStatusLabel: string
     modules: Phase3GovernanceModuleSummary[]
     multiUnitFailClosed: boolean
     multiUnitSessionStatus: string
     predictiveFlagStatus: string | null
+    predictiveFlagStatusLabel: string
   }
   foundationGeneratedAt: Date
   generatedAt: Date
@@ -165,11 +177,18 @@ function createModuleSummaries(
     .filter(isPhase3GovernanceModuleSummary)
     .map((moduleDiagnostic) => ({
       currentStatus: moduleDiagnostic.current.status,
+      currentStatusLabel: moduleDiagnostic.current.statusLabel,
       fallbackStatus: moduleDiagnostic.current.fallbackStatus,
+      fallbackStatusLabel: moduleDiagnostic.current.fallbackStatusLabel,
       gateReasonCode: moduleDiagnostic.current.gateReasonCode,
+      gateReasonLabel: moduleDiagnostic.current.gateReasonLabel,
       module: moduleDiagnostic.module,
+      moduleLabel: moduleDiagnostic.moduleLabel,
       policyReasonCode: moduleDiagnostic.current.policyReasonCode,
+      policyReasonLabel: moduleDiagnostic.current.policyReasonLabel,
       quotaStatus: moduleDiagnostic.current.moduleQuota?.status ?? null,
+      quotaStatusLabel:
+        moduleDiagnostic.current.moduleQuota?.statusLabel ?? 'Nao avaliada',
     }))
 }
 
@@ -744,13 +763,22 @@ export async function getPhase3GovernanceSnapshot(
     currentState: {
       failClosed: true,
       globalFlagStatus: findFlagStatus(foundation, 'ai.enabled'),
+      globalFlagStatusLabel: getAiFlagStatusLabel(
+        findFlagStatus(foundation, 'ai.enabled'),
+      ),
       imageFlagStatus: findFlagStatus(foundation, 'ai.imageAnalysis.enabled'),
+      imageFlagStatusLabel: getAiFlagStatusLabel(
+        findFlagStatus(foundation, 'ai.imageAnalysis.enabled'),
+      ),
       modules: createModuleSummaries(foundation),
       multiUnitFailClosed: multiUnit.access.failClosed,
       multiUnitSessionStatus: multiUnit.session.status,
       predictiveFlagStatus: findFlagStatus(
         foundation,
         'ai.predictiveInsights.enabled',
+      ),
+      predictiveFlagStatusLabel: getAiFlagStatusLabel(
+        findFlagStatus(foundation, 'ai.predictiveInsights.enabled'),
       ),
     },
     foundationGeneratedAt: foundation.generatedAt,

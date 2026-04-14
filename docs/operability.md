@@ -69,6 +69,19 @@ O bloco `lifecycle` resume o modo atual do sistema sem expor segredos:
 
 Nao ha stack trace nem segredos na resposta.
 
+## Diagnostico administrativo da Fase 3
+
+As leituras internas expostas em `/admin/sistema` e nas rotas:
+
+- `GET /api/admin/system/phase3-foundation-diagnostics`
+- `GET /api/admin/system/phase3-governance`
+
+devem seguir a mesma regra de verdade operacional:
+
+- label humana como fonte primaria para operador;
+- enum ou codigo tecnico apenas como apoio secundario;
+- sem usar `policyReasonCode`, `gateReasonCode`, `fallbackStatus`, `providerStatus`, `jobStatus` e afins como mensagem principal.
+
 ## Preflight do instalador
 
 Quando a fundacao do instalador integrado estiver habilitada de forma explicita por ambiente, o sistema expoe:

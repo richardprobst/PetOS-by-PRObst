@@ -317,21 +317,6 @@ function getAssistantInteractionTone(status: string) {
   return 'warning' as const
 }
 
-function getAssistantIntentLabel(intent: string) {
-  const labels: Record<string, string> = {
-    HELP: 'Ajuda',
-    QUERY_FINANCE_SUMMARY: 'Financeiro',
-    QUERY_PENDING_DOCUMENTS: 'Documentos',
-    QUERY_REPORT_CARDS: 'Report cards',
-    QUERY_UPCOMING_APPOINTMENTS: 'Agenda',
-    QUERY_WAITLIST_STATUS: 'Waitlist',
-    SCHEDULE_APPOINTMENT: 'Agendamento',
-    UNKNOWN: 'Nao identificado',
-  }
-
-  return labels[intent] ?? intent
-}
-
 export default async function SystemAdminPage({ searchParams }: SystemPageProps) {
   const actor = await requireInternalAreaUser('/admin/sistema')
   const params = await searchParams
@@ -506,13 +491,13 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <StatusBadge tone={getAiDiagnosticTone(phase3Governance.currentState.globalFlagStatus)}>
-                    IA global {phase3Governance.currentState.globalFlagStatus ?? 'SEM_STATUS'}
+                    IA global {phase3Governance.currentState.globalFlagStatusLabel}
                   </StatusBadge>
                   <StatusBadge tone={getAiDiagnosticTone(phase3Governance.currentState.imageFlagStatus)}>
-                    imagem {phase3Governance.currentState.imageFlagStatus ?? 'SEM_STATUS'}
+                    imagem {phase3Governance.currentState.imageFlagStatusLabel}
                   </StatusBadge>
                   <StatusBadge tone={getAiDiagnosticTone(phase3Governance.currentState.predictiveFlagStatus)}>
-                    preditivo {phase3Governance.currentState.predictiveFlagStatus ?? 'SEM_STATUS'}
+                    preditivo {phase3Governance.currentState.predictiveFlagStatusLabel}
                   </StatusBadge>
                   <StatusBadge tone={getAiDiagnosticTone(phase3Governance.currentState.multiUnitSessionStatus)}>
                     multiunidade {phase3Governance.currentState.multiUnitSessionStatus}
@@ -541,16 +526,21 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                       key={module.module}
                     >
                       <div className="flex flex-wrap gap-2">
-                        <StatusBadge tone="info">{module.module}</StatusBadge>
+                        <StatusBadge tone="info">{module.moduleLabel}</StatusBadge>
                         <StatusBadge tone={getAiDiagnosticTone(module.currentStatus)}>
-                          {module.currentStatus}
+                          {module.currentStatusLabel}
                         </StatusBadge>
                         <StatusBadge tone={getAiDiagnosticTone(module.quotaStatus)}>
-                          quota {module.quotaStatus ?? 'na'}
+                          quota {module.quotaStatusLabel}
                         </StatusBadge>
                       </div>
                       <p className="mt-3 text-sm leading-6 text-[color:var(--foreground-soft)]">
-                        policy {module.policyReasonCode ?? 'na'} / gating {module.gateReasonCode ?? 'na'} / fallback {module.fallbackStatus}
+                        politica {module.policyReasonLabel} / gating {module.gateReasonLabel} / fallback{' '}
+                        {module.fallbackStatusLabel}
+                      </p>
+                      <p className="mt-2 text-xs leading-5 text-[color:var(--foreground-soft)]">
+                        codigos internos: policy {module.policyReasonCode ?? 'na'} / gating{' '}
+                        {module.gateReasonCode ?? 'na'} / fallback {module.fallbackStatus}
                       </p>
                     </div>
                   ))}
@@ -655,7 +645,7 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <StatusBadge tone={getAiDiagnosticTone(flag.status)}>
-                      {flag.status}
+                      {flag.statusLabel}
                     </StatusBadge>
                     <StatusBadge tone="info">
                       {flag.normalizedValue === null ? 'sem valor' : String(flag.normalizedValue)}
@@ -825,31 +815,37 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                   key={moduleDiagnostic.module}
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge tone="info">{moduleDiagnostic.module}</StatusBadge>
+                    <StatusBadge tone="info">{moduleDiagnostic.moduleLabel}</StatusBadge>
                     <StatusBadge tone={getAiDiagnosticTone(moduleDiagnostic.current.status)}>
-                      {moduleDiagnostic.current.status}
+                      {moduleDiagnostic.current.statusLabel}
                     </StatusBadge>
                     <StatusBadge tone={getAiDiagnosticTone(moduleDiagnostic.current.policyReasonCode)}>
-                      {moduleDiagnostic.current.policyReasonCode ?? 'sem policy'}
+                      {moduleDiagnostic.current.policyReasonLabel}
                     </StatusBadge>
                   </div>
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <div className="space-y-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
                       <p>
-                        gating {moduleDiagnostic.current.gateReasonCode ?? 'nao avaliado'} / quota{' '}
-                        {moduleDiagnostic.current.moduleQuota?.status ?? 'nao avaliada'}
+                        gating {moduleDiagnostic.current.gateReasonLabel} / quota{' '}
+                        {moduleDiagnostic.current.moduleQuota?.statusLabel ?? 'Nao avaliada'}
                       </p>
                       <p>
-                        consentimento {moduleDiagnostic.current.consentDecisionStatus} / fallback{' '}
-                        {moduleDiagnostic.current.fallbackStatus}
+                        consentimento {moduleDiagnostic.current.consentDecisionStatusLabel} / fallback{' '}
+                        {moduleDiagnostic.current.fallbackStatusLabel}
                       </p>
                       <p>
-                        custo {moduleDiagnostic.current.costStatus} / operacional{' '}
-                        {moduleDiagnostic.current.operationalStatus}
+                        custo {moduleDiagnostic.current.costStatusLabel} / operacional{' '}
+                        {moduleDiagnostic.current.operationalStatusLabel}
                       </p>
                       <p>
                         retention {moduleDiagnostic.current.retentionPolicyVersion} / fail-closed{' '}
                         {moduleDiagnostic.current.failClosed ? 'ativo' : 'invalido'}
+                      </p>
+                      <p className="text-xs leading-5">
+                        codigos internos: policy {moduleDiagnostic.current.policyReasonCode ?? 'na'} / gating{' '}
+                        {moduleDiagnostic.current.gateReasonCode ?? 'na'} / consentimento{' '}
+                        {moduleDiagnostic.current.consentReasonCode} / fallback{' '}
+                        {moduleDiagnostic.current.fallbackStatus}
                       </p>
                     </div>
                     <div className="space-y-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
@@ -877,7 +873,7 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                         key={`${moduleDiagnostic.module}-${event.eventCode}`}
                         tone={getAiDiagnosticTone(event.severity)}
                       >
-                        {event.eventCode}
+                        {event.eventLabel}
                       </StatusBadge>
                     ))}
                   </div>
@@ -896,10 +892,10 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <StatusBadge tone={getAiDiagnosticTone(scenario.envelope.status)}>
-                      {scenario.envelope.status}
+                      {scenario.envelope.statusLabel}
                     </StatusBadge>
                     <StatusBadge tone={getAiDiagnosticTone(scenario.envelope.policyReasonCode)}>
-                      {scenario.envelope.policyReasonCode ?? 'sem policy'}
+                      {scenario.envelope.policyReasonLabel}
                     </StatusBadge>
                   </div>
                   <p className="mt-3 text-sm leading-6 text-[color:var(--foreground-soft)]">
@@ -907,10 +903,15 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                   </p>
                   {scenario.envelope.events[0] ? (
                     <p className="mt-3 text-sm leading-6 text-[color:var(--foreground-soft)]">
-                      evento {scenario.envelope.events[0].eventCode} / proximo passo{' '}
+                      evento {scenario.envelope.events[0].eventLabel} / proximo passo{' '}
                       {scenario.envelope.events[0].nextStep}
                     </p>
                   ) : null}
+                  <p className="mt-2 text-xs leading-5 text-[color:var(--foreground-soft)]">
+                    codigos internos: status {scenario.envelope.status} / policy{' '}
+                    {scenario.envelope.policyReasonCode ?? 'na'} / fallback{' '}
+                    {scenario.envelope.fallbackStatus}
+                  </p>
                 </article>
               ))}
             </div>
@@ -1000,14 +1001,14 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                       assistantDiagnostics.operationalValidation.status,
                     )}
                   >
-                    {assistantDiagnostics.operationalValidation.status}
+                    {assistantDiagnostics.operationalValidation.statusLabel}
                   </StatusBadge>
                   <StatusBadge
                     tone={getAiDiagnosticTone(
                       assistantDiagnostics.operationalValidation.voiceCoverageStatus,
                     )}
                   >
-                    voz {assistantDiagnostics.operationalValidation.voiceCoverageStatus}
+                    voz {assistantDiagnostics.operationalValidation.voiceCoverageStatusLabel}
                   </StatusBadge>
                 </div>
                 <p className="mt-4 text-sm leading-6 text-[color:var(--foreground-soft)]">
@@ -1096,7 +1097,7 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                         key={item.intent}
                       >
                         <div className="flex flex-wrap items-center gap-2">
-                          <StatusBadge tone="info">{getAssistantIntentLabel(item.intent)}</StatusBadge>
+                          <StatusBadge tone="info">{item.label}</StatusBadge>
                           <span className="text-sm font-semibold text-[color:var(--foreground)]">
                             {item.count}
                           </span>
@@ -1124,13 +1125,15 @@ export default async function SystemAdminPage({ searchParams }: SystemPageProps)
                       >
                         <div className="flex flex-wrap gap-2">
                           <StatusBadge tone={getAssistantInteractionTone(interaction.status)}>
-                            {interaction.status}
+                            {interaction.statusLabel}
                           </StatusBadge>
                           <StatusBadge tone="info">
-                            {getAssistantIntentLabel(interaction.intent)}
+                            {interaction.intentLabel}
                           </StatusBadge>
                           {interaction.channel ? (
-                            <StatusBadge tone="neutral">{interaction.channel}</StatusBadge>
+                            <StatusBadge tone="neutral">
+                              {interaction.channelLabel ?? interaction.channel}
+                            </StatusBadge>
                           ) : null}
                         </div>
                         <p className="mt-2 text-xs leading-5 text-[color:var(--foreground-soft)]">
