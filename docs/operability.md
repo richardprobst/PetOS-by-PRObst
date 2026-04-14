@@ -29,8 +29,9 @@ Leitura rapida:
 
 - `ops:preflight` valida ambiente e configuracao minima
 - `ops:check` valida ambiente, banco, migrations e seed
-- `ops:preflight:staging` e `ops:check:staging` assumem variaveis injetadas pelo host/CI
+- `ops:preflight:staging` e `ops:check:staging` assumem variaveis injetadas pelo host/CI e nao carregam `.env` local silenciosamente
 - os sufixos `:file` servem para simular staging localmente com `.env.staging`
+- `check:all` reaproveita `ops:check`, entao o gate automatizado tambem exige banco, migrations, seed e lifecycle coerentes
 - falha em `database` normalmente aponta para `DATABASE_URL`, rede ou MySQL indisponivel
 - falha em `migrations` normalmente aponta para bootstrap incompleto do Prisma
 - falha em `seed` normalmente aponta para banco sem massa minima para auth e operacao

@@ -140,7 +140,7 @@ Atalho unico:
 npm run check:all
 ```
 
-Esse atalho ja inclui `npm run ops:preflight` antes dos checks de Prisma, tipagem, lint, testes e build.
+Esse atalho ja inclui `npm run ops:check` antes dos checks de Prisma, tipagem, lint, testes e build, entao tambem valida banco, migrations, seed e lifecycle operacional.
 
 ## 8. Proxima rodada manual
 

@@ -336,7 +336,7 @@ function createUpdateEngineStub(options?: {
 
   const transactionClient = {
     $queryRaw: async () => [{ 1: 1 }],
-    $queryRawUnsafe: async () => [{ table: '_prisma_migrations' }],
+    $executeRawUnsafe: async () => 0,
     accessProfile: {
       count: async () => 1,
     },

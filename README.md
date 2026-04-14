@@ -244,8 +244,8 @@ Guia completo:
 - `next.config.ts` e o arquivo de configuracao ativo do Next.js.
 - o build de producao usa `output: 'standalone'` para facilitar ambientes hospedados sem amarrar um provedor.
 - `npm run start` ja sobe o servidor `standalone` gerado pelo build de producao, carregando `.env.local` e `.env` quando existirem; `start:legacy` ficou apenas para diagnostico local quando necessario.
-- `npm run check:all` e o gate automatizado recomendado para a baseline tecnica atual.
-- `ops:preflight:staging` e `ops:check:staging` assumem variaveis injetadas pelo ambiente hospedado; os sufixos `:file` servem para ensaio local com `.env.staging`.
+- `npm run check:all` e o gate automatizado recomendado para a baseline tecnica atual e reaproveita `ops:check`, nao um preflight sem banco.
+- `ops:preflight:staging` e `ops:check:staging` assumem variaveis injetadas pelo ambiente hospedado e nao carregam `.env` local silenciosamente; os sufixos `:file` servem para ensaio local com `.env.staging`.
 - Regras criticas ficam no servidor.
 - Route Handlers e server actions usam validacao Zod.
 - Prisma concentra schema, migrations e acesso a dados.

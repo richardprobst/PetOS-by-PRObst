@@ -30,7 +30,7 @@ export interface InstallerPreflightSnapshot {
 type InstallerReadinessDatabaseClient = Pick<
   PrismaClient,
   | '$queryRaw'
-  | '$queryRawUnsafe'
+  | '$executeRawUnsafe'
   | 'accessProfile'
   | 'operationalStatus'
   | 'permission'

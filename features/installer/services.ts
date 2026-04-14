@@ -14,7 +14,7 @@ import type { InstallerSetupDraftInput } from './schemas'
 type InstallerServicesDatabaseClient = Pick<
   PrismaClient,
   | '$queryRaw'
-  | '$queryRawUnsafe'
+  | '$executeRawUnsafe'
   | 'accessProfile'
   | 'auditLog'
   | 'client'

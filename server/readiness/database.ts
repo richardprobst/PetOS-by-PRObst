@@ -23,15 +23,37 @@ export interface CoreSeedSnapshot {
 
 export type ReadinessDatabaseClient = Pick<
   PrismaClient,
-  '$queryRaw' | '$queryRawUnsafe' | 'accessProfile' | 'operationalStatus' | 'permission' | 'unit' | 'unitSetting'
+  '$executeRawUnsafe' | '$queryRaw' | 'accessProfile' | 'operationalStatus' | 'permission' | 'unit' | 'unitSetting'
 >
 
-export async function prismaMigrationsTableExists(prisma: Pick<PrismaClient, '$queryRawUnsafe'>) {
-  const rows = await prisma.$queryRawUnsafe<Array<Record<string, string>>>(
-    "SHOW TABLES LIKE '_prisma_migrations'",
-  )
+function isMissingMigrationsTableError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false
+  }
 
-  return rows.length > 0
+  const code =
+    typeof error === 'object' && error && 'code' in error
+      ? String((error as { code?: unknown }).code)
+      : null
+
+  if (code !== 'P2010') {
+    return false
+  }
+
+  return error.message.includes('_prisma_migrations') && error.message.includes("doesn't exist")
+}
+
+export async function prismaMigrationsTableExists(prisma: Pick<PrismaClient, '$executeRawUnsafe'>) {
+  try {
+    await prisma.$executeRawUnsafe('SELECT 1 FROM `_prisma_migrations` LIMIT 1')
+    return true
+  } catch (error) {
+    if (isMissingMigrationsTableError(error)) {
+      return false
+    }
+
+    throw error
+  }
 }
 
 export async function inspectCoreSeedSnapshot(

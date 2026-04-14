@@ -82,7 +82,18 @@ function createInstallerStub(overrides?: {
 
       return [{ 1: 1 }]
     },
-    $queryRawUnsafe: async () => (overrides?.hasMigrations === false ? [] : [{ table: '_prisma_migrations' }]),
+    $executeRawUnsafe: async () => {
+      if (overrides?.hasMigrations === false) {
+        throw Object.assign(new Error("Table '_prisma_migrations' doesn't exist"), {
+          code: 'P2010',
+          message:
+            "Invalid `prisma.$executeRawUnsafe()` invocation:\n\nRaw query failed. Code: `1146`. Message: `Table 'petos._prisma_migrations' doesn't exist`",
+          name: 'PrismaClientKnownRequestError',
+        })
+      }
+
+      return 0
+    },
     accessProfile: {
       count: async () => overrides?.accessProfileCount ?? 0,
     },

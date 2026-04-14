@@ -31,7 +31,7 @@ import {
 type UpdatePreflightDatabaseClient = Pick<
   PrismaClient,
   | '$queryRaw'
-  | '$queryRawUnsafe'
+  | '$executeRawUnsafe'
   | 'accessProfile'
   | 'operationalStatus'
   | 'permission'

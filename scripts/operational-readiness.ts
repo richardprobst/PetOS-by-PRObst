@@ -1,5 +1,5 @@
 import { loadEnvFile } from 'node:process'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../server/db/prisma'
 import { getEnv, type Environment } from '../server/env'
 import { collectDatabaseReadinessChecks, deriveReadinessStatus } from '../server/readiness/database'
 import { evaluateStagingEnvironment } from '../server/readiness/staging'
@@ -76,7 +76,7 @@ function resolveEnvFiles(options: CommandOptions) {
   }
 
   if (options.mode === 'staging') {
-    return ['.env.staging', '.env.production', '.env']
+    return []
   }
 
   return ['.env.local', '.env']
@@ -139,8 +139,6 @@ async function main() {
     logStatus('ok', 'Database checks skipped by explicit flag.')
     return
   }
-
-  const prisma = new PrismaClient()
 
   try {
     const checks = await collectDatabaseReadinessChecks(prisma)

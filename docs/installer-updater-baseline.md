@@ -68,7 +68,7 @@ Continuam exigindo acao humana:
 
 Esta frente pode ser considerada pronta neste marco quando:
 
-1. `npm run check:all` estiver verde
+1. `npm run check:all` estiver verde, incluindo `ops:check` com banco, migrations, seed e lifecycle coerentes
 2. a documentacao desta camada estiver sincronizada
 3. o smoke controlado em [docs/installer-updater-smoke-checklist.md](/C:/Users/casaprobst/PetOS-by-PRObst-main/docs/installer-updater-smoke-checklist.md) estiver disponivel
 4. nao houver drift obvio entre `/setup`, `/admin/sistema`, runtime state e manifest

@@ -36,7 +36,7 @@ export interface SystemRuntimeSnapshot {
 type SystemRuntimeDatabaseClient = Pick<
   PrismaClient,
   | '$queryRaw'
-  | '$queryRawUnsafe'
+  | '$executeRawUnsafe'
   | 'accessProfile'
   | 'operationalStatus'
   | 'permission'
