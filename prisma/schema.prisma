@@ -685,6 +685,7 @@ model InventoryMovement {
   productId       String                @map("produto_id") @db.VarChar(191)
   posSaleId       String?               @map("venda_pdv_id") @db.VarChar(191)
   posSaleItemId   String?               @map("item_venda_pdv_id") @db.VarChar(191)
+  saleOutPosSaleItemId String?          @map("ancora_saida_item_venda_pdv_id") @db.VarChar(191)
   createdByUserId String?               @map("usuario_criacao_id") @db.VarChar(191)
   movementType    InventoryMovementType @map("tipo_movimento")
   quantity        Decimal               @map("quantidade") @db.Decimal(10, 3)
@@ -697,13 +698,15 @@ model InventoryMovement {
   unit            Unit                  @relation(fields: [unitId], references: [id])
   product         Product               @relation(fields: [productId], references: [id])
   posSale         PosSale?              @relation(fields: [posSaleId], references: [id])
-  posSaleItem     PosSaleItem?          @relation(fields: [posSaleItemId], references: [id])
+  posSaleItem     PosSaleItem?          @relation("PosSaleItemInventoryMovements", fields: [posSaleItemId], references: [id])
+  saleOutPosSaleItem PosSaleItem?       @relation("PosSaleItemSaleOutAnchorInventoryMovements", fields: [saleOutPosSaleItemId], references: [id])
   createdBy       User?                 @relation("InventoryMovementCreatedByUser", fields: [createdByUserId], references: [id])
 
   @@index([unitId, occurredAt], map: "MovimentacoesEstoque_unidade_id_data_movimento_idx")
   @@index([productId, occurredAt], map: "MovimentacoesEstoque_produto_id_data_movimento_idx")
   @@index([posSaleId], map: "MovimentacoesEstoque_venda_pdv_id_idx")
   @@index([posSaleItemId], map: "MovimentacoesEstoque_item_venda_pdv_id_idx")
+  @@unique([saleOutPosSaleItemId], map: "MovimentacoesEstoque_ancora_saida_item_venda_pdv_id_key")
   @@index([createdByUserId], map: "MovimentacoesEstoque_usuario_criacao_id_idx")
   @@map("MovimentacoesEstoque")
 }
@@ -727,7 +730,8 @@ model PosSale {
   client                Client?                @relation(fields: [clientId], references: [userId])
   createdBy             User?                  @relation("PosSaleCreatedByUser", fields: [createdByUserId], references: [id])
   items                 PosSaleItem[]
-  financialTransactions FinancialTransaction[]
+  financialTransactions FinancialTransaction[] @relation("PosSaleFinancialTransactions")
+  revenueAnchoredFinancialTransactions FinancialTransaction[] @relation("PosSaleRevenueAnchorTransactions")
   inventoryMovements    InventoryMovement[]
 
   @@index([unitId, status, createdAt], map: "VendasPDV_unidade_id_status_data_criacao_idx")
@@ -750,7 +754,8 @@ model PosSaleItem {
   updatedAt           DateTime            @updatedAt @map("data_atualizacao")
   sale                PosSale             @relation(fields: [saleId], references: [id])
   product             Product             @relation(fields: [productId], references: [id])
-  inventoryMovements  InventoryMovement[]
+  inventoryMovements  InventoryMovement[] @relation("PosSaleItemInventoryMovements")
+  saleOutAnchorInventoryMovements InventoryMovement[] @relation("PosSaleItemSaleOutAnchorInventoryMovements")
 
   @@index([saleId], map: "ItensVendaPDV_venda_pdv_id_idx")
   @@index([productId], map: "ItensVendaPDV_produto_id_idx")
@@ -1149,6 +1154,7 @@ model FinancialTransaction {
   unitId              String                   @map("unidade_id") @db.VarChar(191)
   appointmentId       String?                  @map("agendamento_id") @db.VarChar(191)
   posSaleId           String?                  @map("venda_pdv_id") @db.VarChar(191)
+  revenuePosSaleId    String?                  @map("ancora_receita_venda_pdv_id") @db.VarChar(191)
   createdByUserId     String?                  @map("usuario_id") @db.VarChar(191)
   transactionType     FinancialTransactionType @map("tipo_transacao")
   description         String                   @map("descricao") @db.VarChar(255)
@@ -1163,7 +1169,8 @@ model FinancialTransaction {
   updatedAt           DateTime                 @updatedAt @map("data_atualizacao")
   unit                Unit                     @relation(fields: [unitId], references: [id])
   appointment         Appointment?             @relation(fields: [appointmentId], references: [id])
-  posSale             PosSale?                 @relation(fields: [posSaleId], references: [id])
+  posSale             PosSale?                 @relation("PosSaleFinancialTransactions", fields: [posSaleId], references: [id])
+  revenuePosSale      PosSale?                 @relation("PosSaleRevenueAnchorTransactions", fields: [revenuePosSaleId], references: [id])
   createdBy           User?                    @relation("FinancialTransactionCreatedBy", fields: [createdByUserId], references: [id])
   deposit             Deposit?                 @relation("DepositFinancialTransaction")
   refund              Refund?                  @relation("RefundFinancialTransaction")
@@ -1174,8 +1181,9 @@ model FinancialTransaction {
   @@index([unitId, occurredAt], map: "TransacoesFinanceiras_unidade_id_data_transacao_idx")
   @@index([appointmentId], map: "TransacoesFinanceiras_agendamento_id_idx")
   @@index([posSaleId], map: "TransacoesFinanceiras_venda_pdv_id_idx")
+  @@unique([revenuePosSaleId], map: "TransacoesFinanceiras_ancora_receita_venda_pdv_id_key")
   @@index([createdByUserId], map: "TransacoesFinanceiras_usuario_id_idx")
-  @@index([integrationProvider, externalReference], map: "TransacoesFinanceiras_provedor_integracao_referencia_externa_idx")
+  @@unique([integrationProvider, externalReference], map: "TransacoesFinanceiras_provedor_integracao_referencia_externa_key")
   @@map("TransacoesFinanceiras")
 }
 
@@ -1388,6 +1396,7 @@ model Deposit {
   clientCredits          ClientCredit[]
   refunds                Refund[]              @relation("RefundOriginDeposit")
 
+  @@unique([externalReference], map: "Depositos_referencia_externa_key")
   @@index([unitId, status], map: "Depositos_unidade_id_status_idx")
   @@index([clientId], map: "Depositos_cliente_id_idx")
   @@index([appointmentId], map: "Depositos_agendamento_id_idx")
@@ -1420,6 +1429,7 @@ model Refund {
   createdBy                    User?                 @relation("RefundCreatedByUser", fields: [createdByUserId], references: [id])
   clientCredits                ClientCredit[]
 
+  @@unique([externalReference], map: "Reembolsos_referencia_externa_key")
   @@index([unitId, status], map: "Reembolsos_unidade_id_status_idx")
   @@index([clientId], map: "Reembolsos_cliente_id_idx")
   @@index([appointmentId], map: "Reembolsos_agendamento_id_idx")
@@ -1433,8 +1443,8 @@ model ClientCredit {
   id              String           @id @default(cuid()) @db.VarChar(191)
   unitId          String           @map("unidade_id") @db.VarChar(191)
   clientId        String           @map("cliente_id") @db.VarChar(191)
-  originRefundId  String?          @map("reembolso_origem_id") @db.VarChar(191)
-  originDepositId String?          @map("deposito_origem_id") @db.VarChar(191)
+  originRefundId  String?          @unique(map: "CreditosCliente_reembolso_origem_id_key") @map("reembolso_origem_id") @db.VarChar(191)
+  originDepositId String?          @unique(map: "CreditosCliente_deposito_origem_id_key") @map("deposito_origem_id") @db.VarChar(191)
   createdByUserId String?          @map("usuario_criacao_id") @db.VarChar(191)
   originType      CreditOriginType @map("tipo_origem")
   totalAmount     Decimal          @map("valor_total") @db.Decimal(10, 2)
@@ -1452,8 +1462,6 @@ model ClientCredit {
 
   @@index([unitId], map: "CreditosCliente_unidade_id_idx")
   @@index([clientId], map: "CreditosCliente_cliente_id_idx")
-  @@index([originRefundId], map: "CreditosCliente_reembolso_origem_id_idx")
-  @@index([originDepositId], map: "CreditosCliente_deposito_origem_id_idx")
   @@index([createdByUserId], map: "CreditosCliente_usuario_criacao_id_idx")
   @@map("CreditosCliente")
 }
@@ -1649,7 +1657,7 @@ model FiscalDocument {
   @@index([appointmentId], map: "DocumentosFiscais_agendamento_id_idx")
   @@index([financialTransactionId], map: "DocumentosFiscais_transacao_financeira_id_idx")
   @@index([createdByUserId], map: "DocumentosFiscais_usuario_criacao_id_idx")
-  @@index([providerName, externalReference], map: "DocumentosFiscais_provedor_nome_referencia_externa_idx")
+  @@unique([providerName, externalReference], map: "DocumentosFiscais_provedor_nome_referencia_externa_key")
   @@map("DocumentosFiscais")
 }
 

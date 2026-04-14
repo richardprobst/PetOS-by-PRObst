@@ -7,6 +7,7 @@ import {
 } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
 import { prisma } from '@/server/db/prisma'
+import { runSerializableTransaction } from '@/server/db/transactions'
 import { AppError } from '@/server/http/errors'
 import {
   assertActorCanAccessLocalUnitRecord,
@@ -25,6 +26,11 @@ import {
   deriveDepositStatusFromPaymentStatus,
   derivePaymentStatusFromDepositState,
 } from '@/features/finance/domain'
+import { ensureFinancialTransactionExternalReferenceIsUnique } from '@/features/finance/transaction-reference'
+import {
+  loadUnitSettings,
+  readNumericUnitSetting,
+} from '@/server/settings/unit-settings'
 import type {
   CreateClientCreditInput,
   CreateDepositInput,
@@ -149,6 +155,12 @@ type ClientReference = {
   unitId: string | null
 }
 
+type FinanceOriginReference = {
+  clientId?: string | null
+  label: string
+  unitId: string | null
+}
+
 export function resolveFinanceReadUnitId(
   actor: AuthenticatedUserData,
   requestedUnitId?: string | null,
@@ -176,25 +188,18 @@ function addMinutes(date: Date, minutes: number) {
 }
 
 async function getUnitFinancialDefaults(client: FinanceMutationClient, unitId: string) {
-  const settings = await client.unitSetting.findMany({
-    where: {
-      unitId,
-      key: {
-        in: [financialSettingKeys.creditValidityDays, financialSettingKeys.depositExpirationMinutes],
-      },
-    },
-  })
-
-  const readNumericSetting = (key: string, fallbackValue: number) => {
-    const value = settings.find((setting) => setting.key === key)?.value
-    const parsedValue = Number(value)
-
-    return Number.isFinite(parsedValue) ? parsedValue : fallbackValue
-  }
+  const settings = await loadUnitSettings(client, unitId, [
+    financialSettingKeys.creditValidityDays,
+    financialSettingKeys.depositExpirationMinutes,
+  ])
 
   return {
-    creditValidityDays: readNumericSetting(financialSettingKeys.creditValidityDays, 180),
-    depositExpirationMinutes: readNumericSetting(financialSettingKeys.depositExpirationMinutes, 60),
+    creditValidityDays: readNumericUnitSetting(settings, financialSettingKeys.creditValidityDays, 180),
+    depositExpirationMinutes: readNumericUnitSetting(
+      settings,
+      financialSettingKeys.depositExpirationMinutes,
+      60,
+    ),
   }
 }
 
@@ -314,6 +319,23 @@ async function getDepositOrThrow(actor: AuthenticatedUserData, depositId: string
   return deposit
 }
 
+async function getRefundOrThrow(actor: AuthenticatedUserData, refundId: string) {
+  const refund = await prisma.refund.findUnique({
+    where: {
+      id: refundId,
+    },
+    include: refundDetailsInclude,
+  })
+
+  if (!refund) {
+    throw new AppError('NOT_FOUND', 404, 'Refund not found.')
+  }
+
+  assertActorCanReadFinanceRecordInScope(actor, refund.unitId)
+
+  return refund
+}
+
 async function getClientCreditOrThrow(actor: AuthenticatedUserData, creditId: string) {
   const credit = await prisma.clientCredit.findUnique({
     where: {
@@ -338,6 +360,211 @@ function resolveFinanceUnitId(
   clientUnitId: string | null,
 ) {
   return resolveScopedUnitId(actor, explicitUnitId ?? appointmentUnitId ?? clientUnitId ?? null)
+}
+
+function assertFinanceUnitConsistency(
+  targetUnitId: string,
+  origins: FinanceOriginReference[],
+) {
+  for (const origin of origins) {
+    if (!origin.unitId) {
+      continue
+    }
+
+    if (origin.unitId !== targetUnitId) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        `The selected ${origin.label} belongs to another unit and cannot be linked to this financial record.`,
+      )
+    }
+  }
+}
+
+function assertFinanceClientConsistency(
+  targetClientId: string,
+  origins: Array<{ clientId?: string | null; label: string }>,
+) {
+  for (const origin of origins) {
+    if (!origin.clientId) {
+      continue
+    }
+
+    if (origin.clientId !== targetClientId) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        `The selected ${origin.label} belongs to another client and cannot be linked to this financial record.`,
+      )
+    }
+  }
+}
+
+function assertClientCreditOriginConsistency(input: {
+  originDepositId?: string | null
+  originRefundId?: string | null
+  originType: CreditOriginType
+}) {
+  const hasRefundOrigin = Boolean(input.originRefundId)
+  const hasDepositOrigin = Boolean(input.originDepositId)
+
+  if (hasRefundOrigin && hasDepositOrigin) {
+    throw new AppError(
+      'UNPROCESSABLE_ENTITY',
+      422,
+      'Client credit can reference either a refund or a deposit conversion origin, not both.',
+    )
+  }
+
+  if (input.originType === CreditOriginType.REFUND) {
+    if (!hasRefundOrigin) {
+      throw new AppError(
+        'UNPROCESSABLE_ENTITY',
+        422,
+        'Refund-origin credits require originRefundId.',
+      )
+    }
+
+    return
+  }
+
+  if (input.originType === CreditOriginType.DEPOSIT_CONVERSION) {
+    if (!hasDepositOrigin) {
+      throw new AppError(
+        'UNPROCESSABLE_ENTITY',
+        422,
+        'Deposit-conversion credits require originDepositId.',
+      )
+    }
+
+    return
+  }
+
+  if (hasRefundOrigin || hasDepositOrigin) {
+    throw new AppError(
+      'UNPROCESSABLE_ENTITY',
+      422,
+      'Only refund and deposit-conversion credits can reference a financial origin.',
+    )
+  }
+}
+
+async function ensureClientCreditOriginIsUnique(
+  client: FinanceMutationClient,
+  input: {
+    originDepositId?: string | null
+    originRefundId?: string | null
+  },
+) {
+  if (input.originRefundId) {
+    const existingCredit = await client.clientCredit.findFirst({
+      where: {
+        originRefundId: input.originRefundId,
+      },
+      select: {
+        id: true,
+      },
+    })
+
+    if (existingCredit) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'This refund already has a registered client credit.',
+      )
+    }
+  }
+
+  if (input.originDepositId) {
+    const existingCredit = await client.clientCredit.findFirst({
+      where: {
+        originDepositId: input.originDepositId,
+      },
+      select: {
+        id: true,
+      },
+    })
+
+    if (existingCredit) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'This deposit already has a registered direct conversion credit.',
+      )
+    }
+  }
+}
+
+async function ensureDepositExternalReferenceIsUnique(
+  client: FinanceMutationClient,
+  input: {
+    depositId?: string
+    externalReference?: string | null
+  },
+) {
+  if (!input.externalReference) {
+    return
+  }
+
+  const existingDeposit = await client.deposit.findFirst({
+    where: {
+      externalReference: input.externalReference,
+      ...(input.depositId
+        ? {
+            id: {
+              not: input.depositId,
+            },
+          }
+        : {}),
+    },
+    select: {
+      id: true,
+    },
+  })
+
+  if (existingDeposit) {
+    throw new AppError(
+      'CONFLICT',
+      409,
+      'Another deposit already uses this external reference.',
+    )
+  }
+}
+
+async function ensureRefundExternalReferenceIsUnique(
+  client: FinanceMutationClient,
+  input: {
+    externalReference?: string | null
+    refundId?: string
+  },
+) {
+  if (!input.externalReference) {
+    return
+  }
+
+  const existingRefund = await client.refund.findFirst({
+    where: {
+      externalReference: input.externalReference,
+      ...(input.refundId
+        ? {
+            id: {
+              not: input.refundId,
+            },
+          }
+        : {}),
+    },
+    select: {
+      id: true,
+    },
+  })
+
+  if (existingRefund) {
+    throw new AppError(
+      'CONFLICT',
+      409,
+      'Another refund already uses this external reference.',
+    )
+  }
 }
 
 function createDepositDescription(purpose: DepositPurpose) {
@@ -365,16 +592,33 @@ function normalizeDepositLifecycleDates(
   }
 }
 
+function isNoShowProtectionTransaction(metadata: Prisma.JsonValue | null) {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return false
+  }
+
+  return (metadata as Record<string, unknown>).category === 'NO_SHOW_PROTECTION'
+}
+
 async function syncAppointmentIfAffected(
   tx: Prisma.TransactionClient,
   appointmentIds: Array<string | null | undefined>,
+  source?: {
+    action: string
+    actorUserId?: string | null
+    details?: Record<string, unknown>
+    entityId?: string | null
+    entityName: string
+  },
 ) {
   const uniqueAppointmentIds = Array.from(
     new Set(appointmentIds.filter((appointmentId): appointmentId is string => Boolean(appointmentId))),
   )
 
   for (const appointmentId of uniqueAppointmentIds) {
-    await syncAppointmentFinancialStatus(tx, appointmentId)
+    await syncAppointmentFinancialStatus(tx, appointmentId, {
+      source,
+    })
   }
 }
 
@@ -404,8 +648,19 @@ export async function createFinancialTransaction(
 ) {
   const appointmentReference = await getAppointmentReference(prisma, actor, input.appointmentId)
   const unitId = resolveFinanceUnitId(actor, input.unitId, appointmentReference?.unitId ?? null, null)
+  assertFinanceUnitConsistency(unitId, [
+    {
+      label: 'appointment',
+      unitId: appointmentReference?.unitId ?? null,
+    },
+  ])
 
-  return prisma.$transaction(async (tx) => {
+  return runSerializableTransaction(async (tx) => {
+    await ensureFinancialTransactionExternalReferenceIsUnique(tx, {
+      externalReference: input.externalReference,
+      integrationProvider: input.integrationProvider ?? null,
+    })
+
     const transaction = await tx.financialTransaction.create({
       data: {
         unitId,
@@ -423,7 +678,12 @@ export async function createFinancialTransaction(
       include: financialTransactionDetailsInclude,
     })
 
-    await syncAppointmentIfAffected(tx, [transaction.appointmentId])
+    await syncAppointmentIfAffected(tx, [transaction.appointmentId], {
+      action: 'financial_transaction.create',
+      actorUserId: actor.id,
+      entityId: transaction.id,
+      entityName: 'FinancialTransaction',
+    })
 
     await writeAuditLog(tx, {
       unitId,
@@ -433,13 +693,16 @@ export async function createFinancialTransaction(
       entityId: transaction.id,
       details: {
         amount: Number(transaction.amount),
+        appointmentId: transaction.appointmentId,
+        externalReference: transaction.externalReference,
+        integrationProvider: transaction.integrationProvider,
         paymentStatus: transaction.paymentStatus,
         transactionType: transaction.transactionType,
       },
     })
 
     return transaction
-  })
+  }, 'Another financial transaction changed before this transaction could be recorded.')
 }
 
 export async function updateFinancialTransaction(
@@ -459,11 +722,28 @@ export async function updateFinancialTransaction(
     appointmentReference?.unitId ?? null,
     existingTransaction.unitId,
   )
+  assertFinanceUnitConsistency(unitId, [
+    {
+      label: 'current transaction',
+      unitId: existingTransaction.unitId,
+    },
+    {
+      label: 'appointment',
+      unitId: appointmentReference?.unitId ?? null,
+    },
+  ])
 
-  return prisma.$transaction(async (tx) => {
-    const transaction = await tx.financialTransaction.update({
+  return runSerializableTransaction(async (tx) => {
+    await ensureFinancialTransactionExternalReferenceIsUnique(tx, {
+      externalReference: input.externalReference ?? existingTransaction.externalReference,
+      integrationProvider: input.integrationProvider ?? existingTransaction.integrationProvider,
+      transactionId,
+    })
+
+    const updatedTransaction = await tx.financialTransaction.updateMany({
       where: {
         id: transactionId,
+        updatedAt: existingTransaction.updatedAt,
       },
       data: {
         unitId,
@@ -481,10 +761,29 @@ export async function updateFinancialTransaction(
           : {}),
         ...(input.occurredAt !== undefined ? { occurredAt: input.occurredAt } : {}),
       },
+    })
+
+    if (updatedTransaction.count !== 1) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'The financial transaction changed before it could be updated.',
+      )
+    }
+
+    const transaction = await tx.financialTransaction.findUniqueOrThrow({
+      where: {
+        id: transactionId,
+      },
       include: financialTransactionDetailsInclude,
     })
 
-    await syncAppointmentIfAffected(tx, [existingTransaction.appointmentId, transaction.appointmentId])
+    await syncAppointmentIfAffected(tx, [existingTransaction.appointmentId, transaction.appointmentId], {
+      action: 'financial_transaction.update',
+      actorUserId: actor.id,
+      entityId: transaction.id,
+      entityName: 'FinancialTransaction',
+    })
 
     await writeAuditLog(tx, {
       unitId,
@@ -493,12 +792,16 @@ export async function updateFinancialTransaction(
       entityName: 'FinancialTransaction',
       entityId: transactionId,
       details: {
+        appointmentId: transaction.appointmentId,
         changedFields: Object.keys(input),
+        externalReference: transaction.externalReference,
+        integrationProvider: transaction.integrationProvider,
+        paymentStatus: transaction.paymentStatus,
       },
     })
 
     return transaction
-  })
+  }, 'The financial transaction changed before it could be updated.')
 }
 
 export async function listDeposits(actor: AuthenticatedUserData, query: ListDepositsQuery) {
@@ -550,8 +853,26 @@ export async function createDeposit(
     appointmentReference?.unitId ?? null,
     clientReference.unitId,
   )
+  assertFinanceUnitConsistency(unitId, [
+    {
+      label: 'appointment',
+      unitId: appointmentReference?.unitId ?? null,
+    },
+    {
+      label: 'client',
+      unitId: clientReference.unitId,
+    },
+  ])
 
-  return prisma.$transaction(async (tx) => {
+  return runSerializableTransaction(async (tx) => {
+    await ensureDepositExternalReferenceIsUnique(tx, {
+      externalReference: input.externalReference,
+    })
+    await ensureFinancialTransactionExternalReferenceIsUnique(tx, {
+      externalReference: input.externalReference,
+      integrationProvider: input.integrationProvider ?? null,
+    })
+
     const defaults = await getUnitFinancialDefaults(tx, unitId)
     const occurredAt = new Date()
     const depositStatus =
@@ -607,7 +928,12 @@ export async function createDeposit(
       include: depositDetailsInclude,
     })
 
-    await syncAppointmentIfAffected(tx, [deposit.appointmentId])
+    await syncAppointmentIfAffected(tx, [deposit.appointmentId], {
+      action: 'deposit.create',
+      actorUserId: actor.id,
+      entityId: deposit.id,
+      entityName: 'Deposit',
+    })
 
     await writeAuditLog(tx, {
       unitId,
@@ -617,13 +943,17 @@ export async function createDeposit(
       entityId: deposit.id,
       details: {
         amount: Number(deposit.amount),
+        appointmentId: deposit.appointmentId,
+        clientId: deposit.clientId,
+        externalReference: deposit.externalReference,
+        financialTransactionId: deposit.financialTransactionId,
         purpose: deposit.purpose,
         status: deposit.status,
       },
     })
 
     return deposit
-  })
+  }, 'Another financial operation changed before this deposit could be recorded.')
 }
 
 export async function updateDepositStatus(
@@ -631,10 +961,35 @@ export async function updateDepositStatus(
   depositId: string,
   input: UpdateDepositStatusInput,
 ) {
-  const existingDeposit = await getDepositOrThrow(actor, depositId)
-  assertDepositStatusTransition(existingDeposit.status, input.status)
+  return runSerializableTransaction(async (tx) => {
+    const existingDeposit = await tx.deposit.findUnique({
+      where: {
+        id: depositId,
+      },
+      select: {
+        appliedAt: true,
+        appointmentId: true,
+        expiresAt: true,
+        financialTransaction: {
+          select: {
+            paymentStatus: true,
+          },
+        },
+        financialTransactionId: true,
+        id: true,
+        receivedAt: true,
+        status: true,
+        unitId: true,
+      },
+    })
 
-  return prisma.$transaction(async (tx) => {
+    if (!existingDeposit) {
+      throw new AppError('NOT_FOUND', 404, 'Deposit not found.')
+    }
+
+    assertActorCanReadFinanceRecordInScope(actor, existingDeposit.unitId)
+    assertDepositStatusTransition(existingDeposit.status, input.status)
+
     const nextPaymentStatus = derivePaymentStatusFromDepositState(
       input.status,
       existingDeposit.financialTransaction?.paymentStatus ?? 'PENDING',
@@ -654,24 +1009,44 @@ export async function updateDepositStatus(
         data: {
           paymentStatus: nextPaymentStatus,
         },
+        })
+      }
+
+      const updatedDeposit = await tx.deposit.updateMany({
+        where: {
+          id: depositId,
+          status: existingDeposit.status,
+        },
+        data: {
+          status: input.status,
+          ...(input.notes !== undefined ? { notes: input.notes } : {}),
+          receivedAt: lifecycleDates.receivedAt,
+          appliedAt: lifecycleDates.appliedAt,
+          expiresAt: lifecycleDates.expiresAt,
+        },
       })
-    }
 
-    const deposit = await tx.deposit.update({
-      where: {
-        id: depositId,
-      },
-      data: {
-        status: input.status,
-        ...(input.notes !== undefined ? { notes: input.notes } : {}),
-        receivedAt: lifecycleDates.receivedAt,
-        appliedAt: lifecycleDates.appliedAt,
-        expiresAt: lifecycleDates.expiresAt,
-      },
-      include: depositDetailsInclude,
-    })
+      if (updatedDeposit.count !== 1) {
+        throw new AppError(
+          'CONFLICT',
+          409,
+          'The deposit changed before its status could be updated.',
+        )
+      }
 
-    await syncAppointmentIfAffected(tx, [deposit.appointmentId])
+      const deposit = await tx.deposit.findUniqueOrThrow({
+        where: {
+          id: depositId,
+        },
+        include: depositDetailsInclude,
+      })
+
+      await syncAppointmentIfAffected(tx, [deposit.appointmentId], {
+        action: 'deposit.status.update',
+        actorUserId: actor.id,
+        entityId: deposit.id,
+        entityName: 'Deposit',
+      })
 
     await writeAuditLog(tx, {
       unitId: deposit.unitId,
@@ -680,13 +1055,15 @@ export async function updateDepositStatus(
       entityName: 'Deposit',
       entityId: deposit.id,
       details: {
+        appointmentId: deposit.appointmentId,
+        financialTransactionId: deposit.financialTransactionId,
         from: existingDeposit.status,
         to: deposit.status,
       },
     })
 
-    return deposit
-  })
+      return deposit
+    }, 'The deposit changed before its status could be updated.')
 }
 
 export async function listRefunds(actor: AuthenticatedUserData, query: ListRefundsQuery) {
@@ -737,14 +1114,39 @@ export async function createRefund(actor: AuthenticatedUserData, input: CreateRe
     appointmentReference?.unitId ?? sourceTransaction?.unitId ?? originDeposit?.unitId ?? null,
     clientReference.unitId,
   )
+  assertFinanceUnitConsistency(unitId, [
+    {
+      label: 'appointment',
+      unitId: appointmentReference?.unitId ?? null,
+    },
+    {
+      label: 'source transaction',
+      unitId: sourceTransaction?.unitId ?? null,
+    },
+    {
+      label: 'origin deposit',
+      unitId: originDeposit?.unitId ?? null,
+    },
+    {
+      label: 'client',
+      unitId: clientReference.unitId,
+    },
+  ])
 
-  if (appointmentReference && appointmentReference.clientId !== clientReference.id) {
-    throw new AppError(
-      'CONFLICT',
-      409,
-      'The selected refund client does not match the appointment client.',
-    )
-  }
+  assertFinanceClientConsistency(clientReference.id, [
+    {
+      label: 'appointment',
+      clientId: appointmentReference?.clientId ?? null,
+    },
+    {
+      label: 'source transaction',
+      clientId: sourceTransaction?.appointment?.clientId ?? null,
+    },
+    {
+      label: 'origin deposit',
+      clientId: originDeposit?.clientId ?? null,
+    },
+  ])
 
   const sourceAmount = sourceTransaction
     ? Number(sourceTransaction.amount)
@@ -752,27 +1154,38 @@ export async function createRefund(actor: AuthenticatedUserData, input: CreateRe
       ? Number(originDeposit.amount)
       : input.amount
 
-  const alreadyRefundedAmount = await prisma.refund.aggregate({
-    _sum: {
-      amount: true,
-    },
-    where: {
-      unitId,
-      status: {
-        in: ['PENDING', 'PROCESSING', 'COMPLETED'],
-      },
-      ...(sourceTransaction ? { sourceFinancialTransactionId: sourceTransaction.id } : {}),
-      ...(originDeposit ? { originDepositId: originDeposit.id } : {}),
-    },
-  })
-
-  assertRefundAmountWithinAvailableBalance(
-    sourceAmount,
-    Number(alreadyRefundedAmount._sum.amount ?? 0),
-    input.amount,
-  )
- 
   return prisma.$transaction(async (tx) => {
+    await ensureRefundExternalReferenceIsUnique(tx, {
+      externalReference: input.externalReference,
+    })
+
+    if (!input.createClientCredit) {
+      await ensureFinancialTransactionExternalReferenceIsUnique(tx, {
+        externalReference: input.externalReference,
+        integrationProvider: input.integrationProvider ?? sourceTransaction?.integrationProvider ?? null,
+      })
+    }
+
+    const alreadyRefundedAmount = await tx.refund.aggregate({
+      _sum: {
+        amount: true,
+      },
+      where: {
+        unitId,
+        status: {
+          in: ['PENDING', 'PROCESSING', 'COMPLETED'],
+        },
+        ...(sourceTransaction ? { sourceFinancialTransactionId: sourceTransaction.id } : {}),
+        ...(originDeposit ? { originDepositId: originDeposit.id } : {}),
+      },
+    })
+
+    assertRefundAmountWithinAvailableBalance(
+      sourceAmount,
+      Number(alreadyRefundedAmount._sum.amount ?? 0),
+      input.amount,
+    )
+
     const defaults = await getUnitFinancialDefaults(tx, unitId)
     let refundTransactionId: string | null = null
     let createdCreditId: string | null = null
@@ -894,11 +1307,16 @@ export async function createRefund(actor: AuthenticatedUserData, input: CreateRe
       }
     }
 
-    await syncAppointmentIfAffected(tx, [
-      refund.appointmentId,
-      sourceTransaction?.appointmentId,
-      originDeposit?.appointmentId,
-    ])
+    await syncAppointmentIfAffected(
+      tx,
+      [refund.appointmentId, sourceTransaction?.appointmentId, originDeposit?.appointmentId],
+      {
+        action: 'refund.create',
+        actorUserId: actor.id,
+        entityId: refund.id,
+        entityName: 'Refund',
+      },
+    )
 
     await writeAuditLog(tx, {
       unitId,
@@ -908,7 +1326,10 @@ export async function createRefund(actor: AuthenticatedUserData, input: CreateRe
       entityId: refund.id,
       details: {
         amount: Number(refund.amount),
+        appointmentId: refund.appointmentId,
         createdClientCreditId: createdCreditId,
+        externalReference: refund.externalReference,
+        financialTransactionId: refund.financialTransactionId,
         originDepositId: originDeposit?.id ?? null,
         sourceFinancialTransactionId: sourceTransaction?.id ?? null,
       },
@@ -920,6 +1341,8 @@ export async function createRefund(actor: AuthenticatedUserData, input: CreateRe
       },
       include: refundDetailsInclude,
     })
+  }, {
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
   })
 }
 
@@ -960,16 +1383,46 @@ export async function createClientCredit(
   actor: AuthenticatedUserData,
   input: CreateClientCreditInput,
 ) {
+  assertClientCreditOriginConsistency(input)
+
   const clientReference = await getClientReference(prisma, actor, input.clientId)
+  const originRefund = input.originRefundId ? await getRefundOrThrow(actor, input.originRefundId) : null
+  const originDeposit = input.originDepositId ? await getDepositOrThrow(actor, input.originDepositId) : null
 
   if (!clientReference) {
     throw new AppError('NOT_FOUND', 404, 'Client not found for credit creation.')
   }
 
   const unitId = resolveFinanceUnitId(actor, input.unitId, null, clientReference.unitId)
+  assertFinanceUnitConsistency(unitId, [
+    {
+      label: 'client',
+      unitId: clientReference.unitId,
+    },
+    {
+      label: 'origin refund',
+      unitId: originRefund?.unitId ?? null,
+    },
+    {
+      label: 'origin deposit',
+      unitId: originDeposit?.unitId ?? null,
+    },
+  ])
+  assertFinanceClientConsistency(clientReference.id, [
+    {
+      label: 'origin refund',
+      clientId: originRefund?.clientId ?? null,
+    },
+    {
+      label: 'origin deposit',
+      clientId: originDeposit?.clientId ?? null,
+    },
+  ])
 
-  return prisma.$transaction(async (tx) => {
+  return runSerializableTransaction(async (tx) => {
     const defaults = await getUnitFinancialDefaults(tx, unitId)
+    await ensureClientCreditOriginIsUnique(tx, input)
+
     const credit = await tx.clientCredit.create({
       data: {
         unitId,
@@ -994,12 +1447,14 @@ export async function createClientCredit(
       entityId: credit.id,
       details: {
         amount: Number(credit.totalAmount),
+        originDepositId: credit.originDepositId,
+        originRefundId: credit.originRefundId,
         originType: credit.originType,
       },
     })
 
     return credit
-  })
+  }, 'The client credit origin changed before this credit could be created.')
 }
 
 export async function applyClientCredit(
@@ -1022,6 +1477,12 @@ export async function applyClientCredit(
       'Client credit can only be used on appointments from the same client.',
     )
   }
+  assertFinanceUnitConsistency(appointmentReference.unitId, [
+    {
+      label: 'client credit',
+      unitId: existingCredit.unitId,
+    },
+  ])
 
   if (existingCredit.availableAmount.lt(input.amount)) {
     throw new AppError('CONFLICT', 409, 'Client credit does not have enough available balance.')
@@ -1032,6 +1493,40 @@ export async function applyClientCredit(
   }
 
   return prisma.$transaction(async (tx) => {
+    const reserveCreditResult = await tx.clientCredit.updateMany({
+      where: {
+        id: existingCredit.id,
+        clientId: appointmentReference.clientId,
+        unitId: appointmentReference.unitId,
+        availableAmount: {
+          gte: input.amount,
+        },
+        OR: [
+          {
+            expiresAt: null,
+          },
+          {
+            expiresAt: {
+              gt: new Date(),
+            },
+          },
+        ],
+      },
+      data: {
+        availableAmount: {
+          decrement: input.amount,
+        },
+      },
+    })
+
+    if (reserveCreditResult.count !== 1) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'Client credit balance changed before this usage could be recorded.',
+      )
+    }
+
     const transaction = await tx.financialTransaction.create({
       data: {
         unitId: appointmentReference.unitId,
@@ -1060,18 +1555,15 @@ export async function applyClientCredit(
       },
     })
 
-    const nextAvailableAmount = Number(existingCredit.availableAmount) - input.amount
-
-    await tx.clientCredit.update({
-      where: {
-        id: existingCredit.id,
+    await syncAppointmentIfAffected(tx, [appointmentReference.id], {
+      action: 'client_credit.apply',
+      actorUserId: actor.id,
+      details: {
+        financialTransactionId: transaction.id,
       },
-      data: {
-        availableAmount: nextAvailableAmount,
-      },
+      entityId: existingCredit.id,
+      entityName: 'ClientCredit',
     })
-
-    await syncAppointmentIfAffected(tx, [appointmentReference.id])
 
     await writeAuditLog(tx, {
       unitId: appointmentReference.unitId,
@@ -1082,6 +1574,7 @@ export async function applyClientCredit(
       details: {
         amount: input.amount,
         appointmentId: appointmentReference.id,
+        financialTransactionId: transaction.id,
       },
     })
 
@@ -1091,6 +1584,8 @@ export async function applyClientCredit(
       },
       include: clientCreditDetailsInclude,
     })
+  }, {
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
   })
 }
 
@@ -1099,48 +1594,44 @@ export async function recordNoShowProtectionCharge(
   appointmentId: string,
   input: RecordNoShowChargeInput,
 ) {
-  const appointmentReference = await getAppointmentReference(prisma, actor, appointmentId)
+  return runSerializableTransaction(async (tx) => {
+    const appointmentReference = await getAppointmentReference(tx, actor, appointmentId)
 
-  if (!appointmentReference) {
-    throw new AppError('NOT_FOUND', 404, 'Appointment not found for no-show protection.')
-  }
+    if (!appointmentReference) {
+      throw new AppError('NOT_FOUND', 404, 'Appointment not found for no-show protection.')
+    }
 
-  if (appointmentReference.operationalStatusId !== operationalStatusIds.noShow) {
-    throw new AppError(
-      'CONFLICT',
-      409,
-      'No-show protection can only be recorded for appointments already marked as no-show.',
-    )
-  }
+    if (appointmentReference.operationalStatusId !== operationalStatusIds.noShow) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'No-show protection can only be recorded for appointments already marked as no-show.',
+      )
+    }
 
-  const existingRevenueTransactions = await prisma.financialTransaction.findMany({
-    where: {
-      appointmentId,
-      transactionType: 'REVENUE',
-    },
-    select: {
-      metadata: true,
-    },
-  })
-
-  if (
-    existingRevenueTransactions.some((transaction) => {
-      const metadata =
-        transaction.metadata && typeof transaction.metadata === 'object'
-          ? (transaction.metadata as Record<string, unknown>)
-          : null
-
-      return metadata?.category === 'NO_SHOW_PROTECTION'
+    await ensureFinancialTransactionExternalReferenceIsUnique(tx, {
+      externalReference: input.externalReference,
+      integrationProvider: input.integrationProvider ?? null,
     })
-  ) {
-    throw new AppError(
-      'CONFLICT',
-      409,
-      'This appointment already has a recorded no-show protection charge.',
-    )
-  }
 
-  return prisma.$transaction(async (tx) => {
+    const existingRevenueTransactions = await tx.financialTransaction.findMany({
+      where: {
+        appointmentId,
+        transactionType: 'REVENUE',
+      },
+      select: {
+        metadata: true,
+      },
+    })
+
+    if (existingRevenueTransactions.some((transaction) => isNoShowProtectionTransaction(transaction.metadata))) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'This appointment already has a recorded no-show protection charge.',
+      )
+    }
+
     const transaction = await tx.financialTransaction.create({
       data: {
         unitId: appointmentReference.unitId,
@@ -1161,7 +1652,12 @@ export async function recordNoShowProtectionCharge(
       include: financialTransactionDetailsInclude,
     })
 
-    await syncAppointmentIfAffected(tx, [appointmentId])
+    await syncAppointmentIfAffected(tx, [appointmentId], {
+      action: 'appointment.no_show_charge',
+      actorUserId: actor.id,
+      entityId: transaction.id,
+      entityName: 'FinancialTransaction',
+    })
 
     await writeAuditLog(tx, {
       unitId: appointmentReference.unitId,
@@ -1171,10 +1667,12 @@ export async function recordNoShowProtectionCharge(
       entityId: appointmentId,
       details: {
         amount: Number(transaction.amount),
+        externalReference: transaction.externalReference,
         financialTransactionId: transaction.id,
+        paymentMethod: transaction.paymentMethod,
       },
     })
 
     return transaction
-  })
+  }, 'The appointment changed before its no-show charge could be recorded.')
 }

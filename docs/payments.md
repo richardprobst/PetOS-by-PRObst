@@ -139,6 +139,9 @@ Regras ativas:
   - transacao financeira de saida; ou
   - credito de cliente para uso futuro;
 - credito possui saldo disponivel, origem e expiracao;
+- `ClientCredit.originRefundId` segue politica `1 reembolso -> 1 credito`;
+- `ClientCredit.originDepositId` segue politica `1 conversao direta de deposito -> 1 credito`;
+- quando houver necessidade de fracionar efeito economico ou converter parcialmente um deposito, o caminho esperado e materializar `Refund` dedicados por valor, em vez de criar varios `ClientCredit` para a mesma origem;
 - uso de credito gera lancamento financeiro proprio com `paymentMethod = CLIENT_CREDIT`;
 - credito so pode ser aplicado ao mesmo cliente e dentro do saldo disponivel.
 
@@ -213,6 +216,42 @@ Consequencia pratica:
 - estoque e financeiro andam juntos no fechamento da venda, mas continuam como dominios distintos;
 - o modulo nao vira ERP comercial nem supply chain.
 
+## Invariantes condicionais remanescentes do PDV
+
+Mesmo com as constraints fisicas ja aplicadas para referencias externas e origens financeiras, ainda existem dois residuos condicionais importantes:
+
+- apenas uma `FinancialTransaction` de `REVENUE` por `posSaleId`;
+- apenas um `InventoryMovement` de `SALE_OUT` por `posSaleItemId`.
+
+No estado atual, essas duas regras continuam protegidas no service layer porque o MySQL nao expressa esse subconjunto com indice parcial nativo sobre as colunas existentes.
+
+Na Etapa 1 da rollout estrutural:
+
+- `FinancialTransaction.revenuePosSaleId` foi adicionada como ancora nullable e ja passa a ser preenchida no fechamento do PDV;
+- `InventoryMovement.saleOutPosSaleItemId` foi adicionada como ancora nullable e ja passa a ser preenchida no `SALE_OUT` do item vendido;
+- os guards do service layer continuam obrigatorios;
+- a promocao para `UNIQUE` continua gateada por preflight limpo e backfill validado por ambiente.
+
+Na Etapa 2 da rollout estrutural:
+
+- o repositorio passou a incluir `npm run ops:backfill:anchor-columns` para backfill idempotente e fechado;
+- `UNIQUE(revenuePosSaleId)` e `UNIQUE(saleOutPosSaleItemId)` ja foram promovidos em `local` e `producao`;
+- em `producao`, o rollout respeitou a separacao entre Etapa 1 e Etapa 2:
+  - primeiro foram executadas manualmente as migrations pre-Etapa 1 e registradas com `migrate resolve --applied`;
+  - depois o preflight veio limpo, o backfill rodou como no-op e so entao a migration final foi aplicada com `migrate deploy`;
+- ambientes compartilhados continuam proibidos de promover `UNIQUE` sem repetir o gate completo, porque um ambiente limpo nao substitui outro como fonte de verdade operacional.
+
+No estado atual, essa trilha esta encerrada nos ambientes acessiveis (`local` e `producao`). `staging` permanece apenas como pendencia operacional externa, porque nao existe ambiente acessivel para repetir o gate; isso nao reabre a decisao tecnica nem invalida o rollout ja concluido.
+
+O endurecimento atual segue esta hierarquia:
+
+- `completePosSale` revalida ausencia de efeitos ja registrados;
+- `ensurePosSaleRevenueEffectIsUnique` revalida a receita por venda no boundary financeiro;
+- `applyInventoryMovementInMutation` revalida `SALE_OUT` por item no boundary fisico;
+- auditoria e reconciliacao continuam referenciando `saleId`, `financialTransactionId` e `inventoryMovementId`.
+
+O proximo reforco estrutural desejado nao e hackear indice parcial, e sim promover `UNIQUE` nas colunas-ancora ja materializadas, somente depois de preflight limpo e backfill validado antes da migration final.
+
 ## Seguranca
 
 As regras obrigatorias do modulo seguem ativas:
@@ -248,3 +287,5 @@ O dominio financeiro da Fase 2 fecha a espinha dorsal economica do PetOS sem tra
 - traz idempotencia e auditoria reais para eventos externos;
 - adiciona o recorte fiscal minimo necessario para os proximos blocos;
 - permite que o PDV conclua venda presencial usando o mesmo ledger financeiro e o mesmo criterio de liquidacao real.
+
+Para o mapa consolidado de invariantes fisicas versus guardas logicas cruzando `finance`, `pos` e `inventory`, ver tambem `docs/finance-pos-inventory-invariants.md`.

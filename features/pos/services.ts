@@ -10,13 +10,17 @@ import {
   resolveScopedUnitId,
 } from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
+import { runSerializableTransaction } from '@/server/db/transactions'
 import { getEnv } from '@/server/env'
 import { AppError } from '@/server/http/errors'
 import {
-  ensureInventoryStockRecord,
+  applyInventoryMovementInMutation,
   getInventoryDefaultsForUnit,
 } from '@/features/inventory/services'
-import { applyInventoryMovement } from '@/features/inventory/domain'
+import {
+  ensurePosSaleHasNoRegisteredEffects,
+  ensurePosSaleRevenueEffectIsUnique,
+} from '@/features/pos/effect-guards'
 import {
   assertPosSaleCanBeCanceled,
   assertPosSaleCanBeCompleted,
@@ -25,7 +29,12 @@ import {
   calculatePosSaleTotals,
   shouldIssueFiscalDocumentForPosSale,
 } from '@/features/pos/domain'
+import { ensureFinancialTransactionExternalReferenceIsUnique } from '@/features/finance/transaction-reference'
 import { buildClientOwnershipBinding } from '@/features/clients/ownership'
+import {
+  loadUnitSettings,
+  readBooleanUnitSetting,
+} from '@/server/settings/unit-settings'
 import type {
   CancelPosSaleInput,
   CompletePosSaleInput,
@@ -38,26 +47,88 @@ const posSettingKeys = {
   autoFiscalDocument: 'pdv.emitir_documento_fiscal_automatico',
 } as const
 
+const posUserSelect = {
+  active: true,
+  email: true,
+  id: true,
+  name: true,
+  unitId: true,
+  userType: true,
+} as const
+
+const posUnitSelect = {
+  active: true,
+  id: true,
+  name: true,
+} as const
+
+const posProductSelect = {
+  active: true,
+  barcode: true,
+  id: true,
+  minimumStockQuantity: true,
+  name: true,
+  salePrice: true,
+  sku: true,
+  trackInventory: true,
+  unitId: true,
+  unitOfMeasure: true,
+} as const
+
 const posSaleDetailsInclude = Prisma.validator<Prisma.PosSaleInclude>()({
   client: {
     include: {
-      user: true,
+      user: {
+        select: posUserSelect,
+      },
     },
   },
-  createdBy: true,
-  financialTransactions: true,
+  createdBy: {
+    select: posUserSelect,
+  },
+  financialTransactions: {
+    orderBy: {
+      occurredAt: 'desc',
+    },
+    select: {
+      amount: true,
+      externalReference: true,
+      id: true,
+      integrationProvider: true,
+      occurredAt: true,
+      paymentMethod: true,
+      paymentStatus: true,
+      transactionType: true,
+    },
+  },
   items: {
     include: {
-      product: true,
+      product: {
+        select: posProductSelect,
+      },
     },
   },
   inventoryMovements: {
+    orderBy: {
+      occurredAt: 'desc',
+    },
     include: {
-      product: true,
+      createdBy: {
+        select: posUserSelect,
+      },
+      product: {
+        select: posProductSelect,
+      },
     },
   },
-  unit: true,
+  unit: {
+    select: posUnitSelect,
+  },
 })
+
+type PosSaleDetails = Prisma.PosSaleGetPayload<{
+  include: typeof posSaleDetailsInclude
+}>
 
 type PosMutationClient = Prisma.TransactionClient | typeof prisma
 
@@ -91,6 +162,7 @@ type PosScopeQuery = {
 }
 
 async function getOptionalClientReference(
+  db: PosMutationClient,
   actor: AuthenticatedUserData,
   clientId: string | undefined,
 ) {
@@ -98,7 +170,7 @@ async function getOptionalClientReference(
     return null
   }
 
-  const client = await prisma.client.findUnique({
+  const client = await db.client.findUnique({
     where: {
       userId: clientId,
     },
@@ -148,42 +220,19 @@ export function assertActorCanReadPosSaleInScope(
   })
 }
 
-async function getPosSaleOrThrow(actor: AuthenticatedUserData, saleId: string) {
-  const sale = await prisma.posSale.findUnique({
-    where: {
-      id: saleId,
-    },
-    include: posSaleDetailsInclude,
-  })
-
-  if (!sale) {
-    throw new AppError('NOT_FOUND', 404, 'POS sale not found.')
-  }
-
-  assertActorCanReadPosSaleInScope(actor, sale.unitId)
-
-  return sale
-}
-
 async function getPosDefaults(client: PosMutationClient, unitId: string): Promise<PosDefaults> {
-  const settings = await client.unitSetting.findMany({
-    where: {
-      unitId,
-      key: {
-        in: [posSettingKeys.autoFiscalDocument],
-      },
-    },
-  })
-
-  const autoFiscalDocumentValue =
-    settings.find((setting) => setting.key === posSettingKeys.autoFiscalDocument)?.value ?? 'false'
+  const settings = await loadUnitSettings(client, unitId, [posSettingKeys.autoFiscalDocument])
 
   return {
-    autoFiscalDocument: autoFiscalDocumentValue === 'true',
+    autoFiscalDocument: readBooleanUnitSetting(settings, posSettingKeys.autoFiscalDocument, false),
   }
 }
 
-async function preparePosSaleItems(unitId: string, items: PosSaleItemInput[]) {
+async function preparePosSaleItems(
+  client: PosMutationClient,
+  unitId: string,
+  items: PosSaleItemInput[],
+) {
   const seenProductIds = new Set<string>()
 
   for (const item of items) {
@@ -198,7 +247,7 @@ async function preparePosSaleItems(unitId: string, items: PosSaleItemInput[]) {
     seenProductIds.add(item.productId)
   }
 
-  const products = await prisma.product.findMany({
+  const products = await client.product.findMany({
     where: {
       id: {
         in: items.map((item) => item.productId),
@@ -251,6 +300,44 @@ async function preparePosSaleItems(unitId: string, items: PosSaleItemInput[]) {
       unitPrice,
     } satisfies PreparedPosSaleItem
   })
+}
+
+async function getPosSaleInScopeOrThrow(
+  client: PosMutationClient,
+  actor: AuthenticatedUserData,
+  saleId: string,
+  query: PosScopeQuery = {},
+) {
+  const sale = await client.posSale.findUnique({
+    where: {
+      id: saleId,
+    },
+    include: posSaleDetailsInclude,
+  })
+
+  if (!sale) {
+    throw new AppError('NOT_FOUND', 404, 'POS sale not found.')
+  }
+
+  assertActorCanReadPosSaleInScope(actor, sale.unitId, {
+    unitId: query.unitId,
+  })
+
+  return sale
+}
+
+function buildPosSaleAuditDetails(
+  sale: PosSaleDetails,
+  details: Record<string, unknown> = {},
+) {
+  return {
+    ...details,
+    financialTransactionIds: sale.financialTransactions.map((transaction) => transaction.id),
+    inventoryMovementCount: sale.inventoryMovements.length,
+    inventoryMovementIds: sale.inventoryMovements.map((movement) => movement.id),
+    itemCount: sale.items.length,
+    totalAmount: Number(sale.totalAmount),
+  }
 }
 
 async function maybeQueuePosFiscalDocument(args: {
@@ -311,18 +398,30 @@ async function finalizePosSaleWithinTransaction(args: {
   completeInput: CompletePosSaleInput
   posDefaults: PosDefaults
   preparedItems?: PreparedPosSaleItem[]
-  sale: {
-    id: string
-    status: 'OPEN' | 'COMPLETED' | 'CANCELED'
-    totalAmount: number
-    unitId: string
-  }
+  saleId: string
   tx: Prisma.TransactionClient
 }) {
-  assertPosSaleCanBeCompleted(args.sale.status)
+  const sale = await args.tx.posSale.findUnique({
+    where: {
+      id: args.saleId,
+    },
+    select: {
+      id: true,
+      status: true,
+      totalAmount: true,
+      unitId: true,
+    },
+  })
+
+  if (!sale) {
+    throw new AppError('NOT_FOUND', 404, 'POS sale not found.')
+  }
+
+  assertActorCanReadPosSaleInScope(args.actor, sale.unitId)
+  assertPosSaleCanBeCompleted(sale.status)
   assertSupportedPosCompletionPaymentStatus(args.completeInput.paymentStatus)
 
-  if (args.sale.totalAmount <= 0) {
+  if (Number(sale.totalAmount) <= 0) {
     throw new AppError(
       'UNPROCESSABLE_ENTITY',
       422,
@@ -330,15 +429,22 @@ async function finalizePosSaleWithinTransaction(args: {
     )
   }
 
+  await ensurePosSaleHasNoRegisteredEffects(args.tx, sale.id)
+  await ensureFinancialTransactionExternalReferenceIsUnique(args.tx, {
+    ...args.completeInput,
+    conflictMessage: 'Another financial transaction already uses this integration reference.',
+  })
+
   const issueFiscalDocument =
     args.completeInput.issueFiscalDocument ?? args.posDefaults.autoFiscalDocument
-  const inventoryDefaults = await getInventoryDefaultsForUnit(args.tx, args.sale.unitId)
+  const inventoryDefaults = await getInventoryDefaultsForUnit(args.tx, sale.unitId)
+  const completionTimestamp = new Date()
 
   const saleItems =
     args.preparedItems ??
     (await args.tx.posSaleItem.findMany({
       where: {
-        saleId: args.sale.id,
+        saleId: sale.id,
       },
       include: {
         product: true,
@@ -361,65 +467,74 @@ async function finalizePosSaleWithinTransaction(args: {
 
   const createdItems = await args.tx.posSaleItem.findMany({
     where: {
-      saleId: args.sale.id,
+      saleId: sale.id,
     },
     include: {
       product: true,
     },
   })
 
+  const claimedSale = await args.tx.posSale.updateMany({
+    where: {
+      id: sale.id,
+      status: 'OPEN',
+      canceledAt: null,
+      completedAt: null,
+    },
+    data: {
+      completedAt: completionTimestamp,
+      status: 'COMPLETED',
+      canceledAt: null,
+      cancellationReason: null,
+    },
+  })
+
+  if (claimedSale.count !== 1) {
+    throw new AppError(
+      'CONFLICT',
+      409,
+      'The POS sale changed before it could be completed.',
+    )
+  }
+
   for (const item of createdItems) {
     if (!item.product.trackInventory) {
       continue
     }
 
-    const stock = await ensureInventoryStockRecord(args.tx, args.sale.unitId, item.productId)
-    const movementSnapshot = applyInventoryMovement({
+    await applyInventoryMovementInMutation({
       allowNegativeStock: inventoryDefaults.allowNegativeStock,
-      currentQuantity: Number(stock.quantityOnHand),
+      conflictMessage:
+        'The stock balance changed before this POS sale could be completed.',
+      createdByUserId: args.actor.id,
       movementType: 'SALE_OUT',
+      occurredAt: completionTimestamp,
+      posSaleId: sale.id,
+      posSaleItemId: item.id,
+      productId: item.productId,
       quantity: Number(item.quantity),
-    })
-
-    await args.tx.inventoryStock.update({
-      where: {
-        id: stock.id,
-      },
-      data: {
-        lastMovementAt: new Date(),
-        quantityOnHand: movementSnapshot.nextQuantity,
-      },
-    })
-
-    await args.tx.inventoryMovement.create({
-      data: {
-        unitId: args.sale.unitId,
-        productId: item.productId,
-        posSaleId: args.sale.id,
-        posSaleItemId: item.id,
-        createdByUserId: args.actor.id,
-        movementType: 'SALE_OUT',
-        quantity: item.quantity,
-        quantityBefore: movementSnapshot.previousQuantity,
-        quantityAfter: movementSnapshot.nextQuantity,
-        reason: 'pos_sale_completion',
-      },
+      reason: 'pos_sale_completion',
+      tx: args.tx,
+      unitId: sale.unitId,
     })
   }
 
+  await ensurePosSaleRevenueEffectIsUnique(args.tx, sale.id)
+
   const financialTransaction = await args.tx.financialTransaction.create({
     data: {
-      unitId: args.sale.unitId,
-      posSaleId: args.sale.id,
+      unitId: sale.unitId,
+      posSaleId: sale.id,
+      revenuePosSaleId: sale.id,
       createdByUserId: args.actor.id,
       transactionType: 'REVENUE',
-      description: `POS sale ${args.sale.id}`,
-      amount: args.sale.totalAmount,
+      description: `POS sale ${sale.id}`,
+      amount: sale.totalAmount,
       paymentMethod: args.completeInput.paymentMethod,
       paymentStatus: args.completeInput.paymentStatus,
       integrationProvider: args.completeInput.integrationProvider ?? null,
       externalReference: args.completeInput.externalReference,
-      occurredAt: new Date(),
+      occurredAt: completionTimestamp,
       metadata: {
         category: 'POS_SALE',
         itemCount: saleItems.length,
@@ -436,19 +551,15 @@ async function finalizePosSaleWithinTransaction(args: {
     await maybeQueuePosFiscalDocument({
       actorId: args.actor.id,
       financialTransactionId: financialTransaction.id,
-      saleId: args.sale.id,
+      saleId: sale.id,
       tx: args.tx,
-      unitId: args.sale.unitId,
+      unitId: sale.unitId,
     })
   }
 
-  return args.tx.posSale.update({
+  return args.tx.posSale.findUniqueOrThrow({
     where: {
-      id: args.sale.id,
-    },
-    data: {
-      completedAt: new Date(),
-      status: 'COMPLETED',
+      id: sale.id,
     },
     include: posSaleDetailsInclude,
   })
@@ -475,42 +586,27 @@ export async function getPosSaleDetails(
   saleId: string,
   query: PosScopeQuery = {},
 ) {
-  const sale = await prisma.posSale.findUnique({
-    where: {
-      id: saleId,
-    },
-    include: posSaleDetailsInclude,
-  })
-
-  if (!sale) {
-    throw new AppError('NOT_FOUND', 404, 'POS sale not found.')
-  }
-
-  assertActorCanReadPosSaleInScope(actor, sale.unitId, {
-    unitId: query.unitId,
-  })
-
-  return sale
+  return getPosSaleInScopeOrThrow(prisma, actor, saleId, query)
 }
 
 export async function createPosSale(actor: AuthenticatedUserData, input: CreatePosSaleInput) {
-  const clientReference = await getOptionalClientReference(actor, input.clientId)
-  const unitId = resolveScopedUnitId(actor, input.unitId ?? clientReference?.unitId ?? null)
+  return runSerializableTransaction(async (tx) => {
+    const clientReference = await getOptionalClientReference(tx, actor, input.clientId)
+    const unitId = resolveScopedUnitId(actor, input.unitId ?? clientReference?.unitId ?? null)
 
-  if (clientReference?.unitId && clientReference.unitId !== unitId) {
-    throw new AppError('CONFLICT', 409, 'The selected client does not belong to this unit.')
-  }
+    if (clientReference?.unitId && clientReference.unitId !== unitId) {
+      throw new AppError('CONFLICT', 409, 'The selected client does not belong to this unit.')
+    }
 
-  const preparedItems = await preparePosSaleItems(unitId, input.items)
-  const totals = calculatePosSaleTotals(
-    preparedItems.map((item) => ({
-      discountAmount: item.discountAmount,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-    })),
-  )
+    const preparedItems = await preparePosSaleItems(tx, unitId, input.items)
+    const totals = calculatePosSaleTotals(
+      preparedItems.map((item) => ({
+        discountAmount: item.discountAmount,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      })),
+    )
 
-  return prisma.$transaction(async (tx) => {
     const posDefaults = await getPosDefaults(tx, unitId)
     const sale = await tx.posSale.create({
       data: {
@@ -552,12 +648,7 @@ export async function createPosSale(actor: AuthenticatedUserData, input: CreateP
           },
           posDefaults,
           preparedItems,
-          sale: {
-            id: sale.id,
-            status: 'OPEN',
-            totalAmount: totals.totalAmount,
-            unitId,
-          },
+          saleId: sale.id,
           tx,
         })
       : await tx.posSale.findUniqueOrThrow({
@@ -573,15 +664,16 @@ export async function createPosSale(actor: AuthenticatedUserData, input: CreateP
       action: input.completeNow ? 'pos_sale.create_and_complete' : 'pos_sale.create',
       entityName: 'PosSale',
       entityId: sale.id,
-      details: {
+      details: buildPosSaleAuditDetails(completedSale, {
         clientId: clientReference?.id ?? null,
-        itemCount: preparedItems.length,
-        totalAmount: totals.totalAmount,
-      },
+        externalReference: input.externalReference ?? null,
+        paymentMethod: input.paymentMethod ?? null,
+        paymentStatus: input.completeNow ? input.paymentStatus : null,
+      }),
     })
 
     return completedSale
-  })
+  }, 'The POS operation changed before the sale could be created.')
 }
 
 export async function completePosSale(
@@ -589,20 +681,14 @@ export async function completePosSale(
   saleId: string,
   input: CompletePosSaleInput,
 ) {
-  const existingSale = await getPosSaleOrThrow(actor, saleId)
-
-  return prisma.$transaction(async (tx) => {
+  return runSerializableTransaction(async (tx) => {
+    const existingSale = await getPosSaleInScopeOrThrow(tx, actor, saleId)
     const posDefaults = await getPosDefaults(tx, existingSale.unitId)
     const sale = await finalizePosSaleWithinTransaction({
       actor,
       completeInput: input,
       posDefaults,
-      sale: {
-        id: existingSale.id,
-        status: existingSale.status,
-        totalAmount: Number(existingSale.totalAmount),
-        unitId: existingSale.unitId,
-      },
+      saleId: existingSale.id,
       tx,
     })
 
@@ -612,14 +698,15 @@ export async function completePosSale(
       action: 'pos_sale.complete',
       entityName: 'PosSale',
       entityId: sale.id,
-      details: {
+      details: buildPosSaleAuditDetails(sale, {
+        externalReference: input.externalReference ?? null,
+        paymentMethod: input.paymentMethod,
         paymentStatus: input.paymentStatus,
-        totalAmount: Number(sale.totalAmount),
-      },
+      }),
     })
 
     return sale
-  })
+  }, 'The POS sale changed before it could be completed.')
 }
 
 export async function cancelPosSale(
@@ -627,18 +714,52 @@ export async function cancelPosSale(
   saleId: string,
   input: CancelPosSaleInput,
 ) {
-  const existingSale = await getPosSaleOrThrow(actor, saleId)
-  assertPosSaleCanBeCanceled(existingSale.status)
-
-  return prisma.$transaction(async (tx) => {
-    const sale = await tx.posSale.update({
+  return runSerializableTransaction(async (tx) => {
+    const existingSale = await tx.posSale.findUnique({
       where: {
         id: saleId,
       },
+      select: {
+        id: true,
+        status: true,
+        unitId: true,
+      },
+    })
+
+    if (!existingSale) {
+      throw new AppError('NOT_FOUND', 404, 'POS sale not found.')
+    }
+
+    assertActorCanReadPosSaleInScope(actor, existingSale.unitId)
+    assertPosSaleCanBeCanceled(existingSale.status)
+    await ensurePosSaleHasNoRegisteredEffects(tx, existingSale.id)
+
+    const canceledAt = new Date()
+    const canceledSale = await tx.posSale.updateMany({
+      where: {
+        id: saleId,
+        status: 'OPEN',
+        canceledAt: null,
+        completedAt: null,
+      },
       data: {
         status: 'CANCELED',
-        canceledAt: new Date(),
+        canceledAt,
         cancellationReason: input.cancellationReason,
+      },
+    })
+
+    if (canceledSale.count !== 1) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'The POS sale changed before it could be canceled.',
+      )
+    }
+
+    const sale = await tx.posSale.findUniqueOrThrow({
+      where: {
+        id: saleId,
       },
       include: posSaleDetailsInclude,
     })
@@ -655,5 +776,5 @@ export async function cancelPosSale(
     })
 
     return sale
-  })
+  }, 'The POS sale changed before it could be canceled.')
 }

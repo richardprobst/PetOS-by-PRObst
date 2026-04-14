@@ -6,11 +6,18 @@ import {
   resolveScopedUnitId,
 } from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
+import { runSerializableTransaction } from '@/server/db/transactions'
 import { AppError } from '@/server/http/errors'
 import {
   applyInventoryMovement,
   isLowStock,
 } from '@/features/inventory/domain'
+import { ensurePosSaleItemSaleOutEffectIsUnique } from '@/features/pos/effect-guards'
+import {
+  loadUnitSettings,
+  readBooleanUnitSetting,
+  readNumericUnitSetting,
+} from '@/server/settings/unit-settings'
 import type {
   CreateProductInput,
   ListInventoryMovementsQuery,
@@ -25,21 +32,70 @@ const inventorySettingKeys = {
   minimumStockQuantity: 'estoque.produto_estoque_minimo_padrao',
 } as const
 
+const inventoryUserSelect = {
+  active: true,
+  email: true,
+  id: true,
+  name: true,
+  unitId: true,
+  userType: true,
+} as const
+
+const inventoryUnitSelect = {
+  active: true,
+  id: true,
+  name: true,
+} as const
+
+const inventoryProductSelect = {
+  active: true,
+  barcode: true,
+  id: true,
+  minimumStockQuantity: true,
+  name: true,
+  salePrice: true,
+  sku: true,
+  trackInventory: true,
+  unitId: true,
+  unitOfMeasure: true,
+} as const
+
 const productDetailsInclude = Prisma.validator<Prisma.ProductInclude>()({
   inventoryStocks: true,
-  unit: true,
+  unit: {
+    select: inventoryUnitSelect,
+  },
 })
 
 const inventoryStockDetailsInclude = Prisma.validator<Prisma.InventoryStockInclude>()({
-  product: true,
-  unit: true,
+  product: {
+    select: inventoryProductSelect,
+  },
+  unit: {
+    select: inventoryUnitSelect,
+  },
 })
 
 const inventoryMovementDetailsInclude = Prisma.validator<Prisma.InventoryMovementInclude>()({
-  createdBy: true,
-  posSale: true,
-  product: true,
-  unit: true,
+  createdBy: {
+    select: inventoryUserSelect,
+  },
+  posSale: {
+    select: {
+      canceledAt: true,
+      completedAt: true,
+      createdAt: true,
+      id: true,
+      status: true,
+      totalAmount: true,
+    },
+  },
+  product: {
+    select: inventoryProductSelect,
+  },
+  unit: {
+    select: inventoryUnitSelect,
+  },
 })
 
 type InventoryMutationClient = Prisma.TransactionClient | typeof prisma
@@ -95,7 +151,13 @@ async function getProductOrThrow(actor: AuthenticatedUserData, productId: string
   return product
 }
 
-async function getInventoryMovementOrThrow(actor: AuthenticatedUserData, movementId: string) {
+async function getInventoryMovementOrThrow(
+  actor: AuthenticatedUserData,
+  movementId: string,
+  options?: {
+    requestedUnitId?: string | null
+  },
+) {
   const movement = await prisma.inventoryMovement.findUnique({
     where: {
       id: movementId,
@@ -107,7 +169,9 @@ async function getInventoryMovementOrThrow(actor: AuthenticatedUserData, movemen
     throw new AppError('NOT_FOUND', 404, 'Inventory movement not found.')
   }
 
-  assertActorCanReadInventoryRecordInScope(actor, movement.unitId)
+  assertActorCanReadInventoryRecordInScope(actor, movement.unitId, {
+    requestedUnitId: options?.requestedUnitId ?? null,
+  })
 
   return movement
 }
@@ -116,23 +180,22 @@ export async function getInventoryDefaultsForUnit(
   client: InventoryMutationClient,
   unitId: string,
 ): Promise<InventoryDefaults> {
-  const settings = await client.unitSetting.findMany({
-    where: {
-      unitId,
-      key: {
-        in: [inventorySettingKeys.allowNegativeStock, inventorySettingKeys.minimumStockQuantity],
-      },
-    },
-  })
-
-  const allowNegativeStockValue =
-    settings.find((setting) => setting.key === inventorySettingKeys.allowNegativeStock)?.value ?? 'false'
-  const defaultMinimumStockQuantityValue =
-    settings.find((setting) => setting.key === inventorySettingKeys.minimumStockQuantity)?.value ?? '1'
+  const settings = await loadUnitSettings(client, unitId, [
+    inventorySettingKeys.allowNegativeStock,
+    inventorySettingKeys.minimumStockQuantity,
+  ])
 
   return {
-    allowNegativeStock: allowNegativeStockValue === 'true',
-    defaultMinimumStockQuantity: Number(defaultMinimumStockQuantityValue) || 1,
+    allowNegativeStock: readBooleanUnitSetting(
+      settings,
+      inventorySettingKeys.allowNegativeStock,
+      false,
+    ),
+    defaultMinimumStockQuantity: readNumericUnitSetting(
+      settings,
+      inventorySettingKeys.minimumStockQuantity,
+      1,
+    ),
   }
 }
 
@@ -141,25 +204,94 @@ export async function ensureInventoryStockRecord(
   unitId: string,
   productId: string,
 ) {
-  const existingStock = await client.inventoryStock.findUnique({
+  return client.inventoryStock.upsert({
     where: {
       unitId_productId: {
         productId,
         unitId,
       },
     },
-  })
-
-  if (existingStock) {
-    return existingStock
-  }
-
-  return client.inventoryStock.create({
-    data: {
+    create: {
       productId,
       unitId,
       quantityOnHand: 0,
     },
+    update: {},
+  })
+}
+
+export async function applyInventoryMovementInMutation(args: {
+  allowNegativeStock: boolean
+  conflictMessage?: string
+  createdByUserId?: string | null
+  movementType: InventoryMovementType
+  notes?: string | null
+  occurredAt?: Date
+  posSaleId?: string | null
+  posSaleItemId?: string | null
+  productId: string
+  quantity: number
+  reason?: string | null
+  tx: Prisma.TransactionClient
+  unitId: string
+}) {
+  if (args.movementType === 'SALE_OUT') {
+    if (!args.posSaleId || !args.posSaleItemId) {
+      throw new AppError(
+        'UNPROCESSABLE_ENTITY',
+        422,
+        'SALE_OUT inventory movements require both posSaleId and posSaleItemId.',
+      )
+    }
+
+    await ensurePosSaleItemSaleOutEffectIsUnique(args.tx, args.posSaleItemId)
+  }
+
+  const stock = await ensureInventoryStockRecord(args.tx, args.unitId, args.productId)
+  const movementSnapshot = applyInventoryMovement({
+    allowNegativeStock: args.allowNegativeStock,
+    currentQuantity: Number(stock.quantityOnHand),
+    movementType: args.movementType,
+    quantity: args.quantity,
+  })
+
+  const updatedStock = await args.tx.inventoryStock.updateMany({
+    where: {
+      id: stock.id,
+      quantityOnHand: stock.quantityOnHand,
+    },
+    data: {
+      lastMovementAt: args.occurredAt ?? new Date(),
+      quantityOnHand: movementSnapshot.nextQuantity,
+    },
+  })
+
+  if (updatedStock.count !== 1) {
+    throw new AppError(
+      'CONFLICT',
+      409,
+      args.conflictMessage ?? 'The stock balance changed before this movement could be recorded.',
+    )
+  }
+
+  return args.tx.inventoryMovement.create({
+    data: {
+      unitId: args.unitId,
+      productId: args.productId,
+      posSaleId: args.posSaleId ?? null,
+      posSaleItemId: args.posSaleItemId ?? null,
+      saleOutPosSaleItemId:
+        args.movementType === 'SALE_OUT' ? args.posSaleItemId ?? null : null,
+      createdByUserId: args.createdByUserId ?? null,
+      movementType: args.movementType,
+      quantity: args.quantity,
+      quantityBefore: movementSnapshot.previousQuantity,
+      quantityAfter: movementSnapshot.nextQuantity,
+      reason: args.reason,
+      notes: args.notes,
+      occurredAt: args.occurredAt ?? new Date(),
+    },
+    include: inventoryMovementDetailsInclude,
   })
 }
 
@@ -373,22 +505,9 @@ export async function getInventoryMovementDetails(
   movementId: string,
   query: InventoryScopeQuery = {},
 ) {
-  const movement = await prisma.inventoryMovement.findUnique({
-    where: {
-      id: movementId,
-    },
-    include: inventoryMovementDetailsInclude,
-  })
-
-  if (!movement) {
-    throw new AppError('NOT_FOUND', 404, 'Inventory movement not found.')
-  }
-
-  assertActorCanReadInventoryRecordInScope(actor, movement.unitId, {
+  return getInventoryMovementOrThrow(actor, movementId, {
     requestedUnitId: query.unitId ?? null,
   })
-
-  return movement
 }
 
 export async function recordInventoryMovement(
@@ -403,57 +522,49 @@ export async function recordInventoryMovement(
     )
   }
 
-  const product = await getProductOrThrow(actor, input.productId)
-  const unitId = resolveScopedUnitId(actor, input.unitId ?? product.unitId)
-
-  if (unitId !== product.unitId) {
-    throw new AppError('CONFLICT', 409, 'The selected product does not belong to this unit.')
-  }
-
-  if (!product.trackInventory) {
-    throw new AppError(
-      'CONFLICT',
-      409,
-      'This product does not control inventory and cannot receive stock movements.',
-    )
-  }
-
-  return prisma.$transaction(async (tx) => {
-    const [defaults, stock] = await Promise.all([
-      getInventoryDefaultsForUnit(tx, unitId),
-      ensureInventoryStockRecord(tx, unitId, product.id),
-    ])
-
-    const movementSnapshot = applyInventoryMovement({
-      allowNegativeStock: defaults.allowNegativeStock,
-      currentQuantity: Number(stock.quantityOnHand),
-      movementType: input.movementType,
-      quantity: input.quantity,
-    })
-
-    await tx.inventoryStock.update({
+  return runSerializableTransaction(async (tx) => {
+    const product = await tx.product.findUnique({
       where: {
-        id: stock.id,
+        id: input.productId,
       },
-      data: {
-        lastMovementAt: new Date(),
-        quantityOnHand: movementSnapshot.nextQuantity,
-      },
+      include: productDetailsInclude,
     })
 
-    const movement = await tx.inventoryMovement.create({
-      data: {
-        unitId,
-        productId: product.id,
-        createdByUserId: actor.id,
-        movementType: input.movementType,
-        quantity: input.quantity,
-        quantityBefore: movementSnapshot.previousQuantity,
-        quantityAfter: movementSnapshot.nextQuantity,
-        reason: input.reason,
-        notes: input.notes,
-      },
-      include: inventoryMovementDetailsInclude,
+    if (!product) {
+      throw new AppError('NOT_FOUND', 404, 'Product not found.')
+    }
+
+    assertActorCanReadInventoryRecordInScope(actor, product.unitId, {
+      requestedUnitId: input.unitId ?? null,
+    })
+
+    const unitId = resolveScopedUnitId(actor, input.unitId ?? product.unitId)
+
+    if (unitId !== product.unitId) {
+      throw new AppError('CONFLICT', 409, 'The selected product does not belong to this unit.')
+    }
+
+    if (!product.trackInventory) {
+      throw new AppError(
+        'CONFLICT',
+        409,
+        'This product does not control inventory and cannot receive stock movements.',
+      )
+    }
+
+    const defaults = await getInventoryDefaultsForUnit(tx, unitId)
+    const movement = await applyInventoryMovementInMutation({
+      allowNegativeStock: defaults.allowNegativeStock,
+      conflictMessage:
+        'The stock balance changed before this manual movement could be recorded.',
+      createdByUserId: actor.id,
+      movementType: input.movementType,
+      notes: input.notes,
+      productId: product.id,
+      quantity: input.quantity,
+      reason: input.reason,
+      tx,
+      unitId,
     })
 
     await writeAuditLog(tx, {
@@ -466,10 +577,12 @@ export async function recordInventoryMovement(
         movementType: movement.movementType,
         productId: movement.productId,
         quantity: Number(movement.quantity),
+        quantityBefore: Number(movement.quantityBefore),
         quantityAfter: Number(movement.quantityAfter),
+        reason: movement.reason,
       },
     })
 
     return movement
-  })
+  }, 'The stock balance changed before this manual movement could be recorded.')
 }

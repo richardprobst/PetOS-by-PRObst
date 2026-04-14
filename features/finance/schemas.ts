@@ -132,16 +132,63 @@ export const listClientCreditsQuerySchema = z.object({
   includeExpired: optionalBoolean.default(false),
 })
 
-export const createClientCreditInputSchema = z.object({
-  unitId: optionalString,
-  clientId: z.string().trim().min(1),
-  originType: z.nativeEnum(CreditOriginType),
-  totalAmount: z.coerce.number().positive(),
-  notes: optionalString,
-  expiresAt: optionalDate,
-  originRefundId: optionalString,
-  originDepositId: optionalString,
-})
+export const createClientCreditInputSchema = z
+  .object({
+    unitId: optionalString,
+    clientId: z.string().trim().min(1),
+    originType: z.nativeEnum(CreditOriginType),
+    totalAmount: z.coerce.number().positive(),
+    notes: optionalString,
+    expiresAt: optionalDate,
+    originRefundId: optionalString,
+    originDepositId: optionalString,
+  })
+  .superRefine((value, context) => {
+    const hasRefundOrigin = Boolean(value.originRefundId)
+    const hasDepositOrigin = Boolean(value.originDepositId)
+
+    if (hasRefundOrigin && hasDepositOrigin) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Client credit can reference either a refund or a deposit conversion origin, not both.',
+        path: ['originRefundId'],
+      })
+      return
+    }
+
+    if (value.originType === CreditOriginType.REFUND) {
+      if (!hasRefundOrigin) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Refund-origin credits require originRefundId.',
+          path: ['originRefundId'],
+        })
+      }
+
+      return
+    }
+
+    if (value.originType === CreditOriginType.DEPOSIT_CONVERSION) {
+      if (!hasDepositOrigin) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Deposit-conversion credits require originDepositId.',
+          path: ['originDepositId'],
+        })
+      }
+
+      return
+    }
+
+    if (hasRefundOrigin || hasDepositOrigin) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Only refund and deposit-conversion credits can reference a financial origin.',
+        path: [hasRefundOrigin ? 'originRefundId' : 'originDepositId'],
+      })
+    }
+  })
 
 export const useClientCreditInputSchema = z.object({
   appointmentId: z.string().trim().min(1),
