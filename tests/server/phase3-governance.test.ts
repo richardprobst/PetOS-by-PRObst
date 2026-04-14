@@ -7,6 +7,22 @@ import { AppError } from '../../server/http/errors'
 
 const restorers: Array<() => void> = []
 
+type GovernanceQueryArgs = {
+  where?: {
+    action?:
+      | string
+      | {
+          in?: string[]
+          startsWith?: string
+        }
+    executionStatus?: string
+    feedbackAt?: unknown
+    feedbackStatus?: string
+    reviewedAt?: unknown
+    reviewStatus?: string
+  }
+}
+
 const phase3Operator: AuthenticatedUserData = {
   active: true,
   email: 'phase3.governance@petos.app',
@@ -160,7 +176,7 @@ function installGovernancePrismaStubs(overrides?: {
   }
 
   replaceMethod(prisma as object, 'imageAnalysis', {
-    count: async ({ where }: any = {}) => {
+    count: async ({ where }: GovernanceQueryArgs = {}) => {
       if (!where) {
         return image.totalSnapshots
       }
@@ -187,7 +203,7 @@ function installGovernancePrismaStubs(overrides?: {
 
       return image.totalSnapshots
     },
-    findFirst: async ({ where }: any = {}) => {
+    findFirst: async ({ where }: GovernanceQueryArgs = {}) => {
       if (where?.reviewedAt) {
         return image.latestReviewedAt
           ? { reviewedAt: image.latestReviewedAt }
@@ -199,7 +215,7 @@ function installGovernancePrismaStubs(overrides?: {
   })
 
   replaceMethod(prisma as object, 'predictiveInsightSnapshot', {
-    count: async ({ where }: any = {}) => {
+    count: async ({ where }: GovernanceQueryArgs = {}) => {
       if (!where) {
         return predictive.totalSnapshots
       }
@@ -230,7 +246,7 @@ function installGovernancePrismaStubs(overrides?: {
 
       return predictive.totalSnapshots
     },
-    findFirst: async ({ where }: any = {}) => {
+    findFirst: async ({ where }: GovernanceQueryArgs = {}) => {
       if (where?.feedbackAt) {
         return predictive.latestFeedbackAt
           ? { feedbackAt: predictive.latestFeedbackAt }
@@ -244,8 +260,11 @@ function installGovernancePrismaStubs(overrides?: {
   })
 
   replaceMethod(prisma as object, 'auditLog', {
-    count: async ({ where }: any = {}) => {
-      if (where?.action?.startsWith === 'ai.') {
+    count: async ({ where }: GovernanceQueryArgs = {}) => {
+      if (
+        typeof where?.action === 'object' &&
+        where.action?.startsWith === 'ai.'
+      ) {
         return audit.aiExecutionEventsLast30Days
       }
 
@@ -258,14 +277,16 @@ function installGovernancePrismaStubs(overrides?: {
       }
 
       if (
-        Array.isArray(where?.action?.in) &&
+        typeof where?.action === 'object' &&
+        Array.isArray(where.action?.in) &&
         where.action.in.includes('image_analysis.create')
       ) {
         return audit.imageAuditEventsLast30Days
       }
 
       if (
-        Array.isArray(where?.action?.in) &&
+        typeof where?.action === 'object' &&
+        Array.isArray(where.action?.in) &&
         where.action.in.includes('predictive_insight.snapshot.generated')
       ) {
         return audit.predictiveAuditEventsLast30Days
@@ -273,13 +294,17 @@ function installGovernancePrismaStubs(overrides?: {
 
       return 0
     },
-    findFirst: async ({ where }: any = {}) => {
-      if (where?.action?.startsWith === 'ai.') {
+    findFirst: async ({ where }: GovernanceQueryArgs = {}) => {
+      if (
+        typeof where?.action === 'object' &&
+        where.action?.startsWith === 'ai.'
+      ) {
         return audit.lastAiAuditAt ? { occurredAt: audit.lastAiAuditAt } : null
       }
 
       if (
-        Array.isArray(where?.action?.in) &&
+        typeof where?.action === 'object' &&
+        Array.isArray(where.action?.in) &&
         where.action.in.includes('image_analysis.create')
       ) {
         return audit.lastImageAuditAt
@@ -288,7 +313,8 @@ function installGovernancePrismaStubs(overrides?: {
       }
 
       if (
-        Array.isArray(where?.action?.in) &&
+        typeof where?.action === 'object' &&
+        Array.isArray(where.action?.in) &&
         where.action.in.includes('predictive_insight.snapshot.generated')
       ) {
         return audit.lastPredictiveAuditAt

@@ -40,7 +40,7 @@ const imageConsent: AiConsentEvaluationInput = {
 }
 
 function createAuditWriter() {
-  const entries: Array<{ action: string; details: any }> = []
+  const entries: Array<{ action: string; details: unknown }> = []
 
   return {
     entries,
@@ -58,7 +58,7 @@ function createAuditWriter() {
         }) {
           entries.push({
             action: args.data.action,
-            details: (args.data.details ?? {}) as any,
+            details: args.data.details ?? {},
           })
 
           return args.data
@@ -195,7 +195,9 @@ test('rapid shutdown emits shutdown and prevented-consumption events when execut
 
   assert.ok(
     audit.entries.some((entry) =>
-      entry.details.events?.some(
+      (entry.details as {
+        events?: Array<{ eventCode?: string }>
+      }).events?.some(
         (event: { eventCode?: string }) =>
           event.eventCode === 'RAPID_SHUTDOWN_ACTIVE',
       ),

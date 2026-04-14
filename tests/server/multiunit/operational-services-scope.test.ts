@@ -15,7 +15,6 @@ import {
 } from '../../../features/documents/services'
 import {
   assertActorCanReadEmployeeInScope,
-  resolveEmployeeReadUnitId,
 } from '../../../features/employees/services'
 import {
   assertActorCanReadFinanceRecordInScope,

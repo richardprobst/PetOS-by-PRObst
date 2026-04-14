@@ -40,7 +40,6 @@ import {
 import { hasPhase5PermissionCompatibility } from './permission-compat'
 
 type SystemSettingRecord = Prisma.SystemSettingGetPayload<Record<string, never>>
-type UnitSettingRecord = Prisma.UnitSettingGetPayload<Record<string, never>>
 type ConfigurationApprovalRecord = Prisma.ConfigurationApprovalGetPayload<Record<string, never>>
 type ConfigurationPublishRecord = Prisma.ConfigurationPublishGetPayload<Record<string, never>>
 type UnitRecord = Prisma.UnitGetPayload<Record<string, never>>

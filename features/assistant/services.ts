@@ -447,7 +447,7 @@ export async function interpretTutorAssistantRequest(
 
   const portal = await getTutorPortalOverview(tutor)
   let reply = ''
-  let responseStatus: TutorAssistantResponseStatus = 'ANSWERED'
+  const responseStatus: TutorAssistantResponseStatus = 'ANSWERED'
 
   switch (intent) {
     case 'QUERY_UPCOMING_APPOINTMENTS':

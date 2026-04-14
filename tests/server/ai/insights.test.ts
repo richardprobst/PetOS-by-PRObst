@@ -22,6 +22,28 @@ import type { AppointmentDemandInsightExplanation } from '../../../features/insi
 
 const restorers: Array<() => void> = []
 
+type AuditCreateArgs = {
+  data: {
+    action: string
+  } & Record<string, unknown>
+}
+
+type PredictiveInsightFindManyArgs = {
+  where: {
+    unitId?: string | null
+  }
+}
+
+type PredictiveInsightSnapshotCreateArgs = {
+  create: Record<string, unknown>
+}
+
+type PredictiveInsightSnapshotUpdateArgs = {
+  data: Record<string, unknown>
+}
+
+type TransactionCallback = (tx: unknown) => Promise<unknown>
+
 afterEach(() => {
   while (restorers.length > 0) {
     restorers.pop()?.()
@@ -189,7 +211,7 @@ function createPersistedPredictiveInsight(overrides: Partial<Record<string, unkn
     updatedAt: new Date('2026-04-09T10:05:00.000Z'),
     visibility: 'INTERNAL_OPERATOR_AND_AUDIT',
     ...overrides,
-  } as any
+  } satisfies Record<string, unknown>
 }
 
 test('internal appointment-demand adapter returns a recommendation-only result explained by window and unit', async () => {
@@ -246,16 +268,16 @@ test('createPredictiveInsight persists a completed appointment-demand snapshot w
       { startAt: new Date('2025-10-15T10:00:00.000Z') },
     ],
   })
-  replaceMethod(prisma as object, '$transaction', async (callback: (tx: any) => Promise<unknown>) =>
+  replaceMethod(prisma as object, '$transaction', async (callback: TransactionCallback) =>
     callback({
       auditLog: {
-        create: async ({ data }: any) => {
+        create: async ({ data }: AuditCreateArgs) => {
           auditActions.push(data.action)
           return data
         },
       },
       predictiveInsightSnapshot: {
-        upsert: async ({ create }: any) =>
+        upsert: async ({ create }: PredictiveInsightSnapshotCreateArgs) =>
           createPersistedPredictiveInsight({
             envelopeSnapshot: create.envelopeSnapshot,
             executionId: create.executionId,
@@ -306,13 +328,13 @@ test('createPredictiveInsight keeps fail-closed behavior when predictive AI is d
   replaceMethod(prisma as object, 'appointment', {
     findMany: async () => [],
   })
-  replaceMethod(prisma as object, '$transaction', async (callback: (tx: any) => Promise<unknown>) =>
+  replaceMethod(prisma as object, '$transaction', async (callback: TransactionCallback) =>
     callback({
       auditLog: {
-        create: async ({ data }: any) => data,
+        create: async ({ data }: AuditCreateArgs) => data,
       },
       predictiveInsightSnapshot: {
-        upsert: async ({ create }: any) =>
+        upsert: async ({ create }: PredictiveInsightSnapshotCreateArgs) =>
           createPersistedPredictiveInsight({
             executionStatus: create.executionStatus,
             recommendations: create.recommendations,
@@ -342,16 +364,16 @@ test('recordPredictiveInsightFeedback updates the utility trail and writes audit
   replaceMethod(prisma as object, 'predictiveInsightSnapshot', {
     findUnique: async () => createPersistedPredictiveInsight(),
   })
-  replaceMethod(prisma as object, '$transaction', async (callback: (tx: any) => Promise<unknown>) =>
+  replaceMethod(prisma as object, '$transaction', async (callback: TransactionCallback) =>
     callback({
       auditLog: {
-        create: async ({ data }: any) => {
+        create: async ({ data }: AuditCreateArgs) => {
           auditActions.push(data.action)
           return data
         },
       },
       predictiveInsightSnapshot: {
-        update: async ({ data }: any) =>
+        update: async ({ data }: PredictiveInsightSnapshotUpdateArgs) =>
           createPersistedPredictiveInsight({
             feedbackAt: new Date('2026-04-09T11:00:00.000Z'),
             feedbackBy: { id: localActor.id, name: localActor.name },
@@ -377,8 +399,8 @@ test('listPredictiveInsights respects the resolved multi-unit read context', asy
   let capturedUnitId: string | null = null
 
   replaceMethod(prisma as object, 'predictiveInsightSnapshot', {
-    findMany: async ({ where }: any) => {
-      capturedUnitId = where.unitId
+    findMany: async ({ where }: PredictiveInsightFindManyArgs) => {
+      capturedUnitId = where.unitId ?? null
       return []
     },
   })

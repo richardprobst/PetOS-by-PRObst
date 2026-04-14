@@ -21,6 +21,28 @@ import { createMediaAssetInputSchema } from '../../../features/documents/schemas
 
 const restorers: Array<() => void> = []
 
+type AuditCreateArgs = {
+  data: {
+    action: string
+  } & Record<string, unknown>
+}
+
+type ImageAnalysisCreateArgs = {
+  data: Record<string, unknown>
+}
+
+type ImageAnalysisUpdateArgs = {
+  data: Record<string, unknown>
+}
+
+type MediaAssetFindUniqueArgs = {
+  where: {
+    id: string
+  }
+}
+
+type TransactionCallback = (tx: unknown) => Promise<unknown>
+
 afterEach(() => {
   while (restorers.length > 0) {
     restorers.pop()?.()
@@ -123,7 +145,7 @@ function createMediaAsset(overrides: Partial<Record<string, unknown>> = {}) {
     type: 'IMAGE',
     unitId: 'unit_local',
     ...overrides,
-  } as any
+  } satisfies Record<string, unknown>
 }
 
 function replaceMethod(target: object, key: string, value: unknown) {
@@ -261,16 +283,16 @@ test(
   replaceMethod(prisma as object, 'mediaAsset', {
     findUnique: async () => mediaAsset,
   })
-  replaceMethod(prisma as object, '$transaction', async (callback: (tx: any) => Promise<unknown>) =>
+  replaceMethod(prisma as object, '$transaction', async (callback: TransactionCallback) =>
     callback({
       auditLog: {
-        create: async ({ data }: any) => {
+        create: async ({ data }: AuditCreateArgs) => {
           auditEntries.push(data.action)
           return data
         },
       },
       imageAnalysis: {
-        create: async ({ data }: any) => ({
+        create: async ({ data }: ImageAnalysisCreateArgs) => ({
           appointment: mediaAsset.appointment,
           appointmentId: data.appointmentId,
           client: mediaAsset.client,
@@ -351,7 +373,7 @@ test(
   })
 
   replaceMethod(prisma as object, 'mediaAsset', {
-    findUnique: async ({ where }: any) =>
+    findUnique: async ({ where }: MediaAssetFindUniqueArgs) =>
       where.id === primaryMedia.id ? primaryMedia : comparisonMedia,
   })
 
@@ -457,21 +479,21 @@ test(
     unitId: 'unit_local',
     updatedAt: new Date('2026-04-09T13:16:00.000Z'),
     visibility: 'INTERNAL_OPERATOR_AND_AUDIT',
-  } as any
+  } satisfies Record<string, unknown>
 
   replaceMethod(prisma as object, 'imageAnalysis', {
     findUnique: async () => storedAnalysis,
   })
-  replaceMethod(prisma as object, '$transaction', async (callback: (tx: any) => Promise<unknown>) =>
+  replaceMethod(prisma as object, '$transaction', async (callback: TransactionCallback) =>
     callback({
       auditLog: {
-        create: async ({ data }: any) => {
+        create: async ({ data }: AuditCreateArgs) => {
           auditEntries.push(data.action)
           return data
         },
       },
       imageAnalysis: {
-        update: async ({ data }: any) => ({
+        update: async ({ data }: ImageAnalysisUpdateArgs) => ({
           ...storedAnalysis,
           reviewNotes: data.reviewNotes,
           reviewStatus: data.reviewStatus,
