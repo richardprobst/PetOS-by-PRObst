@@ -21,6 +21,36 @@ export const configurationCategoryLabels = {
   WHITE_LABEL: 'White label',
 } as const
 
+export const configurationMultiUnitStatusLabels = {
+  RESOLVED: 'Contexto resolvido',
+  UNRESOLVED: 'Contexto pendente',
+} as const
+
+export const configurationAiDriftLabels = {
+  ALIGNED: 'Alinhado ao runtime',
+  DRIFTED: 'Divergencia detectada',
+  ENV_DISABLED: 'Runtime desabilitado',
+} as const
+
+export const configurationImpactLevelLabels = {
+  CRITICAL: 'Critico',
+  HIGH: 'Alto impacto',
+  LOW: 'Baixo impacto',
+  MODERATE: 'Impacto moderado',
+} as const
+
+export const assistantExperienceModes = [
+  'TRANSCRIPT_ONLY_ASSISTED',
+  'TEXT_FIRST_ASSISTED',
+  'TEXT_AND_VOICE_ASSISTED',
+] as const
+
+export const assistantExperienceModeLabels = {
+  TEXT_AND_VOICE_ASSISTED: 'Texto e voz assistidos',
+  TEXT_FIRST_ASSISTED: 'Texto assistido como padrao',
+  TRANSCRIPT_ONLY_ASSISTED: 'Transcricao assistida',
+} as const
+
 export type ConfigurationScopeKey = keyof typeof configurationScopeLabels
 export type ConfigurationCategoryKey = keyof typeof configurationCategoryLabels
 
@@ -451,6 +481,36 @@ export function getConfigurationScopeLabel(scope: ConfigurationScopeKey) {
 
 export function getConfigurationCategoryLabel(category: ConfigurationCategoryKey) {
   return configurationCategoryLabels[category]
+}
+
+export function getConfigurationMultiUnitStatusLabel(status: string) {
+  return status in configurationMultiUnitStatusLabels
+    ? configurationMultiUnitStatusLabels[
+        status as keyof typeof configurationMultiUnitStatusLabels
+      ]
+    : status
+}
+
+export function getConfigurationAiDriftLabel(status: string) {
+  return status in configurationAiDriftLabels
+    ? configurationAiDriftLabels[status as keyof typeof configurationAiDriftLabels]
+    : status
+}
+
+export function getConfigurationImpactLevelLabel(level: string) {
+  return level in configurationImpactLevelLabels
+    ? configurationImpactLevelLabels[
+        level as keyof typeof configurationImpactLevelLabels
+      ]
+    : level
+}
+
+export function getAssistantExperienceModeLabel(mode: string) {
+  return mode in assistantExperienceModeLabels
+    ? assistantExperienceModeLabels[
+        mode as keyof typeof assistantExperienceModeLabels
+      ]
+    : mode
 }
 
 export function getConfigurationRegistryDefinition(key: string) {

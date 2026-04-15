@@ -16,6 +16,7 @@ import {
   configurationCategoryLabels,
   configurationRegistry,
   configurationScopeLabels,
+  getConfigurationMultiUnitStatusLabel,
   getConfigurationCategoryLabel,
   getConfigurationScopeLabel,
   type ConfigurationCategoryKey,
@@ -103,6 +104,7 @@ export interface ConfigurationFoundationSnapshot {
     homeUnitId: string | null
     requestedUnitId: string | null
     status: string
+    statusLabel: string
   }
   permissionGate: {
     acceptedPermissions: readonly string[]
@@ -234,6 +236,7 @@ export async function getConfigurationFoundationSnapshot(
       homeUnitId: context.homeUnitId,
       requestedUnitId: context.requestedUnitId,
       status: context.status,
+      statusLabel: getConfigurationMultiUnitStatusLabel(context.status),
     },
     permissionGate: {
       acceptedPermissions: CONFIGURATION_FOUNDATION_PERMISSIONS,

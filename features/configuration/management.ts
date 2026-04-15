@@ -26,6 +26,8 @@ import {
 } from '@/features/integrations-admin/services'
 import {
   configurationRegistry,
+  getConfigurationAiDriftLabel,
+  getConfigurationImpactLevelLabel,
   getConfigurationRegistryDefinition,
   type ConfigurationRegistryValueKind,
 } from './domain'
@@ -75,6 +77,7 @@ export interface ConfigurationCenterSnapshot {
       desiredEnabled: string | null
       desiredQuota: string | null
       drift: 'ALIGNED' | 'DRIFTED' | 'ENV_DISABLED'
+      driftLabel: string
       envEnabled: string | null
       envQuota: string | null
       key: 'IMAGE_ANALYSIS' | 'PREDICTIVE_INSIGHTS' | 'VIRTUAL_ASSISTANT'
@@ -96,6 +99,7 @@ export interface ConfigurationCenterSnapshot {
       createdAt: Date
       id: string
       impactLevel: ConfigurationImpactLevel
+      impactLevelLabel: string
       status: string
       summary: string | null
     }>
@@ -226,6 +230,13 @@ export async function getConfigurationCenterSnapshot(
               : envEnabled === desiredEnabled && (envQuota ?? null) === (desiredQuota ?? null)
                 ? 'ALIGNED'
                 : 'DRIFTED',
+          driftLabel: getConfigurationAiDriftLabel(
+            envEnabled === 'false'
+              ? 'ENV_DISABLED'
+              : envEnabled === desiredEnabled && (envQuota ?? null) === (desiredQuota ?? null)
+                ? 'ALIGNED'
+                : 'DRIFTED',
+          ),
           envEnabled,
           envQuota,
           key: mapping.key,
@@ -254,6 +265,7 @@ export async function getConfigurationCenterSnapshot(
         createdAt: approval.createdAt,
         id: approval.id,
         impactLevel: approval.impactLevel,
+        impactLevelLabel: getConfigurationImpactLevelLabel(approval.impactLevel),
         status: approval.status,
         summary: approval.summary,
       })),

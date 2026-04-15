@@ -3,6 +3,7 @@ import type {
   IntegrationConnectionStatus,
   IntegrationHealthStatus,
 } from '@prisma/client'
+import { getConfigurationScopeLabel } from '@/features/configuration/domain'
 
 export const integrationProviderKeys = [
   'STRIPE',
@@ -13,6 +14,21 @@ export const integrationProviderKeys = [
   'OPENAI',
   'GEMINI',
 ] as const
+
+export const integrationConnectionStatusLabels = {
+  CONFIGURED: 'Configurada',
+  DISABLED: 'Desabilitada',
+  ERROR: 'Erro',
+  READY: 'Pronta para uso',
+} as const
+
+export const integrationHealthStatusLabels = {
+  ERROR: 'Erro operacional',
+  NOT_CONFIGURED: 'Sem configuracao',
+  PENDING_VALIDATION: 'Aguardando validacao',
+  READY: 'Pronta para uso',
+  WARNING: 'Requer revisao',
+} as const
 
 export type IntegrationProviderKey = (typeof integrationProviderKeys)[number]
 
@@ -234,11 +250,14 @@ export interface IntegrationConnectionSnapshot {
   displayName: string
   environmentSummary: string | null
   healthStatus: IntegrationHealthStatus
+  healthStatusLabel: string
   id: string
   lastError: string | null
   lastTestedAt: Date | null
   providerKey: IntegrationProviderKey
   scope: ConfigurationScope
+  scopeLabel: string
+  scopeSummary: string
   secretEntries: Array<{
     key: string
     label: string
@@ -246,7 +265,9 @@ export interface IntegrationConnectionSnapshot {
     updatedAt: Date | null
   }>
   status: IntegrationConnectionStatus
+  statusLabel: string
   unitId: string | null
+  unitName: string | null
 }
 
 export function getIntegrationCatalogEntry(providerKey: string) {
@@ -265,4 +286,25 @@ export function maskSecretValue(secret: string) {
   }
 
   return `${trimmed.slice(0, 2)}${'*'.repeat(Math.max(trimmed.length - 4, 2))}${trimmed.slice(-2)}`
+}
+
+export function getIntegrationConnectionStatusLabel(status: IntegrationConnectionStatus) {
+  return integrationConnectionStatusLabels[status]
+}
+
+export function getIntegrationHealthStatusLabel(status: IntegrationHealthStatus) {
+  return integrationHealthStatusLabels[status]
+}
+
+export function getIntegrationScopeSummary(
+  scope: ConfigurationScope,
+  unitName?: string | null,
+) {
+  const scopeLabel = getConfigurationScopeLabel(scope)
+
+  if (scope === 'UNIT' && unitName) {
+    return `${scopeLabel} - ${unitName}`
+  }
+
+  return scopeLabel
 }

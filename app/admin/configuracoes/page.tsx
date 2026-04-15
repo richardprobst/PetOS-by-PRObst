@@ -31,8 +31,15 @@ import {
   canReadConfigurationFoundation,
   type ConfigurationFoundationEntrySnapshot,
 } from '@/features/configuration/services'
-import { assistantExperienceModes } from '@/features/configuration/schemas'
-import { integrationCatalog, integrationProviderKeys } from '@/features/integrations-admin/domain'
+import {
+  assistantExperienceModeLabels,
+  assistantExperienceModes,
+} from '@/features/configuration/domain'
+import {
+  integrationCatalog,
+  integrationConnectionStatusLabels,
+  integrationProviderKeys,
+} from '@/features/integrations-admin/domain'
 import { formatDateTime } from '@/lib/formatters'
 import { requireInternalAreaUser } from '@/server/authorization/guards'
 
@@ -52,6 +59,10 @@ function getStorageTone(value: 'AVAILABLE' | 'MIGRATION_PENDING') {
   return value === 'AVAILABLE' ? 'success' : 'warning'
 }
 
+function getStorageStatusLabel(value: 'AVAILABLE' | 'MIGRATION_PENDING') {
+  return value === 'AVAILABLE' ? 'pronto' : 'migration pendente'
+}
+
 function getEntryValue(entries: ConfigurationFoundationEntrySnapshot[], key: string) {
   return entries.find((entry) => entry.key === key)?.currentValue ?? ''
 }
@@ -62,11 +73,12 @@ function getDriftTone(value: 'ALIGNED' | 'DRIFTED' | 'ENV_DISABLED') {
 
 function getHealthTone(value: string) {
   switch (value) {
-    case 'HEALTHY':
+    case 'READY':
       return 'success' as const
-    case 'DEGRADED':
+    case 'PENDING_VALIDATION':
+    case 'WARNING':
       return 'warning' as const
-    case 'UNCONFIGURED':
+    case 'NOT_CONFIGURED':
       return 'neutral' as const
     default:
       return 'danger' as const
@@ -136,13 +148,13 @@ export default async function ConfigurationAdminPage({
           <p className="section-label">Resumo da fase</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <StatusBadge tone={snapshot.foundation.multiUnit.status === 'RESOLVED' ? 'success' : 'warning'}>
-              {snapshot.foundation.multiUnit.status}
+              {snapshot.foundation.multiUnit.statusLabel}
             </StatusBadge>
             <StatusBadge tone={getStorageTone(snapshot.foundation.storage.systemSettings)}>
-              system settings {snapshot.foundation.storage.systemSettings}
+              configuracao central {getStorageStatusLabel(snapshot.foundation.storage.systemSettings)}
             </StatusBadge>
             <StatusBadge tone={getStorageTone(snapshot.integrations.storage.secrets)}>
-              segredos {snapshot.integrations.storage.secrets}
+              segredos {getStorageStatusLabel(snapshot.integrations.storage.secrets)}
             </StatusBadge>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -252,7 +264,7 @@ export default async function ConfigurationAdminPage({
               <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/60 p-4" key={module.key}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold text-[color:var(--foreground)]">{module.label}</p>
-                  <StatusBadge tone={getDriftTone(module.drift)}>{module.drift}</StatusBadge>
+                  <StatusBadge tone={getDriftTone(module.drift)}>{module.driftLabel}</StatusBadge>
                 </div>
                 <FormField label="Desejo administrativo">
                   <select className="ui-input" defaultValue={module.desiredEnabled === 'false' ? 'false' : 'true'} name={module.key === 'IMAGE_ANALYSIS' ? 'imageAnalysisDesiredEnabled' : module.key === 'PREDICTIVE_INSIGHTS' ? 'predictiveDesiredEnabled' : 'assistantDesiredEnabled'}>
@@ -268,7 +280,11 @@ export default async function ConfigurationAdminPage({
           </div>
           <FormField label="Modo do assistente do tutor">
             <select className="ui-input" defaultValue={getEntryValue(snapshot.foundation.entries, 'portal.tutor.assistant_experience_mode')} name="assistantExperienceMode">
-              {assistantExperienceModes.map((mode) => <option key={mode} value={mode}>{mode}</option>)}
+              {assistantExperienceModes.map((mode) => (
+                <option key={mode} value={mode}>
+                  {assistantExperienceModeLabels[mode]}
+                </option>
+              ))}
             </select>
           </FormField>
           <button className="ui-button-primary" type="submit">Salvar governanca da IA</button>
@@ -281,14 +297,27 @@ export default async function ConfigurationAdminPage({
           <DataTable
             className="mt-4"
             columns={[
-              { id: 'providerKey', header: 'Provider', render: (row) => row.providerKey },
-              { id: 'scope', header: 'Escopo', render: (row) => `${row.scope}${row.unitId ? ` - ${row.unitId}` : ''}` },
+              {
+                id: 'providerKey',
+                header: 'Provider',
+                render: (row) => (
+                  <div>
+                    <p className="font-medium text-[color:var(--foreground)]">{row.displayName}</p>
+                    <p className="text-xs text-[color:var(--foreground-soft)]">{row.providerKey}</p>
+                  </div>
+                ),
+              },
+              { id: 'scope', header: 'Escopo', render: (row) => row.scopeSummary },
               {
                 id: 'healthStatus',
                 header: 'Saude',
-                render: (row) => <StatusBadge tone={getHealthTone(row.healthStatus)}>{row.healthStatus}</StatusBadge>,
+                render: (row) => (
+                  <StatusBadge tone={getHealthTone(row.healthStatus)}>
+                    {row.healthStatusLabel}
+                  </StatusBadge>
+                ),
               },
-              { id: 'status', header: 'Status', render: (row) => row.status },
+              { id: 'status', header: 'Status', render: (row) => row.statusLabel },
               { id: 'lastTestedAt', header: 'Ultimo teste', render: (row) => (row.lastTestedAt ? formatDateTime(row.lastTestedAt) : 'nunca') },
             ]}
             rows={snapshot.integrations.connections}
@@ -310,7 +339,7 @@ export default async function ConfigurationAdminPage({
                   <option value="">Criar nova ou upsert por provider/escopo</option>
                   {snapshot.integrations.connections.map((connection) => (
                     <option key={connection.id} value={connection.id}>
-                      {connection.providerKey} - {connection.scope}{connection.unitId ? ` - ${connection.unitId}` : ''}
+                      {connection.displayName} - {connection.scopeSummary}
                     </option>
                   ))}
                 </select>
@@ -323,7 +352,11 @@ export default async function ConfigurationAdminPage({
               </FormField>
               <FormField label="Status">
                 <select className="ui-input" defaultValue="CONFIGURED" name="status">
-                  {integrationStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+                  {integrationStatusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {integrationConnectionStatusLabels[status]}
+                    </option>
+                  ))}
                 </select>
               </FormField>
             </div>
@@ -354,7 +387,7 @@ export default async function ConfigurationAdminPage({
                   <option value="">Selecione</option>
                   {snapshot.integrations.connections.map((connection) => (
                     <option key={connection.id} value={connection.id}>
-                      {connection.providerKey} - {connection.scope}{connection.unitId ? ` - ${connection.unitId}` : ''}
+                      {connection.displayName} - {connection.scopeSummary}
                     </option>
                   ))}
                 </select>
@@ -376,7 +409,7 @@ export default async function ConfigurationAdminPage({
                   <option value="">Selecione</option>
                   {snapshot.integrations.connections.map((connection) => (
                     <option key={connection.id} value={connection.id}>
-                      {connection.providerKey} - {connection.scope}{connection.unitId ? ` - ${connection.unitId}` : ''}
+                      {connection.displayName} - {connection.scopeSummary}
                     </option>
                   ))}
                 </select>
@@ -594,7 +627,9 @@ export default async function ConfigurationAdminPage({
               <article className="rounded-[1.25rem] border border-[color:var(--line)] bg-white/60 p-4" key={approval.id}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold text-[color:var(--foreground)]">{approval.summary ?? 'Sem resumo'}</p>
-                  <StatusBadge tone={approval.impactLevel === 'CRITICAL' ? 'danger' : 'warning'}>{approval.impactLevel}</StatusBadge>
+                  <StatusBadge tone={approval.impactLevel === 'CRITICAL' ? 'danger' : 'warning'}>
+                    {approval.impactLevelLabel}
+                  </StatusBadge>
                 </div>
                 <p className="mt-2 text-sm text-[color:var(--foreground-soft)]">{formatDateTime(approval.createdAt)}</p>
                 <form action={decideConfigurationApprovalAction} className="mt-4 grid gap-3 md:grid-cols-[1fr_180px]">

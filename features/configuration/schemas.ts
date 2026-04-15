@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { brandAssetRoleLabels, domainBindingStatusLabels, domainSurfaceLabels } from '@/features/branding/domain'
+import { assistantExperienceModes } from '@/features/configuration/domain'
 import { integrationProviderKeys } from '@/features/integrations-admin/domain'
 
 const emptyStringToUndefined = (value: unknown) => {
@@ -74,12 +75,6 @@ const colorHexString = z.preprocess(
     .trim()
     .regex(/^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/, 'Informe uma cor hexadecimal valida.'),
 )
-
-export const assistantExperienceModes = [
-  'TRANSCRIPT_ONLY_ASSISTED',
-  'TEXT_FIRST_ASSISTED',
-  'TEXT_AND_VOICE_ASSISTED',
-] as const
 
 export const generalConfigurationInputSchema = z.object({
   companyName: trimmedString,

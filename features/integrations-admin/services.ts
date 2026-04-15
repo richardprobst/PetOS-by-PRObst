@@ -19,7 +19,10 @@ import { getEnv } from '@/server/env'
 import { AppError } from '@/server/http/errors'
 import { writeAuditLog } from '@/server/audit/logging'
 import {
+  getIntegrationConnectionStatusLabel,
   getIntegrationCatalogEntry,
+  getIntegrationHealthStatusLabel,
+  getIntegrationScopeSummary,
   maskSecretValue,
   type IntegrationConnectionSnapshot,
   type IntegrationProviderKey,
@@ -634,11 +637,14 @@ function createIntegrationConnectionSnapshot(
         ? JSON.stringify(connection.environmentJson)
         : null,
     healthStatus: connection.healthStatus,
+    healthStatusLabel: getIntegrationHealthStatusLabel(connection.healthStatus),
     id: connection.id,
     lastError: connection.lastError,
     lastTestedAt: connection.lastTestedAt,
     providerKey: connection.providerKey as IntegrationProviderKey,
     scope: connection.scope,
+    scopeLabel: getIntegrationScopeSummary(connection.scope),
+    scopeSummary: getIntegrationScopeSummary(connection.scope, connection.unit?.name ?? null),
     secretEntries: (catalogEntry?.secretFields ?? []).map((field) => {
       const secretRecord = connection.secrets.find((secret) => secret.secretKey === field.key)
 
@@ -650,7 +656,9 @@ function createIntegrationConnectionSnapshot(
       }
     }),
     status: connection.status,
+    statusLabel: getIntegrationConnectionStatusLabel(connection.status),
     unitId: connection.unitId,
+    unitName: connection.unit?.name ?? null,
   }
 }
 

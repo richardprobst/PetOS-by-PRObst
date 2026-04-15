@@ -390,6 +390,7 @@ test('getConfigurationFoundationSnapshot consolidates environment, system and un
       assert.equal(snapshot.storage.systemSettings, 'AVAILABLE')
       assert.equal(snapshot.storage.configurationChanges, 'AVAILABLE')
       assert.equal(snapshot.multiUnit.diagnosticUnitId, 'unit_local')
+      assert.equal(snapshot.multiUnit.statusLabel, 'Contexto resolvido')
       assert.equal(snapshot.summary.totalEntries > 10, true)
       assert.equal(
         snapshot.entries.some(
