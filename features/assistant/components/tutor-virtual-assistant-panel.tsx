@@ -97,21 +97,6 @@ function getInteractionStatusTone(
   return 'warning' as const
 }
 
-function getIntentLabel(intent: string) {
-  const labels: Record<string, string> = {
-    HELP: 'Ajuda',
-    QUERY_FINANCE_SUMMARY: 'Financeiro',
-    QUERY_PENDING_DOCUMENTS: 'Documentos',
-    QUERY_REPORT_CARDS: 'Report cards',
-    QUERY_UPCOMING_APPOINTMENTS: 'Agenda',
-    QUERY_WAITLIST_STATUS: 'Waitlist',
-    SCHEDULE_APPOINTMENT: 'Agendamento',
-    UNKNOWN: 'Nao identificado',
-  }
-
-  return labels[intent] ?? intent
-}
-
 export function TutorVirtualAssistantPanel({
   pets,
   services,
@@ -383,13 +368,9 @@ export function TutorVirtualAssistantPanel({
             Estado atual
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <StatusBadge tone="info">
-              {response?.intent ?? 'AGUARDANDO_PEDIDO'}
-            </StatusBadge>
-            <StatusBadge
-              tone={getInteractionStatusTone(response?.status)}
-            >
-              {response?.status ?? 'PRONTO'}
+            <StatusBadge tone="info">{response?.intentLabel ?? 'Aguardando pedido'}</StatusBadge>
+            <StatusBadge tone={getInteractionStatusTone(response?.status)}>
+              {response?.statusLabel ?? 'Pronto'}
             </StatusBadge>
           </div>
 
@@ -443,11 +424,13 @@ export function TutorVirtualAssistantPanel({
                   >
                     <div className="flex flex-wrap gap-2">
                       <StatusBadge tone={getInteractionStatusTone(interaction.status)}>
-                        {interaction.status}
+                        {interaction.statusLabel}
                       </StatusBadge>
-                      <StatusBadge tone="info">{getIntentLabel(interaction.intent)}</StatusBadge>
+                      <StatusBadge tone="info">{interaction.intentLabel}</StatusBadge>
                       {interaction.channel ? (
-                        <StatusBadge tone="neutral">{interaction.channel}</StatusBadge>
+                        <StatusBadge tone="neutral">
+                          {interaction.channelLabel ?? interaction.channel}
+                        </StatusBadge>
                       ) : null}
                     </div>
                     <p className="mt-2 text-xs leading-5 text-[color:var(--foreground-soft)]">

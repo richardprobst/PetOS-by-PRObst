@@ -205,8 +205,10 @@ export const tutorAssistantApiResponseSchema = z.object({
     'FAILED',
   ]),
   intent: tutorAssistantIntentSchema,
+  intentLabel: z.string().trim().min(1),
   reply: z.string().trim().min(1),
   status: tutorAssistantResponseStatusSchema,
+  statusLabel: z.string().trim().min(1),
   usageSnapshot: tutorAssistantUsageSnapshotSchema.nullable().default(null),
 })
 

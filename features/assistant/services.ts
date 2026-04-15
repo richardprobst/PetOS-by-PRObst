@@ -16,6 +16,10 @@ import { listServices } from '@/features/services/services'
 import { getTutorPortalOverview, createTutorAppointment } from '@/features/tutor/services'
 import { formatCurrency, formatDateTime } from '@/lib/formatters'
 import {
+  getTutorAssistantIntentLabel,
+  getTutorAssistantResponseStatusLabel,
+} from './admin-taxonomy'
+import {
   buildTutorAssistantHelpReply,
   buildTutorAssistantScheduleDraft,
   interpretTutorAssistantTranscript,
@@ -205,7 +209,7 @@ function buildBlockedResponse(
       : envelope.outcome?.error.message ??
         'O assistente virtual nao esta disponivel neste momento.'
 
-  return tutorAssistantApiResponseSchema.parse({
+  return buildTutorAssistantApiResponse({
     appointmentId: null,
     appointmentStartAt: null,
     draft: null,
@@ -217,6 +221,30 @@ function buildBlockedResponse(
   })
 }
 
+function buildTutorAssistantApiResponse(input: {
+  appointmentId: string | null
+  appointmentStartAt: Date | null
+  draft: TutorAssistantAppointmentDraft | null
+  envelopeStatus: TutorAssistantApiResponse['envelopeStatus']
+  intent: TutorAssistantIntent
+  reply: string
+  status: TutorAssistantApiResponse['status']
+  usageSnapshot: TutorAssistantUsageSnapshot | null
+}) {
+  return tutorAssistantApiResponseSchema.parse({
+    appointmentId: input.appointmentId,
+    appointmentStartAt: input.appointmentStartAt,
+    draft: input.draft,
+    envelopeStatus: input.envelopeStatus,
+    intent: input.intent,
+    intentLabel: getTutorAssistantIntentLabel(input.intent),
+    reply: input.reply,
+    status: input.status,
+    statusLabel: getTutorAssistantResponseStatusLabel(input.status),
+    usageSnapshot: input.usageSnapshot,
+  })
+}
+
 function buildInterpretResponse(input: {
   draft: TutorAssistantAppointmentDraft | null
   envelope: Awaited<ReturnType<typeof completeAssistantEnvelope>>
@@ -225,7 +253,7 @@ function buildInterpretResponse(input: {
   status: TutorAssistantApiResponse['status']
   usageSnapshot: TutorAssistantUsageSnapshot
 }) {
-  return tutorAssistantApiResponseSchema.parse({
+  return buildTutorAssistantApiResponse({
     appointmentId: null,
     appointmentStartAt: null,
     draft: input.draft,
@@ -540,7 +568,7 @@ export async function confirmTutorAssistantDraft(
     return buildBlockedResponse('SCHEDULE_APPOINTMENT', envelope, usageSnapshot)
   }
 
-  return tutorAssistantApiResponseSchema.parse({
+  return buildTutorAssistantApiResponse({
     appointmentId: appointment.id,
     appointmentStartAt: appointment.startAt,
     draft: input.draft,

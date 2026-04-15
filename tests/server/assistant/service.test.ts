@@ -152,7 +152,9 @@ test('interpretTutorAssistantRequest answers HELP through the AI envelope withou
   )
 
   assert.equal(response.status, 'ANSWERED')
+  assert.equal(response.statusLabel, 'Respondida')
   assert.equal(response.intent, 'HELP')
+  assert.equal(response.intentLabel, 'Ajuda')
   assert.equal(response.envelopeStatus, 'COMPLETED')
   assert.match(response.reply, /consultas|agendamento assistido/i)
   assert.equal(response.usageSnapshot?.summary.totalLast30Days, 1)
@@ -196,7 +198,9 @@ test('interpretTutorAssistantRequest blocks fast when the virtual assistant modu
   )
 
   assert.equal(response.status, 'BLOCKED')
+  assert.equal(response.statusLabel, 'Bloqueada')
   assert.equal(response.intent, 'HELP')
+  assert.equal(response.intentLabel, 'Ajuda')
   assert.equal(response.envelopeStatus, 'BLOCKED')
   assert.match(response.reply, /desabilitad|indisponivel|disabled/i)
   assert.equal(response.usageSnapshot?.summary.blockedLast30Days, 1)
