@@ -214,6 +214,38 @@ test('getBrandingAdminSnapshot filters live branding state to the selected unit 
     snapshot.serializableLiveState?.domainBindings.map((entry) => entry.id).sort(),
     ['domain_global', 'domain_local'],
   )
+  assert.deepEqual(
+    snapshot.serializableLiveState?.brandAssets.map((entry) => ({
+      id: entry.id,
+      scopeSummary: entry.scopeSummary,
+    })),
+    [
+      {
+        id: 'asset_tenant',
+        scopeSummary: 'Tenant global',
+      },
+      {
+        id: 'asset_local',
+        scopeSummary: 'Unidade - PetOS Local',
+      },
+    ],
+  )
+  assert.deepEqual(
+    snapshot.serializableLiveState?.domainBindings.map((entry) => ({
+      id: entry.id,
+      scopeSummary: entry.scopeSummary,
+    })),
+    [
+      {
+        id: 'domain_global',
+        scopeSummary: 'Tenant global',
+      },
+      {
+        id: 'domain_local',
+        scopeSummary: 'Unidade - PetOS Local',
+      },
+    ],
+  )
   assert.equal(snapshot.liveRuntime.identity.publicName, 'PetOS Local')
 })
 

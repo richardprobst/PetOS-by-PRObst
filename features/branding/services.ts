@@ -18,6 +18,7 @@ import { getEnv } from '@/server/env'
 import { AppError } from '@/server/http/errors'
 import {
   buildDefaultBrandRuntime,
+  getBrandScopeSummary,
   type BrandRuntimeSnapshot,
   type BrandThemeConfig,
 } from './domain'
@@ -65,6 +66,7 @@ export interface BrandingSerializableSnapshot {
     id: string
     label: string | null
     role: BrandAssetRole
+    scopeSummary: string
     tenantBrandingId: string | null
     unitBrandingId: string | null
   }>
@@ -73,6 +75,7 @@ export interface BrandingSerializableSnapshot {
     id: string
     isPrimary: boolean
     notes: string | null
+    scopeSummary: string
     status: DomainBindingStatus
     surface: DomainSurface
     unitId: string | null
@@ -891,6 +894,16 @@ export function serializeLiveBrandingState(input: {
     return null
   }
 
+  const unitBrandingsById = new Map(
+    input.unitBrandings.map((branding) => [branding.id, branding] as const),
+  )
+  const unitScopeLabelsByUnitId = new Map(
+    input.unitBrandings.map((branding) => [
+      branding.unitId,
+      getBrandingUnitScopeLabel(branding),
+    ] as const),
+  )
+
   return {
     brandAssets: input.brandAssets.map((asset) => ({
       active: asset.active,
@@ -899,6 +912,12 @@ export function serializeLiveBrandingState(input: {
       id: asset.id,
       label: asset.label,
       role: asset.role,
+      scopeSummary: asset.unitBrandingId
+        ? getBrandScopeSummary(
+            'UNIT',
+            getBrandingUnitScopeLabel(unitBrandingsById.get(asset.unitBrandingId)),
+          )
+        : getBrandScopeSummary('TENANT'),
       tenantBrandingId: asset.tenantBrandingId,
       unitBrandingId: asset.unitBrandingId,
     })),
@@ -907,6 +926,9 @@ export function serializeLiveBrandingState(input: {
       id: binding.id,
       isPrimary: binding.isPrimary,
       notes: binding.notes,
+      scopeSummary: binding.unitId
+        ? getBrandScopeSummary('UNIT', unitScopeLabelsByUnitId.get(binding.unitId))
+        : getBrandScopeSummary('TENANT'),
       status: binding.status,
       surface: binding.surface,
       unitId: binding.unitId,
@@ -1060,6 +1082,27 @@ function parsePublishedBrandingSnapshot(snapshotJson: Prisma.JsonValue | null) {
   }
 
   return branding as BrandingSerializableSnapshot
+}
+
+function getBrandingUnitScopeLabel(
+  branding:
+    | Pick<UnitBrandingRecord, 'publicNameOverride' | 'shortNameOverride'>
+    | null
+    | undefined,
+) {
+  const publicName = branding?.publicNameOverride?.trim()
+
+  if (publicName) {
+    return publicName
+  }
+
+  const shortName = branding?.shortNameOverride?.trim()
+
+  if (shortName) {
+    return shortName
+  }
+
+  return null
 }
 
 function assertCanWriteUnitScopedBranding(

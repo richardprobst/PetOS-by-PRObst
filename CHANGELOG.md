@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- `/admin/configuracoes` e `/api/admin/branding` agora humanizam tambem os identificadores administrativos residuais de branding fora do eixo de status: assets e domain bindings passaram a expor `scopeSummary` no snapshot administrativo, e a UI deixou de usar `unitId` ou escopo generico como explicacao primaria em tabelas de binding.
 - `/admin/configuracoes`, `/api/admin/settings/foundation`, `/api/admin/settings/center` e `/api/admin/integrations` agora priorizam labels humanas em estados administrativos de configuracao e governanca: status multiunidade, drift da IA, impacto de aprovacao, saude/status de integracoes e modo do assistente deixaram de depender de enums crus como explicacao principal.
 - O contrato de `/api/tutor/virtual-assistant` agora expoe `intentLabel` e `statusLabel` na resposta corrente, e o painel do assistente no portal do tutor passou a consumir labels humanas tambem no historico minimo e no resumo imediato, eliminando os ultimos enums fortes demais nesse fluxo fora de `/admin/sistema`.
 - Os diagnosticos administrativos da Fase 3 agora expõem labels humanas junto com os enums tecnicos: `phase3-foundation-diagnostics`, `phase3-governance`, `/admin/sistema`, `agenda`, `documentos`, `pets` e `report-cards` passaram a priorizar explicacao operacional para IA assistiva, fallback, gating, revisao humana e suporte interno, deixando codigos como apoio secundario.

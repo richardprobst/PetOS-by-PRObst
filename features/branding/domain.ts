@@ -115,6 +115,23 @@ export const domainBindingStatusLabels: Record<DomainBindingStatus, string> = {
   VERIFIED: 'Verificado',
 }
 
+export function getBrandScopeSummary(
+  scope: 'TENANT' | 'UNIT',
+  unitLabel?: string | null,
+) {
+  if (scope === 'TENANT') {
+    return 'Tenant global'
+  }
+
+  const normalizedUnitLabel = unitLabel?.trim()
+
+  if (normalizedUnitLabel) {
+    return `Unidade - ${normalizedUnitLabel}`
+  }
+
+  return 'Unidade vinculada'
+}
+
 export function buildDefaultBrandRuntime(): BrandRuntimeSnapshot {
   return {
     assets: { ...defaultBrandAssets },

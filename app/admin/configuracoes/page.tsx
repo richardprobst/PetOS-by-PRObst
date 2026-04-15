@@ -518,7 +518,7 @@ export default async function ConfigurationAdminPage({
               className="mt-4"
               columns={[
                 { id: 'role', header: 'Papel', render: (row) => brandAssetRoleLabels[row.role] },
-                { id: 'scope', header: 'Escopo', render: (row) => (row.unitBrandingId ? 'Unidade' : 'Tenant') },
+                { id: 'scope', header: 'Escopo', render: (row) => row.scopeSummary },
                 { id: 'assetUrl', header: 'URL', render: (row) => row.assetUrl },
               ]}
               rows={snapshot.branding.serializableLiveState?.brandAssets ?? []}
@@ -560,7 +560,7 @@ export default async function ConfigurationAdminPage({
                 { id: 'hostname', header: 'Hostname', render: (row) => row.hostname },
                 { id: 'surface', header: 'Superficie', render: (row) => domainSurfaceLabels[row.surface] },
                 { id: 'status', header: 'Status', render: (row) => domainBindingStatusLabels[row.status] },
-                { id: 'scope', header: 'Escopo', render: (row) => (row.unitId ? row.unitId : 'Global') },
+                { id: 'scope', header: 'Escopo', render: (row) => row.scopeSummary },
               ]}
               rows={snapshot.branding.serializableLiveState?.domainBindings ?? []}
             />
