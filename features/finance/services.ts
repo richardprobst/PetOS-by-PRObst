@@ -483,6 +483,40 @@ function assertClientCreditOriginConsistency(input: {
   }
 }
 
+function assertClientCreditOriginAmountConsistency(input: {
+  originType: CreditOriginType
+  totalAmount: number
+}, origins: {
+  originDeposit?: { amount: Prisma.Decimal } | null
+  originRefund?: { amount: Prisma.Decimal } | null
+}) {
+  const requestedAmount = new Prisma.Decimal(input.totalAmount)
+
+  if (
+    input.originType === CreditOriginType.REFUND &&
+    origins.originRefund &&
+    !requestedAmount.equals(origins.originRefund.amount)
+  ) {
+    throw new AppError(
+      'CONFLICT',
+      409,
+      'Refund-origin client credits must match the full refund amount. Create a dedicated refund for partial or custom-value credits.',
+    )
+  }
+
+  if (
+    input.originType === CreditOriginType.DEPOSIT_CONVERSION &&
+    origins.originDeposit &&
+    !requestedAmount.equals(origins.originDeposit.amount)
+  ) {
+    throw new AppError(
+      'CONFLICT',
+      409,
+      'Deposit-conversion client credits must match the full deposit amount. Create a dedicated refund first when only part of the deposit should become credit.',
+    )
+  }
+}
+
 async function ensureClientCreditOriginIsUnique(
   client: FinanceMutationClient,
   input: {
@@ -1452,6 +1486,10 @@ export async function createClientCredit(
       clientId: originDeposit?.clientId ?? null,
     },
   ])
+  assertClientCreditOriginAmountConsistency(input, {
+    originDeposit,
+    originRefund,
+  })
 
   return runSerializableTransaction(async (tx) => {
     const defaults = await getUnitFinancialDefaults(tx, unitId)

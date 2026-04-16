@@ -46,6 +46,8 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- `POST /api/admin/client-credits` agora falha quando um credito de `refund` ou `deposit conversion` tenta usar valor diferente da origem financeira, preservando a regra economica de `1 origem financeira -> 1 credito` e exigindo `Refund` dedicado para parciais ou valores customizados.
+- `POST /api/admin/client-credits/[creditId]/use` agora usa o `creditId` da propria path como contrato primario da mutacao e deixou de exigir duplicacao do identificador no body, reduzindo parse fragil na borda HTTP/admin.
 - `/api/admin/appointments`, `/api/admin/financial-transactions`, `/api/admin/refunds` e `/api/admin/client-credits` agora mantem snapshots ricos para a UI administrativa sem serializar `passwordHash` ou outros campos sensiveis dos usuarios aninhados; a borda de escrita passou a usar projecoes seguras tambem nas respostas detalhadas desses fluxos.
 - conflitos repetidos de `check-in` em agendamentos agora priorizam a causa operacional real e respondem que o registro ja existe, em vez de mascarar a duplicidade como status invalido.
 - O shell de autenticacao em `/entrar` deixou de afirmar que a autenticacao real estava fora do escopo e passou a refletir o fluxo atual com next-auth e sessao server-side.

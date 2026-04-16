@@ -141,6 +141,7 @@ Regras ativas:
 - credito possui saldo disponivel, origem e expiracao;
 - `ClientCredit.originRefundId` segue politica `1 reembolso -> 1 credito`;
 - `ClientCredit.originDepositId` segue politica `1 conversao direta de deposito -> 1 credito`;
+- quando o credito nasce diretamente de `originRefundId` ou `originDepositId`, o valor do credito deve espelhar integralmente o valor da origem;
 - quando houver necessidade de fracionar efeito economico ou converter parcialmente um deposito, o caminho esperado e materializar `Refund` dedicados por valor, em vez de criar varios `ClientCredit` para a mesma origem;
 - uso de credito gera lancamento financeiro proprio com `paymentMethod = CLIENT_CREDIT`;
 - credito so pode ser aplicado ao mesmo cliente e dentro do saldo disponivel.

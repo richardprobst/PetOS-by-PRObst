@@ -197,6 +197,10 @@ export const useClientCreditInputSchema = z.object({
   description: optionalString,
 })
 
+export const useClientCreditRouteBodySchema = useClientCreditInputSchema.omit({
+  creditId: true,
+})
+
 export const recordNoShowChargeInputSchema = z.object({
   amount: z.coerce.number().positive(),
   description: optionalString,
@@ -217,3 +221,4 @@ export type RecordNoShowChargeInput = z.infer<typeof recordNoShowChargeInputSche
 export type UpdateDepositStatusInput = z.infer<typeof updateDepositStatusInputSchema>
 export type UpdateFinancialTransactionInput = z.infer<typeof updateFinancialTransactionInputSchema>
 export type UseClientCreditInput = z.infer<typeof useClientCreditInputSchema>
+export type UseClientCreditRouteBodyInput = z.infer<typeof useClientCreditRouteBodySchema>

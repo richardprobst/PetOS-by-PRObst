@@ -2,7 +2,7 @@ import { readValidatedJson } from '@/server/http/request'
 import { created, routeErrorResponse } from '@/server/http/responses'
 import { requireInternalApiUser } from '@/server/authorization/api-access'
 import { enforceMutationRateLimit } from '@/server/security/operations'
-import { useClientCreditInputSchema } from '@/features/finance/schemas'
+import { useClientCreditRouteBodySchema } from '@/features/finance/schemas'
 import { applyClientCredit } from '@/features/finance/services'
 
 interface RouteContext {
@@ -16,7 +16,7 @@ export async function POST(request: Request, context: RouteContext) {
     const actor = await requireInternalApiUser('financeiro.credito.operar')
     enforceMutationRateLimit(actor, 'admin.client-credits.use')
     const { creditId } = await context.params
-    const payload = await readValidatedJson(request, useClientCreditInputSchema)
+    const payload = await readValidatedJson(request, useClientCreditRouteBodySchema)
 
     return created(
       await applyClientCredit(actor, {

@@ -351,6 +351,54 @@ test('createClientCredit rejects origin refund from another client', async () =>
   )
 })
 
+test('createClientCredit rejects refund-origin credits with a mismatched amount', async () => {
+  replaceMethod(prisma as object, 'client', {
+    findUnique: async () => ({
+      user: {
+        unitId: 'unit_local',
+      },
+      userId: 'client_1',
+    }),
+  })
+  replaceMethod(prisma as object, 'refund', {
+    findUnique: async () => ({
+      amount: new Prisma.Decimal(30),
+      appointment: null,
+      appointmentId: null,
+      client: null,
+      clientCredits: [],
+      clientId: 'client_1',
+      createdBy: null,
+      createdByUserId: 'admin_1',
+      externalReference: null,
+      financialTransaction: null,
+      financialTransactionId: null,
+      id: 'refund_1',
+      originDeposit: null,
+      originDepositId: null,
+      processedAt: new Date('2026-04-13T12:00:00.000Z'),
+      reason: 'Credito de reembolso',
+      sourceFinancialTransaction: null,
+      sourceFinancialTransactionId: null,
+      status: 'COMPLETED',
+      unit: null,
+      unitId: 'unit_local',
+    }),
+  })
+
+  await assert.rejects(
+    () =>
+      createClientCredit(globalFinanceActor, {
+        clientId: 'client_1',
+        originRefundId: 'refund_1',
+        originType: CreditOriginType.REFUND,
+        totalAmount: 31,
+        unitId: 'unit_local',
+      }),
+    /must match the full refund amount/,
+  )
+})
+
 test('createClientCredit rejects refund-origin duplicates inside the transaction', async () => {
   replaceMethod(prisma as object, 'client', {
     findUnique: async () => ({
@@ -411,6 +459,50 @@ test('createClientCredit rejects refund-origin duplicates inside the transaction
         unitId: 'unit_local',
       }),
     /already has a registered client credit/,
+  )
+})
+
+test('createClientCredit rejects deposit-conversion credits with a mismatched amount', async () => {
+  replaceMethod(prisma as object, 'client', {
+    findUnique: async () => ({
+      user: {
+        unitId: 'unit_local',
+      },
+      userId: 'client_1',
+    }),
+  })
+  replaceMethod(prisma as object, 'deposit', {
+    findUnique: async () => ({
+      amount: new Prisma.Decimal(45),
+      appointment: null,
+      appointmentId: null,
+      client: null,
+      clientCredits: [],
+      clientId: 'client_1',
+      createdBy: null,
+      createdByUserId: 'admin_1',
+      financialTransaction: null,
+      financialTransactionId: null,
+      id: 'deposit_1',
+      notes: null,
+      purpose: DepositPurpose.PREPAYMENT,
+      refunds: [],
+      status: 'CONFIRMED',
+      unit: null,
+      unitId: 'unit_local',
+    }),
+  })
+
+  await assert.rejects(
+    () =>
+      createClientCredit(globalFinanceActor, {
+        clientId: 'client_1',
+        originDepositId: 'deposit_1',
+        originType: CreditOriginType.DEPOSIT_CONVERSION,
+        totalAmount: 44,
+        unitId: 'unit_local',
+      }),
+    /must match the full deposit amount/,
   )
 })
 

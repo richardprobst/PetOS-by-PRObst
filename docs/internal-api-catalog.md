@@ -146,6 +146,8 @@ Observacao:
 - webhooks precisam continuar com validacao e idempotencia;
 - a superficie externa de integracao e menor e mais sensivel que o resto do catalogo.
 - `/api/admin/financial-transactions`, `/api/admin/refunds` e `/api/admin/client-credits` podem devolver contexto relacional suficiente para operacao administrativa, mas usuarios aninhados devem sair sempre em projecao segura, sem `passwordHash` nem credenciais internas.
+- `POST /api/admin/client-credits` deve falhar quando um credito de origem financeira (`originRefundId` ou `originDepositId`) tenta usar valor diferente da origem; parcial ou valor customizado exigem `Refund` dedicado para manter a trilha economica coerente.
+- `POST /api/admin/client-credits/[creditId]/use` recebe `creditId` pela propria rota; o body valida apenas `appointmentId`, `amount` e `description`, sem exigir duplicacao do identificador.
 
 ### 3.6. Documentos, midia e report cards
 
