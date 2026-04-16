@@ -25,6 +25,7 @@ import {
   calculateRemainingRefundableAmount,
   deriveDepositStatusFromPaymentStatus,
   derivePaymentStatusFromDepositState,
+  resolveDepositCreatePaymentStatus,
 } from '@/features/finance/domain'
 import { ensureFinancialTransactionExternalReferenceIsUnique } from '@/features/finance/transaction-reference'
 import {
@@ -931,6 +932,10 @@ export async function createDeposit(
       unitId: clientReference.unitId,
     },
   ])
+  const depositStatus =
+    input.status ??
+    deriveDepositStatusFromPaymentStatus(input.paymentStatus ?? 'PENDING')
+  const paymentStatus = resolveDepositCreatePaymentStatus(depositStatus, input.paymentStatus)
 
   return runSerializableTransaction(async (tx) => {
     await ensureDepositExternalReferenceIsUnique(tx, {
@@ -943,13 +948,6 @@ export async function createDeposit(
 
     const defaults = await getUnitFinancialDefaults(tx, unitId)
     const occurredAt = new Date()
-    const depositStatus =
-      input.status ??
-      deriveDepositStatusFromPaymentStatus(input.paymentStatus ?? 'PENDING')
-    const paymentStatus = derivePaymentStatusFromDepositState(
-      depositStatus,
-      input.paymentStatus ?? 'PENDING',
-    )
     const lifecycleDates = normalizeDepositLifecycleDates(depositStatus, occurredAt)
     const expiresAt =
       input.expiresAt ??

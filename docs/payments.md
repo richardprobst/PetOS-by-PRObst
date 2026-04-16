@@ -125,6 +125,7 @@ Regras ativas no Bloco 2:
 
 - deposito pode ser `SECURITY` ou `PREPAYMENT`;
 - `PREPAYMENT` exige `appointmentId`;
+- `status` e `paymentStatus` de deposito precisam descrever um mesmo estado economico; o servidor deve bloquear combinacoes que liquidam a transacao enquanto o deposito permanece `PENDING`;
 - transicao de status de deposito e validada no servidor;
 - deposito confirmado gera reflexo no consolidado financeiro apenas quando o estado e economicamente valido;
 - no-show protection e registrado como cobranca dedicada em `TransacoesFinanceiras` e so pode ser aplicado a atendimento em `NO_SHOW`;

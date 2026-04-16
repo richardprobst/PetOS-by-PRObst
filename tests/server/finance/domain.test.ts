@@ -4,6 +4,7 @@ import {
   assertRefundAmountWithinAvailableBalance,
   deriveDepositStatusFromPaymentStatus,
   derivePaymentStatusFromDepositState,
+  resolveDepositCreatePaymentStatus,
 } from '../../../features/finance/domain'
 
 test('deposit lifecycle maps payment and deposit states consistently', () => {
@@ -25,4 +26,14 @@ test('refund guard blocks amounts above the remaining refundable balance', () =>
   )
 
   assert.doesNotThrow(() => assertRefundAmountWithinAvailableBalance(100, 80, 20))
+})
+
+test('deposit creation rejects payment statuses that overstate the requested lifecycle state', () => {
+  assert.throws(
+    () => resolveDepositCreatePaymentStatus('PENDING', 'PAID'),
+    /cannot be created with payment status PAID/,
+  )
+
+  assert.equal(resolveDepositCreatePaymentStatus('PENDING', 'AUTHORIZED'), 'AUTHORIZED')
+  assert.equal(resolveDepositCreatePaymentStatus('CONFIRMED', 'PARTIAL'), 'PAID')
 })

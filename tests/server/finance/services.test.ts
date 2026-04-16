@@ -216,6 +216,38 @@ test('createDeposit uses serializable isolation for external reference guards', 
   assert.equal(receivedOptions?.isolationLevel, Prisma.TransactionIsolationLevel.Serializable)
 })
 
+test('createDeposit rejects explicit deposit and payment statuses that would overstate the deposit state', async () => {
+  replaceMethod(prisma as object, 'appointment', {
+    findUnique: async () => ({
+      clientId: 'client_1',
+      estimatedTotalAmount: 80,
+      id: 'appointment_1',
+      operationalStatusId: operationalStatusIds.confirmed,
+      unitId: 'unit_local',
+    }),
+  })
+  replaceMethod(prisma as object, 'client', {
+    findUnique: async () => ({
+      user: {
+        unitId: 'unit_local',
+      },
+      userId: 'client_1',
+    }),
+  })
+
+  await assert.rejects(
+    () =>
+      createDeposit(globalFinanceActor, {
+        amount: 50,
+        appointmentId: 'appointment_1',
+        paymentStatus: 'PAID',
+        purpose: DepositPurpose.PREPAYMENT,
+        status: 'PENDING',
+      }),
+    /cannot be created with payment status PAID/,
+  )
+})
+
 test('createRefund rejects cross-unit origin references before writing', async () => {
   replaceMethod(prisma as object, 'deposit', {
     findUnique: async () => ({

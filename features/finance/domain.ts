@@ -20,6 +20,16 @@ const allowedDepositTransitions: Record<DepositStatus, DepositStatus[]> = {
   EXPIRED: [],
 }
 
+const allowedCreatePaymentStatusesByDepositStatus: Record<DepositStatus, PaymentStatus[]> = {
+  PENDING: ['PENDING', 'AUTHORIZED'],
+  CONFIRMED: ['PAID', 'PARTIAL'],
+  APPLIED: ['PAID', 'PARTIAL'],
+  FORFEITED: ['PAID', 'PARTIAL'],
+  REFUNDED: ['REFUNDED'],
+  CANCELED: ['FAILED', 'REVERSED', 'VOIDED'],
+  EXPIRED: ['VOIDED'],
+}
+
 interface FinancialStatusSnapshot {
   estimatedTotalAmount: number
   grossSettledAmount: number
@@ -64,6 +74,27 @@ export function derivePaymentStatusFromDepositState(
     default:
       return fallbackStatus
   }
+}
+
+export function resolveDepositCreatePaymentStatus(
+  status: DepositStatus,
+  requestedPaymentStatus?: PaymentStatus,
+) {
+  if (!requestedPaymentStatus) {
+    return derivePaymentStatusFromDepositState(status)
+  }
+
+  const allowedPaymentStatuses = allowedCreatePaymentStatusesByDepositStatus[status] ?? []
+
+  if (!allowedPaymentStatuses.includes(requestedPaymentStatus)) {
+    throw new AppError(
+      'CONFLICT',
+      409,
+      `Deposit status ${status} cannot be created with payment status ${requestedPaymentStatus}.`,
+    )
+  }
+
+  return derivePaymentStatusFromDepositState(status, requestedPaymentStatus)
 }
 
 export function assertDepositStatusTransition(currentStatus: DepositStatus, nextStatus: DepositStatus) {
