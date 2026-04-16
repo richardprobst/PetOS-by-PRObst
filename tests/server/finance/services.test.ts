@@ -8,6 +8,9 @@ import {
   createDeposit,
   createFinancialTransaction,
   createRefund,
+  listClientCredits,
+  listFinancialTransactions,
+  listRefunds,
   recordNoShowProtectionCharge,
   updateDepositStatus,
   updateFinancialTransaction,
@@ -623,4 +626,70 @@ test('recordNoShowProtectionCharge rechecks the appointment status inside the tr
       }),
     /only be recorded for appointments already marked as no-show/,
   )
+})
+
+test('finance list queries request sanitized nested user projections', async () => {
+  const calls: Array<Record<string, unknown>> = []
+
+  replaceMethod(prisma as object, 'financialTransaction', {
+    findMany: async (args: Record<string, unknown>) => {
+      calls.push(args)
+      return []
+    },
+  })
+  replaceMethod(prisma as object, 'refund', {
+    findMany: async (args: Record<string, unknown>) => {
+      calls.push(args)
+      return []
+    },
+  })
+  replaceMethod(prisma as object, 'clientCredit', {
+    findMany: async (args: Record<string, unknown>) => {
+      calls.push(args)
+      return []
+    },
+  })
+
+  await listFinancialTransactions(globalFinanceActor, {})
+  await listRefunds(globalFinanceActor, {})
+  await listClientCredits(globalFinanceActor, { includeExpired: false })
+
+  const [transactionsArgs, refundsArgs, clientCreditsArgs] = calls as [
+    {
+      include: {
+        appointment: { include: { client: { include: { user: { select: Record<string, boolean> } } } } }
+        createdBy: { select: Record<string, boolean> }
+      }
+    },
+    {
+      include: {
+        appointment: { include: { client: { include: { user: { select: Record<string, boolean> } } } } }
+        client: { include: { user: { select: Record<string, boolean> } } }
+        createdBy: { select: Record<string, boolean> }
+      }
+    },
+    {
+      include: {
+        client: { include: { user: { select: Record<string, boolean> } } }
+        createdBy: { select: Record<string, boolean> }
+        usages: { include: { createdBy: { select: Record<string, boolean> } } }
+      }
+    },
+  ]
+
+  assert.equal(transactionsArgs.include.createdBy.select.passwordHash, undefined)
+  assert.equal(
+    transactionsArgs.include.appointment.include.client.include.user.select.passwordHash,
+    undefined,
+  )
+  assert.equal(refundsArgs.include.createdBy.select.passwordHash, undefined)
+  assert.equal(refundsArgs.include.client.include.user.select.passwordHash, undefined)
+  assert.equal(
+    refundsArgs.include.appointment.include.client.include.user.select.passwordHash,
+    undefined,
+  )
+  assert.equal(clientCreditsArgs.include.createdBy.select.passwordHash, undefined)
+  assert.equal(clientCreditsArgs.include.client.include.user.select.passwordHash, undefined)
+  assert.equal(clientCreditsArgs.include.usages.include.createdBy.select.passwordHash, undefined)
+  assert.equal(clientCreditsArgs.include.usages.include.createdBy.select.email, true)
 })

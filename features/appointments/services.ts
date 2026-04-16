@@ -37,11 +37,25 @@ import type {
 } from '@/features/appointments/schemas'
 import { upsertTaxiDogRideInMutation } from '@/features/taxi-dog/services'
 
+const appointmentUserSelect = {
+  active: true,
+  createdAt: true,
+  email: true,
+  id: true,
+  name: true,
+  phone: true,
+  unitId: true,
+  updatedAt: true,
+  userType: true,
+} as const
+
 const appointmentDetailsInclude = Prisma.validator<Prisma.AppointmentInclude>()({
   unit: true,
   client: {
     include: {
-      user: true,
+      user: {
+        select: appointmentUserSelect,
+      },
     },
   },
   pet: true,
@@ -51,7 +65,9 @@ const appointmentDetailsInclude = Prisma.validator<Prisma.AppointmentInclude>()(
       service: true,
       employee: {
         include: {
-          user: true,
+          user: {
+            select: appointmentUserSelect,
+          },
         },
       },
     },
@@ -59,7 +75,9 @@ const appointmentDetailsInclude = Prisma.validator<Prisma.AppointmentInclude>()(
   statusHistory: {
     include: {
       status: true,
-      changedBy: true,
+      changedBy: {
+        select: appointmentUserSelect,
+      },
     },
     orderBy: {
       changedAt: 'asc',
@@ -67,17 +85,23 @@ const appointmentDetailsInclude = Prisma.validator<Prisma.AppointmentInclude>()(
   },
   checkIn: {
     include: {
-      performedBy: true,
+      performedBy: {
+        select: appointmentUserSelect,
+      },
     },
   },
   taxiDogRide: {
     include: {
       assignedDriver: {
         include: {
-          user: true,
+          user: {
+            select: appointmentUserSelect,
+          },
         },
       },
-      createdBy: true,
+      createdBy: {
+        select: appointmentUserSelect,
+      },
     },
   },
 })
@@ -89,19 +113,27 @@ type AppointmentWithDetails = Prisma.AppointmentGetPayload<{
 const appointmentCapacityRuleInclude = Prisma.validator<Prisma.AppointmentCapacityRuleInclude>()({
   employee: {
     include: {
-      user: true,
+      user: {
+        select: appointmentUserSelect,
+      },
     },
   },
-  createdBy: true,
+  createdBy: {
+    select: appointmentUserSelect,
+  },
 })
 
 const scheduleBlockInclude = Prisma.validator<Prisma.ScheduleBlockInclude>()({
   employee: {
     include: {
-      user: true,
+      user: {
+        select: appointmentUserSelect,
+      },
     },
   },
-  createdBy: true,
+  createdBy: {
+    select: appointmentUserSelect,
+  },
 })
 
 type AppointmentMutationClient = Prisma.TransactionClient | typeof prisma
@@ -938,16 +970,16 @@ export async function checkInAppointment(
   return runSerializableTransaction(async (tx) => {
     const appointment = await getAppointmentInScopeOrThrow(tx, actor, appointmentId)
 
+    if (appointment.checkIn) {
+      throw new AppError('CONFLICT', 409, 'This appointment already has a check-in record.')
+    }
+
     if (appointment.operationalStatusId !== operationalStatusIds.confirmed) {
       throw new AppError(
         'CONFLICT',
         409,
         'Check-in is only allowed for confirmed appointments.',
       )
-    }
-
-    if (appointment.checkIn) {
-      throw new AppError('CONFLICT', 409, 'This appointment already has a check-in record.')
     }
 
     const checkedInAppointment = await tx.appointment.updateMany({

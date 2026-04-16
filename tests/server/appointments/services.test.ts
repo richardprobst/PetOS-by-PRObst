@@ -5,6 +5,7 @@ import {
   cancelAppointment,
   changeAppointmentStatus,
   checkInAppointment,
+  listAppointments,
 } from '../../../features/appointments/services'
 import type { AuthenticatedUserData } from '../../../server/auth/types'
 import { prisma } from '../../../server/db/prisma'
@@ -143,4 +144,74 @@ test('checkInAppointment rejects stale check-in when the appointment changed fir
       }),
     /changed before check-in could be recorded/,
   )
+})
+
+test('checkInAppointment reports duplicate check-in before complaining about the status transition', async () => {
+  replaceMethod(prisma as object, '$transaction', async (callback: (tx: unknown) => Promise<unknown>) =>
+    callback({
+      appointment: {
+        findUnique: async () => ({
+          checkIn: {
+            id: 'checkin_1',
+          },
+          id: 'appointment_1',
+          operationalStatusId: operationalStatusIds.checkIn,
+          unitId: 'unit_local',
+        }),
+      },
+    }),
+  )
+
+  await assert.rejects(
+    () =>
+      checkInAppointment(appointmentActor, 'appointment_1', {
+        checklist: [
+          {
+            checked: true,
+            key: 'vacinas',
+            label: 'Vacinas em dia',
+          },
+        ],
+      }),
+    /already has a check-in record/,
+  )
+})
+
+test('listAppointments requests sanitized nested user projections', async () => {
+  let receivedArgs: Record<string, unknown> | undefined
+
+  replaceMethod(prisma as object, 'appointment', {
+    findMany: async (args: Record<string, unknown>) => {
+      receivedArgs = args
+      return []
+    },
+  })
+
+  await listAppointments(appointmentActor, {})
+
+  const include = receivedArgs?.include as {
+    checkIn: { include: { performedBy: { select: Record<string, boolean> } } }
+    client: { include: { user: { select: Record<string, boolean> } } }
+    services: {
+      include: {
+        employee: { include: { user: { select: Record<string, boolean> } } }
+      }
+    }
+    statusHistory: { include: { changedBy: { select: Record<string, boolean> } } }
+    taxiDogRide: {
+      include: {
+        assignedDriver: { include: { user: { select: Record<string, boolean> } } }
+        createdBy: { select: Record<string, boolean> }
+      }
+    }
+  }
+
+  assert.equal(include.client.include.user.select.passwordHash, undefined)
+  assert.equal(include.services.include.employee.include.user.select.passwordHash, undefined)
+  assert.equal(include.statusHistory.include.changedBy.select.passwordHash, undefined)
+  assert.equal(include.checkIn.include.performedBy.select.passwordHash, undefined)
+  assert.equal(include.taxiDogRide.include.assignedDriver.include.user.select.passwordHash, undefined)
+  assert.equal(include.taxiDogRide.include.createdBy.select.passwordHash, undefined)
+  assert.equal(include.client.include.user.select.email, true)
+  assert.equal(include.taxiDogRide.include.createdBy.select.name, true)
 })

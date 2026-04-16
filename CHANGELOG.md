@@ -46,6 +46,8 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- `/api/admin/appointments`, `/api/admin/financial-transactions`, `/api/admin/refunds` e `/api/admin/client-credits` agora mantem snapshots ricos para a UI administrativa sem serializar `passwordHash` ou outros campos sensiveis dos usuarios aninhados; a borda de escrita passou a usar projecoes seguras tambem nas respostas detalhadas desses fluxos.
+- conflitos repetidos de `check-in` em agendamentos agora priorizam a causa operacional real e respondem que o registro ja existe, em vez de mascarar a duplicidade como status invalido.
 - O shell de autenticacao em `/entrar` deixou de afirmar que a autenticacao real estava fora do escopo e passou a refletir o fluxo atual com next-auth e sessao server-side.
 - `/api/admin/branding`, `/api/admin/integrations`, `/api/admin/settings/foundation` e `/api/admin/settings/center` agora reaplicam na propria rota a compatibilidade de permissao administrativa da Fase 5, reduzindo drift entre guard HTTP e service layer e falhando com `403` coerente ja na borda.
 - `/api/admin/branding`, `/api/admin/integrations` e `/api/admin/settings/center` agora validam `unitId` com contrato Zod compartilhado na borda HTTP antes de encaminhar o override de escopo ao service layer, eliminando parse cru de query string nessas APIs administrativas.

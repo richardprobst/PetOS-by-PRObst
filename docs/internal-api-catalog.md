@@ -107,6 +107,11 @@ Rotas:
 - `/api/admin/taxi-dog`
 - `/api/admin/taxi-dog/[rideId]/status`
 
+Observacoes operacionais:
+
+- `/api/admin/appointments` e seus detalhes/mutacoes podem continuar retornando snapshots ricos para a UI administrativa, mas usuarios aninhados devem ser serializados com projecao segura; `passwordHash` e outros segredos nao podem sair nessa borda nem como apoio tecnico.
+- conflitos previsiveis de escrita devem priorizar a causa operacional mais acionavel; repeticao de `check-in` precisa acusar duplicidade do registro existente, nao mascarar o caso como simples status invalido.
+
 ### 3.4. Cadastro operacional
 
 Rotas:
@@ -140,6 +145,7 @@ Observacao:
 
 - webhooks precisam continuar com validacao e idempotencia;
 - a superficie externa de integracao e menor e mais sensivel que o resto do catalogo.
+- `/api/admin/financial-transactions`, `/api/admin/refunds` e `/api/admin/client-credits` podem devolver contexto relacional suficiente para operacao administrativa, mas usuarios aninhados devem sair sempre em projecao segura, sem `passwordHash` nem credenciais internas.
 
 ### 3.6. Documentos, midia e report cards
 

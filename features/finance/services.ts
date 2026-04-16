@@ -51,6 +51,18 @@ const financialSettingKeys = {
   depositExpirationMinutes: 'financeiro.deposito_expiracao_minutos_padrao',
 } as const
 
+const financeUserSelect = {
+  active: true,
+  createdAt: true,
+  email: true,
+  id: true,
+  name: true,
+  phone: true,
+  unitId: true,
+  updatedAt: true,
+  userType: true,
+} as const
+
 const financialTransactionDetailsInclude =
   Prisma.validator<Prisma.FinancialTransactionInclude>()({
     appointment: {
@@ -58,12 +70,16 @@ const financialTransactionDetailsInclude =
         pet: true,
         client: {
           include: {
-            user: true,
+            user: {
+              select: financeUserSelect,
+            },
           },
         },
       },
     },
-    createdBy: true,
+    createdBy: {
+      select: financeUserSelect,
+    },
     unit: true,
   })
 
@@ -73,17 +89,23 @@ const depositDetailsInclude = Prisma.validator<Prisma.DepositInclude>()({
       pet: true,
       client: {
         include: {
-          user: true,
+          user: {
+            select: financeUserSelect,
+          },
         },
       },
     },
   },
   client: {
     include: {
-      user: true,
+      user: {
+        select: financeUserSelect,
+      },
     },
   },
-  createdBy: true,
+  createdBy: {
+    select: financeUserSelect,
+  },
   financialTransaction: true,
   unit: true,
   clientCredits: true,
@@ -96,17 +118,23 @@ const refundDetailsInclude = Prisma.validator<Prisma.RefundInclude>()({
       pet: true,
       client: {
         include: {
-          user: true,
+          user: {
+            select: financeUserSelect,
+          },
         },
       },
     },
   },
   client: {
     include: {
-      user: true,
+      user: {
+        select: financeUserSelect,
+      },
     },
   },
-  createdBy: true,
+  createdBy: {
+    select: financeUserSelect,
+  },
   financialTransaction: true,
   originDeposit: true,
   sourceFinancialTransaction: true,
@@ -117,10 +145,14 @@ const refundDetailsInclude = Prisma.validator<Prisma.RefundInclude>()({
 const clientCreditDetailsInclude = Prisma.validator<Prisma.ClientCreditInclude>()({
   client: {
     include: {
-      user: true,
+      user: {
+        select: financeUserSelect,
+      },
     },
   },
-  createdBy: true,
+  createdBy: {
+    select: financeUserSelect,
+  },
   originDeposit: true,
   originRefund: true,
   unit: true,
@@ -132,7 +164,9 @@ const clientCreditDetailsInclude = Prisma.validator<Prisma.ClientCreditInclude>(
         },
       },
       financialTransaction: true,
-      createdBy: true,
+      createdBy: {
+        select: financeUserSelect,
+      },
     },
     orderBy: {
       usedAt: 'desc',
