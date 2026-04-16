@@ -1,11 +1,15 @@
 import { getIntegrationAdminSnapshot } from '@/features/integrations-admin/services'
 import { requireInternalApiUser } from '@/server/authorization/api-access'
-import { readAdminUnitScopeQuery } from '@/server/http/admin-contracts'
+import {
+  assertCanReadIntegrationAdministrationSurface,
+  readAdminUnitScopeQuery,
+} from '@/server/http/admin-contracts'
 import { ok, routeErrorResponse } from '@/server/http/responses'
 
 export async function GET(request: Request) {
   try {
     const actor = await requireInternalApiUser()
+    assertCanReadIntegrationAdministrationSurface(actor)
     const query = readAdminUnitScopeQuery(request)
 
     return ok({

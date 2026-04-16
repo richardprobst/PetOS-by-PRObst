@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- `/api/admin/branding`, `/api/admin/integrations`, `/api/admin/settings/foundation` e `/api/admin/settings/center` agora reaplicam na propria rota a compatibilidade de permissao administrativa da Fase 5, reduzindo drift entre guard HTTP e service layer e falhando com `403` coerente ja na borda.
 - `/api/admin/branding`, `/api/admin/integrations` e `/api/admin/settings/center` agora validam `unitId` com contrato Zod compartilhado na borda HTTP antes de encaminhar o override de escopo ao service layer, eliminando parse cru de query string nessas APIs administrativas.
 - `/admin/configuracoes` e `/api/admin/branding` agora humanizam tambem os identificadores administrativos residuais de branding fora do eixo de status: assets e domain bindings passaram a expor `scopeSummary` no snapshot administrativo, e a UI deixou de usar `unitId` ou escopo generico como explicacao primaria em tabelas de binding.
 - `/admin/configuracoes`, `/api/admin/settings/foundation`, `/api/admin/settings/center` e `/api/admin/integrations` agora priorizam labels humanas em estados administrativos de configuracao e governanca: status multiunidade, drift da IA, impacto de aprovacao, saude/status de integracoes e modo do assistente deixaram de depender de enums crus como explicacao principal.

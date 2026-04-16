@@ -73,6 +73,7 @@ Observacoes operacionais:
 - `/api/admin/settings/foundation`, `/api/admin/settings/center` e `/api/admin/integrations` devem seguir a mesma disciplina para configuracao e governanca: labels humanas primeiro para `multiUnit.status`, drift administrativo, impacto de aprovacao, saude/status de integracao e resumo de escopo, mantendo enums tecnicos apenas como apoio secundario.
 - `/api/admin/branding` deve seguir a mesma disciplina para escopo e vinculo operacional: assets e domain bindings devem expor `scopeSummary` como contexto humano primario, deixando `unitId`, `unitBrandingId` e outros identificadores tecnicos apenas como apoio secundario.
 - `/api/admin/branding`, `/api/admin/integrations` e `/api/admin/settings/center` devem validar `unitId` com contrato Zod na propria borda HTTP antes de repassar override de escopo para o service layer; query vazia ou whitespace deve falhar como `400 BAD_REQUEST`, nao como string crua encaminhada adiante.
+- `/api/admin/branding`, `/api/admin/integrations`, `/api/admin/settings/foundation` e `/api/admin/settings/center` devem reaplicar na propria rota a compatibilidade de permissao da Fase 5 antes de chamar o service layer, para que a borda HTTP falhe fechado com `403` coerente e nao delegue toda a triagem da superficie administrativa ao dominio.
 
 ### 3.2. Identidade
 
