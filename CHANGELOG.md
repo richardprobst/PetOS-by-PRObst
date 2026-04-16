@@ -46,6 +46,7 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- O shell de autenticacao em `/entrar` deixou de afirmar que a autenticacao real estava fora do escopo e passou a refletir o fluxo atual com next-auth e sessao server-side.
 - `/api/admin/branding`, `/api/admin/integrations`, `/api/admin/settings/foundation` e `/api/admin/settings/center` agora reaplicam na propria rota a compatibilidade de permissao administrativa da Fase 5, reduzindo drift entre guard HTTP e service layer e falhando com `403` coerente ja na borda.
 - `/api/admin/branding`, `/api/admin/integrations` e `/api/admin/settings/center` agora validam `unitId` com contrato Zod compartilhado na borda HTTP antes de encaminhar o override de escopo ao service layer, eliminando parse cru de query string nessas APIs administrativas.
 - `/admin/configuracoes` e `/api/admin/branding` agora humanizam tambem os identificadores administrativos residuais de branding fora do eixo de status: assets e domain bindings passaram a expor `scopeSummary` no snapshot administrativo, e a UI deixou de usar `unitId` ou escopo generico como explicacao primaria em tabelas de binding.
@@ -217,6 +218,8 @@ Exemplo:
 - `scripts/sanitize-netlify-artifacts.mjs` e o comando `npm run netlify:artifacts:sanitize` para remover `.env*` empacotados indevidamente das functions do Netlify antes de um deploy manual.
 
 ### Fixed
+- O launcher raiz de runtime em `server.js` agora sobe o servidor standalone do Next como processo filho, em vez de carregá-lo via `require`, evitando o falso positivo em que `npm run start` encerrava com sucesso sem abrir a porta HTTP.
+- O bootstrap de runtime agora sincroniza as variaveis resolvidas de `.env.local` tambem quando recebe um objeto de ambiente customizado, reduzindo drift entre o boot real do app e caminhos auxiliares de teste e tooling.
 - `GET /api/health` deixou de classificar qualquer falha inesperada como "env invalida": o endpoint agora separa erro de ambiente de falha posterior de diagnostico operacional, evitando resumo mentiroso para o operador.
 - O route handler `GET /api/admin/system/update-executions/[executionId]` agora responde em PT-BR consistente quando a execucao nao existe.
 - O catalogo de APIs internas e o guia de operabilidade agora refletem o contrato real de `/api/health`, `update-preflight` e a divisao entre payload enxuto de listagem e detalhe rico de execucao do updater.

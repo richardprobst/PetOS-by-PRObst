@@ -1,5 +1,6 @@
 const fs = require('node:fs')
 const path = require('node:path')
+const { spawn } = require('node:child_process')
 const { loadEnvConfig } = require('@next/env')
 const {
   ensurePrismaQueryCompilerArtifact,
@@ -67,6 +68,15 @@ function resolveRuntimeEnvCandidates(projectRoot = __dirname) {
   ]
 }
 
+function resolveNextRuntimeEnvCandidates(projectRoot = __dirname) {
+  return [
+    path.join(projectRoot, '.env.production.local'),
+    path.join(projectRoot, '.env.local'),
+    path.join(projectRoot, '.env.production'),
+    path.join(projectRoot, '.env'),
+  ]
+}
+
 function bootstrapRuntimeEnvironment(projectRoot = __dirname, targetEnv = process.env) {
   process.chdir(projectRoot)
 
@@ -76,7 +86,13 @@ function bootstrapRuntimeEnvironment(projectRoot = __dirname, targetEnv = proces
     })
   }
 
-  loadEnvConfig(projectRoot, false)
+  loadEnvConfig(projectRoot, false, undefined, true)
+
+  if (targetEnv !== process.env) {
+    for (const candidate of resolveNextRuntimeEnvCandidates(projectRoot)) {
+      loadRuntimeEnvFile(candidate, targetEnv)
+    }
+  }
 
   if (!targetEnv.NODE_ENV) {
     targetEnv.NODE_ENV = 'production'
@@ -110,12 +126,68 @@ function resolveRuntimeEntrypoint(projectRoot = __dirname) {
   )
 }
 
-function startRuntime(projectRoot = __dirname) {
-  bootstrapRuntimeEnvironment(projectRoot, process.env)
-  ensurePrismaQueryCompilerArtifact(projectRoot)
-  const runtimeEntrypoint = resolveRuntimeEntrypoint(projectRoot)
+function attachRuntimeChildLifecycle(
+  child,
+  processRef = process,
+  options = { forwardSignals: true },
+) {
+  if (options.forwardSignals) {
+    const forwardSignal = (signal) => {
+      if (!child.killed) {
+        child.kill(signal)
+      }
+    }
 
-  require(runtimeEntrypoint)
+    for (const signal of ['SIGINT', 'SIGTERM']) {
+      processRef.once(signal, () => forwardSignal(signal))
+    }
+  }
+
+  child.on('exit', (code, signal) => {
+    if (signal) {
+      processRef.kill(processRef.pid, signal)
+      return
+    }
+
+    processRef.exit(code ?? 0)
+  })
+
+  return child
+}
+
+function startRuntime(
+  projectRoot = __dirname,
+  targetEnv = process.env,
+  options = {},
+) {
+  const spawnProcess = options.spawnProcess ?? spawn
+  const ensureCompilerArtifact =
+    options.ensureCompilerArtifact ?? ensurePrismaQueryCompilerArtifact
+  const resolveEntrypoint =
+    options.resolveEntrypoint ?? resolveRuntimeEntrypoint
+  const processRef = options.processRef ?? process
+  const attachLifecycleHandlers = options.attachLifecycleHandlers ?? true
+  const originalCwd = process.cwd()
+
+  try {
+    bootstrapRuntimeEnvironment(projectRoot, targetEnv)
+  } finally {
+    process.chdir(originalCwd)
+  }
+
+  ensureCompilerArtifact(projectRoot)
+  const runtimeEntrypoint = resolveEntrypoint(projectRoot)
+  const child = spawnProcess(processRef.execPath, [runtimeEntrypoint], {
+    cwd: projectRoot,
+    env: targetEnv,
+    stdio: 'inherit',
+  })
+
+  if (attachLifecycleHandlers) {
+    attachRuntimeChildLifecycle(child, processRef)
+  }
+
+  return child
 }
 
 if (require.main === module) {
@@ -124,9 +196,11 @@ if (require.main === module) {
 
 module.exports = {
   bootstrapRuntimeEnvironment,
+  attachRuntimeChildLifecycle,
   loadRuntimeEnvFile,
   resolveRuntimeEntrypoint,
   resolveRuntimeEnvCandidates,
+  resolveNextRuntimeEnvCandidates,
   startRuntime,
   stripWrappingQuotes,
 }
