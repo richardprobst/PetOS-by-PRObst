@@ -40,7 +40,13 @@ const imageConsent: AiConsentEvaluationInput = {
 }
 
 function createAuditWriter() {
-  const entries: Array<{ action: string; details: any }> = []
+  type AuditEventDetails = {
+    events?: Array<{
+      eventCode?: string
+    }>
+  }
+
+  const entries: Array<{ action: string; details: AuditEventDetails }> = []
 
   return {
     entries,
@@ -58,7 +64,7 @@ function createAuditWriter() {
         }) {
           entries.push({
             action: args.data.action,
-            details: (args.data.details ?? {}) as any,
+            details: (args.data.details ?? {}) as AuditEventDetails,
           })
 
           return args.data

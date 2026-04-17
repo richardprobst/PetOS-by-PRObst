@@ -129,6 +129,9 @@ Observacao:
 
 - webhooks precisam continuar com validacao e idempotencia;
 - a superficie externa de integracao e menor e mais sensivel que o resto do catalogo.
+- `POST /api/admin/fiscal-documents` rejeita duplicidade por `providerName + externalReference` com `409 CONFLICT`.
+- `PATCH /api/admin/fiscal-documents/[documentId]` aceita apenas transicoes fiscais controladas e responde `409 CONFLICT` para transicao invalida.
+- as respostas administrativas de `fiscal-documents` usam snapshot compacto e sanitizado, sem `passwordHash` nem payload rico desnecessario de cliente ou pet.
 
 ### 3.6. Documentos, midia e report cards
 

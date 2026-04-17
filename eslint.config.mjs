@@ -9,6 +9,25 @@ const compat = new FlatCompat({
 
 const eslintConfig = defineConfig([
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  {
+    files: [
+      'server.js',
+      'server/db/prisma-query-compiler.js',
+      'server/runtime/**/*.js',
+    ],
+    languageOptions: {
+      sourceType: 'commonjs',
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
+    files: ['tests/server/runtime/*.test.ts'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
   globalIgnores([
     '.next/**',
     '.playwright-cli/**',

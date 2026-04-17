@@ -95,23 +95,6 @@ async function getProductOrThrow(actor: AuthenticatedUserData, productId: string
   return product
 }
 
-async function getInventoryMovementOrThrow(actor: AuthenticatedUserData, movementId: string) {
-  const movement = await prisma.inventoryMovement.findUnique({
-    where: {
-      id: movementId,
-    },
-    include: inventoryMovementDetailsInclude,
-  })
-
-  if (!movement) {
-    throw new AppError('NOT_FOUND', 404, 'Inventory movement not found.')
-  }
-
-  assertActorCanReadInventoryRecordInScope(actor, movement.unitId)
-
-  return movement
-}
-
 export async function getInventoryDefaultsForUnit(
   client: InventoryMutationClient,
   unitId: string,

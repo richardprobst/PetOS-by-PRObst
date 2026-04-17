@@ -82,7 +82,17 @@ function createInstallerStub(overrides?: {
 
       return [{ 1: 1 }]
     },
-    $queryRawUnsafe: async () => (overrides?.hasMigrations === false ? [] : [{ table: '_prisma_migrations' }]),
+    $queryRawUnsafe: async (query: string) => {
+      if (overrides?.hasConnection === false) {
+        throw new Error('database unavailable')
+      }
+
+      if (query.includes('information_schema.tables')) {
+        return [{ migration_count: overrides?.hasMigrations === false ? 0 : 1 }]
+      }
+
+      return [{ 1: 1 }]
+    },
     accessProfile: {
       count: async () => overrides?.accessProfileCount ?? 0,
     },

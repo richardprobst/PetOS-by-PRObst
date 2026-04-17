@@ -65,6 +65,81 @@ const globalReadActor: AuthenticatedUserData = {
   permissions: [...localActor.permissions, 'multiunidade.global.visualizar'],
 }
 
+type PredictiveInsightSignalStub = {
+  key: string
+  label: string
+  value: number
+}
+
+type PredictiveInsightStub = {
+  createdAt: Date
+  envelopeSnapshot: Record<string, unknown>
+  executionId: string
+  executionStatus: string
+  explanation: AppointmentDemandInsightExplanation
+  feedbackAt: Date | null
+  feedbackBy: { id: string; name: string } | null
+  feedbackByUserId: string | null
+  feedbackNotes: string | null
+  feedbackStatus: string
+  forecastWindowEnd: Date
+  forecastWindowStart: Date
+  id: string
+  inferenceKey: string
+  kind: string
+  recommendations: string[]
+  requestId: string
+  requestedBy: { id: string; name: string }
+  requestedByUserId: string
+  resultSummary: string
+  signals: PredictiveInsightSignalStub[]
+  snapshotDate: Date
+  unit: { id: string; name: string }
+  unitId: string
+  updatedAt: Date
+  visibility: string
+}
+
+type PredictiveInsightCreateData = {
+  envelopeSnapshot?: Record<string, unknown>
+  executionId?: string
+  executionStatus?: string
+  explanation?: AppointmentDemandInsightExplanation
+  recommendations?: string[]
+  requestId?: string
+  requestedByUserId?: string
+  resultSummary?: string
+  signals?: PredictiveInsightSignalStub[]
+  snapshotDate?: Date
+  unitId?: string
+}
+
+type PredictiveInsightUpdateData = {
+  feedbackByUserId?: string | null
+  feedbackNotes?: string | null
+  feedbackStatus?: string
+}
+
+type PredictiveInsightAuditRecord = {
+  action: string
+}
+
+type PredictiveInsightTransactionStub = {
+  auditLog: {
+    create(args: { data: PredictiveInsightAuditRecord }): Promise<PredictiveInsightAuditRecord>
+  }
+  predictiveInsightSnapshot: {
+    upsert?: (args: { create: PredictiveInsightCreateData }) => Promise<PredictiveInsightStub>
+    update?: (args: { data: PredictiveInsightUpdateData }) => Promise<PredictiveInsightStub>
+  }
+}
+
+type PredictiveInsightFindManyArgs = {
+  where: {
+    unitId: string
+  }
+}
+
 function replaceMethod(target: object, key: string, value: unknown) {
   const descriptor =
     Object.getOwnPropertyDescriptor(target, key) ??
@@ -160,7 +235,9 @@ function createExplanation(
   }
 }
 
-function createPersistedPredictiveInsight(overrides: Partial<Record<string, unknown>> = {}) {
+function createPersistedPredictiveInsight(
+  overrides: Partial<PredictiveInsightStub> = {},
+): PredictiveInsightStub {
   return {
     createdAt: new Date('2026-04-09T10:05:00.000Z'),
     envelopeSnapshot: {},
@@ -189,7 +266,7 @@ function createPersistedPredictiveInsight(overrides: Partial<Record<string, unkn
     updatedAt: new Date('2026-04-09T10:05:00.000Z'),
     visibility: 'INTERNAL_OPERATOR_AND_AUDIT',
     ...overrides,
-  } as any
+  }
 }
 
 test('internal appointment-demand adapter returns a recommendation-only result explained by window and unit', async () => {
@@ -246,28 +323,28 @@ test('createPredictiveInsight persists a completed appointment-demand snapshot w
       { startAt: new Date('2025-10-15T10:00:00.000Z') },
     ],
   })
-  replaceMethod(prisma as object, '$transaction', async (callback: (tx: any) => Promise<unknown>) =>
+  replaceMethod(prisma as object, '$transaction', async (callback: (tx: PredictiveInsightTransactionStub) => Promise<unknown>) =>
     callback({
       auditLog: {
-        create: async ({ data }: any) => {
+        create: async ({ data }: { data: PredictiveInsightAuditRecord }) => {
           auditActions.push(data.action)
           return data
         },
       },
       predictiveInsightSnapshot: {
-        upsert: async ({ create }: any) =>
+        upsert: async ({ create }: { create: PredictiveInsightCreateData }) =>
           createPersistedPredictiveInsight({
-            envelopeSnapshot: create.envelopeSnapshot,
-            executionId: create.executionId,
-            executionStatus: create.executionStatus,
-            explanation: create.explanation,
-            recommendations: create.recommendations,
-            requestId: create.requestId,
-            requestedByUserId: create.requestedByUserId,
-            resultSummary: create.resultSummary,
-            signals: create.signals,
-            snapshotDate: create.snapshotDate,
-            unitId: create.unitId,
+            envelopeSnapshot: create.envelopeSnapshot ?? {},
+            executionId: create.executionId ?? 'exec_insight_1',
+            executionStatus: create.executionStatus ?? 'COMPLETED',
+            explanation: create.explanation ?? createExplanation(),
+            recommendations: create.recommendations ?? ['Revisar capacidade na sexta-feira.'],
+            requestId: create.requestId ?? 'req_insight_1',
+            requestedByUserId: create.requestedByUserId ?? localActor.id,
+            resultSummary: create.resultSummary ?? 'Previsao assistiva pronta para agenda.',
+            signals: create.signals ?? [{ key: 'forecastNext7Days', label: 'Forecast next 7 days', value: 24.2 }],
+            snapshotDate: create.snapshotDate ?? new Date('2026-04-09T00:00:00.000Z'),
+            unitId: create.unitId ?? 'unit_local',
           }),
       },
     }),
@@ -306,17 +383,17 @@ test('createPredictiveInsight keeps fail-closed behavior when predictive AI is d
   replaceMethod(prisma as object, 'appointment', {
     findMany: async () => [],
   })
-  replaceMethod(prisma as object, '$transaction', async (callback: (tx: any) => Promise<unknown>) =>
+  replaceMethod(prisma as object, '$transaction', async (callback: (tx: PredictiveInsightTransactionStub) => Promise<unknown>) =>
     callback({
       auditLog: {
-        create: async ({ data }: any) => data,
+        create: async ({ data }: { data: PredictiveInsightAuditRecord }) => data,
       },
       predictiveInsightSnapshot: {
-        upsert: async ({ create }: any) =>
+        upsert: async ({ create }: { create: PredictiveInsightCreateData }) =>
           createPersistedPredictiveInsight({
-            executionStatus: create.executionStatus,
-            recommendations: create.recommendations,
-            resultSummary: create.resultSummary,
+            executionStatus: create.executionStatus ?? 'BLOCKED',
+            recommendations: create.recommendations ?? [],
+            resultSummary: create.resultSummary ?? 'Blocked predictive insight.',
           }),
       },
     }),
@@ -342,16 +419,16 @@ test('recordPredictiveInsightFeedback updates the utility trail and writes audit
   replaceMethod(prisma as object, 'predictiveInsightSnapshot', {
     findUnique: async () => createPersistedPredictiveInsight(),
   })
-  replaceMethod(prisma as object, '$transaction', async (callback: (tx: any) => Promise<unknown>) =>
+  replaceMethod(prisma as object, '$transaction', async (callback: (tx: PredictiveInsightTransactionStub) => Promise<unknown>) =>
     callback({
       auditLog: {
-        create: async ({ data }: any) => {
+        create: async ({ data }: { data: PredictiveInsightAuditRecord }) => {
           auditActions.push(data.action)
           return data
         },
       },
       predictiveInsightSnapshot: {
-        update: async ({ data }: any) =>
+        update: async ({ data }: { data: PredictiveInsightUpdateData }) =>
           createPersistedPredictiveInsight({
             feedbackAt: new Date('2026-04-09T11:00:00.000Z'),
             feedbackBy: { id: localActor.id, name: localActor.name },
@@ -377,7 +454,7 @@ test('listPredictiveInsights respects the resolved multi-unit read context', asy
   let capturedUnitId: string | null = null
 
   replaceMethod(prisma as object, 'predictiveInsightSnapshot', {
-    findMany: async ({ where }: any) => {
+    findMany: async ({ where }: PredictiveInsightFindManyArgs) => {
       capturedUnitId = where.unitId
       return []
     },

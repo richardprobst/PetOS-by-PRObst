@@ -63,6 +63,110 @@ const globalReadActor: AuthenticatedUserData = {
   permissions: [...localActor.permissions, 'multiunidade.global.visualizar'],
 }
 
+type MediaAssetStub = {
+  accessLevel: string
+  appointment: {
+    id: string
+    unitId: string
+  }
+  appointmentId: string
+  archivedAt: Date | null
+  client: {
+    id: string
+  }
+  clientId: string
+  createdAt: Date
+  description: string
+  id: string
+  metadata: Record<string, unknown>
+  mimeType: string
+  originalFileName: string
+  pet: {
+    id: string
+  }
+  petId: string
+  sizeBytes: bigint
+  type: string
+  unitId: string
+}
+
+type ImageAnalysisSignalStub = Record<string, unknown>
+
+type ImageAnalysisStub = {
+  appointment: MediaAssetStub['appointment']
+  appointmentId: string | null
+  client: MediaAssetStub['client']
+  clientId: string | null
+  comparisonMediaAsset: MediaAssetStub | null
+  comparisonMediaAssetId: string | null
+  createdAt: Date
+  envelopeSnapshot: Record<string, unknown>
+  executionId: string | null
+  executionStatus: string
+  id: string
+  inferenceKey: string
+  kind: string
+  mediaAsset: MediaAssetStub
+  mediaAssetId: string
+  pet: MediaAssetStub['pet']
+  petId: string | null
+  recommendations: string[] | null
+  requestId: string | undefined
+  requestedBy: { id: string }
+  requestedByUserId: string | undefined
+  resultSummary: string | null
+  reviewNotes: string | null
+  reviewStatus: string
+  reviewedAt: Date | null
+  reviewedBy: { id: string } | null
+  reviewedByUserId: string | null
+  signals: ImageAnalysisSignalStub[] | null
+  unitId: string
+  updatedAt: Date
+  visibility: string
+}
+
+type ImageAnalysisCreateData = {
+  appointmentId: string | null
+  clientId: string | null
+  envelopeSnapshot: Record<string, unknown>
+  executionId: string
+  executionStatus: string
+  inferenceKey: string
+  kind: string
+  mediaAssetId: string
+  petId: string | null
+  recommendations?: string[] | null
+  requestId: string
+  requestedByUserId: string
+  resultSummary: string | null
+  reviewStatus: string
+  signals?: ImageAnalysisSignalStub[] | null
+  unitId: string
+  visibility: string
+}
+
+type ImageAnalysisUpdateData = {
+  reviewNotes: string | null
+  reviewStatus: string
+  reviewedAt: Date
+  reviewedByUserId: string
+}
+
+type ImageAnalysisAuditRecord = {
+  action: string
+}
+
+type ImageAnalysisTransactionStub = {
+  auditLog: {
+    create(args: { data: ImageAnalysisAuditRecord }): Promise<ImageAnalysisAuditRecord>
+  }
+  imageAnalysis: {
+    create?: (args: { data: ImageAnalysisCreateData }) => Promise<ImageAnalysisStub>
+    update?: (args: { data: ImageAnalysisUpdateData }) => Promise<ImageAnalysisStub>
+  }
+}
+
 async function withEnabledAiEnvironment<T>(callback: () => Promise<T> | T) {
   const previous = {
     AI_ENABLED: process.env.AI_ENABLED,
@@ -91,7 +195,7 @@ async function withEnabledAiEnvironment<T>(callback: () => Promise<T> | T) {
   }
 }
 
-function createMediaAsset(overrides: Partial<Record<string, unknown>> = {}) {
+function createMediaAsset(overrides: Partial<MediaAssetStub> = {}): MediaAssetStub {
   return {
     accessLevel: 'PROTECTED',
     appointment: {
@@ -123,7 +227,7 @@ function createMediaAsset(overrides: Partial<Record<string, unknown>> = {}) {
     type: 'IMAGE',
     unitId: 'unit_local',
     ...overrides,
-  } as any
+  }
 }
 
 function replaceMethod(target: object, key: string, value: unknown) {
@@ -261,16 +365,16 @@ test(
   replaceMethod(prisma as object, 'mediaAsset', {
     findUnique: async () => mediaAsset,
   })
-  replaceMethod(prisma as object, '$transaction', async (callback: (tx: any) => Promise<unknown>) =>
+  replaceMethod(prisma as object, '$transaction', async (callback: (tx: ImageAnalysisTransactionStub) => Promise<unknown>) =>
     callback({
       auditLog: {
-        create: async ({ data }: any) => {
+        create: async ({ data }: { data: ImageAnalysisAuditRecord }) => {
           auditEntries.push(data.action)
           return data
         },
       },
       imageAnalysis: {
-        create: async ({ data }: any) => ({
+        create: async ({ data }: { data: ImageAnalysisCreateData }) => ({
           appointment: mediaAsset.appointment,
           appointmentId: data.appointmentId,
           client: mediaAsset.client,
@@ -351,7 +455,7 @@ test(
   })
 
   replaceMethod(prisma as object, 'mediaAsset', {
-    findUnique: async ({ where }: any) =>
+    findUnique: async ({ where }: { where: { id: string } }) =>
       where.id === primaryMedia.id ? primaryMedia : comparisonMedia,
   })
 
@@ -457,21 +561,21 @@ test(
     unitId: 'unit_local',
     updatedAt: new Date('2026-04-09T13:16:00.000Z'),
     visibility: 'INTERNAL_OPERATOR_AND_AUDIT',
-  } as any
+  } satisfies ImageAnalysisStub
 
   replaceMethod(prisma as object, 'imageAnalysis', {
     findUnique: async () => storedAnalysis,
   })
-  replaceMethod(prisma as object, '$transaction', async (callback: (tx: any) => Promise<unknown>) =>
+  replaceMethod(prisma as object, '$transaction', async (callback: (tx: ImageAnalysisTransactionStub) => Promise<unknown>) =>
     callback({
       auditLog: {
-        create: async ({ data }: any) => {
+        create: async ({ data }: { data: ImageAnalysisAuditRecord }) => {
           auditEntries.push(data.action)
           return data
         },
       },
       imageAnalysis: {
-        update: async ({ data }: any) => ({
+        update: async ({ data }: { data: ImageAnalysisUpdateData }) => ({
           ...storedAnalysis,
           reviewNotes: data.reviewNotes,
           reviewStatus: data.reviewStatus,

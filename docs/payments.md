@@ -183,6 +183,12 @@ O recorte fiscal ativo na Fase 2 e intencionalmente minimo:
 - registro de `EventosIntegracao` de saida para emissao;
 - suporte a `SERVICE_INVOICE` e `CONSUMER_RECEIPT`.
 
+Regras administrativas ativas na borda HTTP:
+
+- `providerName + externalReference` precisa ser unico por documento fiscal e conflito previsivel responde `409 CONFLICT`;
+- as transicoes validas continuam finitas: `PENDING -> ISSUED|FAILED|CANCELED`, `FAILED -> PENDING|CANCELED`, `ISSUED -> CANCELED`;
+- respostas administrativas de `fiscal-documents` permanecem compactas e sanitizadas, sem vazar `passwordHash` ou detalhes ricos desnecessarios de cliente e pet.
+
 O que isso **nao** significa:
 
 - motor fiscal completo;

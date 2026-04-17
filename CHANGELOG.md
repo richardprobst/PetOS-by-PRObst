@@ -46,6 +46,10 @@ Exemplo:
 ## [Unreleased]
 
 ### Changed
+- A baseline global de qualidade voltou a distinguir wrappers CommonJS intencionais de runtime standalone dos modulos normais do repositorio, mantendo `lint` focado em divida real de codigo e testes.
+- A borda administrativa de `fiscal-documents` agora devolve snapshot compacto e sanitizado, evita payload rico desnecessario e alinha o schema Prisma ao contrato unico real de `providerName + externalReference`.
+- Os probes de runtime e readiness passaram a usar consultas compativeis com `@prisma/adapter-mariadb`, incluindo verificacao segura da tabela `_prisma_migrations` em `information_schema`.
+- A validacao CSRF de mutacoes JSON em ambiente local agora aceita a origem efetiva do runtime, evitando falso bloqueio quando o Next sobe em porta de fallback diferente da configurada.
 - O artefato `.next/standalone` agora reescreve o `package.json` de runtime para usar um launcher `sh ./start-server.sh`, eliminando a dependencia de `scripts/start-standalone.mjs` ausente no pacote publicado e de `node` no `PATH` do shell gerenciado da Hostinger.
 - O build agora prepara explicitamente o artefato `.next/standalone` consumido pela Hostinger: o `server.js` gerado pelo Next passa a ser preservado como `server-standalone.js`, o wrapper versionado do PetOS ocupa o `server.js` publicado e o helper do Prisma com o fallback `query_compiler_bg.wasm` sao copiados para o pacote standalone antes do deploy.
 - O deploy automatico da Hostinger ganhou autocura para o artefato `node_modules/.prisma/client/query_compiler_bg.wasm`: `postinstall` e o bootstrap de runtime agora restauram esse `.wasm` a partir de um fallback versionado quando o host o omite no `prisma generate`.
@@ -78,6 +82,14 @@ Exemplo:
 - O layout administrativo agora exibe o contexto multiunidade ativo da sessao em modo somente leitura, deixando explicita a separacao entre escopo `LOCAL` e `GLOBAL_AUTHORIZED` sem abrir a UI final de troca de contexto.
 - A primeira fatia controlada do Bloco 2 da Fase 3 agora aplica escopo multiunidade server-side nas leituras de `appointments`, fazendo listagem e detalhe consumirem o contexto resolvido da sessao ou `unitId` explicitamente autorizado sem abrir escrita estrutural cross-unit, UI final ou rollout amplo do modulo.
 - O `B1-T19` da Fase 3 agora fecha o Bloco 1 com um checklist formal e auditavel de saida para o Bloco 2, alinhado ao plano operacional, ao mapa de impacto multiunidade, a `npm run test:phase3:block1` e ao smoke final administrativo interno, sem abrir feature nova, provider real ou multiunidade operacional completa.
+
+### Fixed
+- Os testes de IA, governanca e runtime perderam `any` evitavel, imports mortos e ruido de harness, permitindo que `lint` e `check:all` voltem a ser gates confiaveis para publicacao.
+- `POST` e `PATCH` administrativos de `fiscal-documents` agora bloqueiam duplicidade por `providerName + externalReference`, reforcam coerencia de escopo entre unidade, agendamento e transacao financeira e rejeitam transicoes fiscais invalidas com `409 CONFLICT`.
+- A mutacao fiscal administrativa agora carimba `issuedAt` ao emitir, preenche `canceledAt` ao cancelar e limpa `lastError` ao voltar para `PENDING` ou concluir `ISSUED`, evitando estado stale na borda.
+
+### Security
+- A borda administrativa de `fiscal-documents` deixou de expor `passwordHash` e outros detalhes internos ricos em usuarios, clientes e pets aninhados nas respostas.
 - O `B1-T18` da Fase 3 agora consolida a suite minima de testes do Bloco 1, com script dedicado, smoke administrativo interno e documento explicito de cobertura e sinais de handoff, sem abrir nova feature, provider real ou Bloco 2.
 - O `B1-T17` da Fase 3 agora expõe a superficie interna minima de contexto multiunidade sobre a base administrativa ja aberta no `B1-T16`, com leitura protegida de unidade ativa, papel global, ownership base e probes de escopo/limite sem abrir UI final multiunidade nem o Bloco 2.
 - O `B1-T16` da Fase 3 agora adiciona a superficie administrativa minima de diagnostico da fundacao, com leitura protegida de flags, gating, quota, bloqueios, lifecycle conceitual, eventos operacionais minimos e sinais essenciais de multiunidade em `/admin/sistema` e em rota interna, sem abrir painel final, provider real ou mutacoes administrativas novas.

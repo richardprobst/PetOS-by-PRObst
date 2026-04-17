@@ -19,14 +19,17 @@ function createDatabaseStub(overrides?: {
   unitCount?: number
 }) {
   return {
-    $queryRaw: async () => {
-      if (overrides?.hasConnection === false) {
-        throw new Error('database unavailable')
+    $queryRawUnsafe: async (query: string) => {
+      if (query === 'SELECT 1') {
+        if (overrides?.hasConnection === false) {
+          throw new Error('database unavailable')
+        }
+
+        return [{ 1: 1 }]
       }
 
-      return [{ 1: 1 }]
+      return overrides?.hasMigrations === false ? [] : [{ table: '_prisma_migrations' }]
     },
-    $queryRawUnsafe: async () => (overrides?.hasMigrations === false ? [] : [{ table: '_prisma_migrations' }]),
     accessProfile: {
       count: async () => overrides?.accessProfileCount ?? 1,
     },

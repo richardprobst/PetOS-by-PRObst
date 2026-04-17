@@ -35,7 +35,6 @@ export interface SystemRuntimeSnapshot {
 
 type SystemRuntimeDatabaseClient = Pick<
   PrismaClient,
-  | '$queryRaw'
   | '$queryRawUnsafe'
   | 'accessProfile'
   | 'operationalStatus'
@@ -110,7 +109,7 @@ export async function collectSystemRuntimeSnapshot(
   } as const
 
   try {
-    await prisma.$queryRaw`SELECT 1`
+    await prisma.$queryRawUnsafe('SELECT 1')
   } catch {
     return {
       ...baseSnapshot,

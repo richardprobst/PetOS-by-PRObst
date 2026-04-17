@@ -23,13 +23,27 @@ export interface CoreSeedSnapshot {
 
 export type ReadinessDatabaseClient = Pick<
   PrismaClient,
-  '$queryRaw' | '$queryRawUnsafe' | 'accessProfile' | 'operationalStatus' | 'permission' | 'unit' | 'unitSetting'
+  '$queryRawUnsafe' | 'accessProfile' | 'operationalStatus' | 'permission' | 'unit' | 'unitSetting'
 >
 
 export async function prismaMigrationsTableExists(prisma: Pick<PrismaClient, '$queryRawUnsafe'>) {
-  const rows = await prisma.$queryRawUnsafe<Array<Record<string, string>>>(
-    "SHOW TABLES LIKE '_prisma_migrations'",
+  const rows = await prisma.$queryRawUnsafe<Array<Record<string, bigint | number | string>>>(
+    "SELECT COUNT(*) AS migration_count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '_prisma_migrations'",
   )
+
+  if (rows.length === 0) {
+    return false
+  }
+
+  const migrationCount = rows[0]?.migration_count
+
+  if (typeof migrationCount === 'bigint') {
+    return migrationCount > 0n
+  }
+
+  if (typeof migrationCount === 'number') {
+    return migrationCount > 0
+  }
 
   return rows.length > 0
 }
@@ -95,7 +109,7 @@ export async function collectDatabaseReadinessChecks(
   const checks: ReadinessCheck[] = []
 
   try {
-    await prisma.$queryRaw`SELECT 1`
+    await prisma.$queryRawUnsafe('SELECT 1')
     checks.push({
       message: 'Database connection established.',
       name: 'database',

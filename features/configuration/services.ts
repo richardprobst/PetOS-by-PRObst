@@ -1,14 +1,9 @@
 import type {
   ConfigurationCategory,
   ConfigurationScope,
-  ConfigurationValueType,
   Prisma,
 } from '@prisma/client'
 import type { AuthenticatedUserData } from '@/server/auth/types'
-import {
-  hasAnyPermission,
-  hasPermission,
-} from '@/server/authorization/access-control'
 import { resolveActorUnitSessionContext } from '@/server/authorization/scope'
 import { prisma } from '@/server/db/prisma'
 import {
@@ -37,9 +32,7 @@ const CONFIGURATION_FOUNDATION_PERMISSIONS = [
   'sistema.update.operar',
 ] as const
 
-const configurationStorageStatuses = ['AVAILABLE', 'MIGRATION_PENDING'] as const
-
-type ConfigurationStorageStatus = (typeof configurationStorageStatuses)[number]
+type ConfigurationStorageStatus = 'AVAILABLE' | 'MIGRATION_PENDING'
 
 export interface ConfigurationFoundationEntrySnapshot {
   category: ConfigurationCategoryKey

@@ -68,9 +68,43 @@ const globalActor: AuthenticatedUserData = {
 }
 
 function createAuditWriter() {
+  type AuditEntryDetails = {
+    consent?: {
+      decisionStatus?: string
+      reasonCode?: string
+    }
+    humanDecision?: {
+      decisionType?: string
+    }
+    multiUnitContext?: {
+      contextType?: string
+    }
+    observability?: {
+      executionStatus?: string
+    }
+    operational?: {
+      cost?: {
+        status?: string
+      }
+      fallback?: {
+        nextStep?: string
+        reasonCode?: string
+        status?: string
+      }
+    }
+    outcome?: {
+      error?: {
+        code?: string
+      }
+    }
+    retention?: {
+      policyVersion?: string
+    }
+  }
+
   const entries: Array<{
     action: string
-    details: any
+    details: AuditEntryDetails
     entityId: string | null | undefined
     entityName: string
     unitId: string | null | undefined
@@ -93,7 +127,7 @@ function createAuditWriter() {
         }) {
           entries.push({
             action: args.data.action,
-            details: (args.data.details ?? {}) as any,
+            details: (args.data.details ?? {}) as AuditEntryDetails,
             entityId: args.data.entityId,
             entityName: args.data.entityName,
             unitId: args.data.unitId,

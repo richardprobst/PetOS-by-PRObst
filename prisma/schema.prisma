@@ -1649,7 +1649,7 @@ model FiscalDocument {
   @@index([appointmentId], map: "DocumentosFiscais_agendamento_id_idx")
   @@index([financialTransactionId], map: "DocumentosFiscais_transacao_financeira_id_idx")
   @@index([createdByUserId], map: "DocumentosFiscais_usuario_criacao_id_idx")
-  @@index([providerName, externalReference], map: "DocumentosFiscais_provedor_nome_referencia_externa_idx")
+  @@unique([providerName, externalReference], map: "DocumentosFiscais_provedor_nome_referencia_externa_key")
   @@map("DocumentosFiscais")
 }
 

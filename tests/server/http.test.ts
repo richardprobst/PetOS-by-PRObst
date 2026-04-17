@@ -129,6 +129,30 @@ test('readValidatedJson accepts same-origin mutation requests', async () => {
   })
 })
 
+test('readValidatedJson accepts the current runtime origin when local dev falls back to another port', async () => {
+  withEnvironment()
+
+  const result = await readValidatedJson(
+    new Request('http://localhost:3002/api/admin/clients', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'http://localhost:3002',
+      },
+      body: JSON.stringify({
+        name: 'Port Fallback',
+      }),
+    }),
+    z.object({
+      name: z.string().min(1),
+    }),
+  )
+
+  assert.deepEqual(result, {
+    name: 'Port Fallback',
+  })
+})
+
 test('readValidatedJson accepts trusted referer when origin is absent', async () => {
   withEnvironment()
 

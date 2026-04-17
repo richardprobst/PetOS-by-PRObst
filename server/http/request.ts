@@ -2,11 +2,12 @@ import type { z } from 'zod'
 import { getEnv } from '@/server/env'
 import { AppError } from '@/server/http/errors'
 
-function buildAllowedMutationOrigins() {
+function buildAllowedMutationOrigins(request: Request) {
   const environment = getEnv()
+  const runtimeOrigin = new URL(request.url).origin
 
   return new Set(
-    [environment.APP_URL, environment.NEXT_PUBLIC_APP_URL, environment.NEXTAUTH_URL].map(
+    [environment.APP_URL, environment.NEXT_PUBLIC_APP_URL, environment.NEXTAUTH_URL, runtimeOrigin].map(
       (url) => new URL(url).origin,
     ),
   )
@@ -39,7 +40,7 @@ export function assertTrustedMutationOrigin(request: Request) {
     throw new AppError('FORBIDDEN', 403, 'Untrusted request origin.')
   }
 
-  if (!buildAllowedMutationOrigins().has(requestOrigin)) {
+  if (!buildAllowedMutationOrigins(request).has(requestOrigin)) {
     throw new AppError('FORBIDDEN', 403, 'Untrusted request origin.')
   }
 }

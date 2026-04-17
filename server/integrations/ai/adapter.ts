@@ -27,8 +27,7 @@ import {
   type AiProviderExecutionResponse,
 } from './contract'
 
-export interface ExecuteAiProviderAdapterOptions
-  extends StartAiInferenceExecutionOptions {}
+export type ExecuteAiProviderAdapterOptions = StartAiInferenceExecutionOptions
 
 export interface AiProviderAdapterExecutionResult {
   adapter: AiProviderAdapterDescriptor | null
